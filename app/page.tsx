@@ -18,18 +18,11 @@ export default function Page() {
           出典：気象庁ホームページ（
           <a
             className="underline decoration-line underline-offset-2 hover:text-ink"
-            href="https://www.jma.go.jp/bosai/forecast/#area_type=offices&area_code=140000"
-          >
-            神奈川県の予報
-          </a>
-          、
-          <a
-            className="underline decoration-line underline-offset-2 hover:text-ink"
             href="https://www.jma.go.jp/bosai/warning/#lang=ja&area_type=class20s&area_code=1420400"
           >
             鎌倉市の警報・注意報
           </a>
-          ）。公共データ利用規約（第1.0版）に基づき利用しています。日付の帯への配置は本アプリによる加工です。
+          ）。公共データ利用規約（第1.0版）に基づき利用しています。
         </p>
         <p>
           天気・気温・風・降水量は NOAA GFS（0.25°）の毎時値を、NOMADS の GRIB フィルタで取得して、6時間または12時間に集約したものです。気象庁の予報ではありません。NOAA による承認や提携を示すものではありません。

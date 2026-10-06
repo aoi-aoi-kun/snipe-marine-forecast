@@ -29,13 +29,6 @@ export function jstParts(utcMs: number): JstParts {
   };
 }
 
-export function jstDateKey(utcMs: number): string {
-  const parts = jstParts(utcMs);
-  const month = String(parts.month).padStart(2, "0");
-  const day = String(parts.day).padStart(2, "0");
-  return `${parts.year}-${month}-${day}`;
-}
-
 /** Start of the Japan-time block of `stepHours` that contains utcMs. */
 export function floorBlockStart(utcMs: number, stepHours: number): number {
   const parts = jstParts(utcMs);

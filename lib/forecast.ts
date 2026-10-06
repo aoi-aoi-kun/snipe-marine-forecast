@@ -2,8 +2,8 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { buildWindows, type HourSample } from "./aggregate";
 import { fetchCycleHours, neededForecastHours, POINT, probeCycle } from "./gfs";
-import { parseJmaForecast, parseWarnings } from "./jma";
-import { cycleCandidates, forecastWindows, HOUR_MS, jstDateKey } from "./time";
+import { parseWarnings } from "./jma";
+import { cycleCandidates, HOUR_MS } from "./time";
 import type { ForecastResponse } from "./types";
 
 const CACHE_DIR = path.join(process.cwd(), ".cache");
@@ -21,7 +21,6 @@ type GfsCache = {
 
 type JmaCache = {
   fetchedAt: number;
-  forecast: unknown;
   warnings: unknown;
 };
 
@@ -71,24 +70,14 @@ function covers(cache: GfsCache, nowMs: number): boolean {
 }
 
 async function fetchJma(): Promise<JmaCache> {
-  const headers = { "User-Agent": USER_AGENT, Accept: "application/json" };
-  const [forecastRes, warningRes] = await Promise.all([
-    fetch("https://www.jma.go.jp/bosai/forecast/data/forecast/140000.json", {
-      headers,
-      cache: "no-store",
-      signal: AbortSignal.timeout(15_000),
-    }),
-    fetch("https://www.jma.go.jp/bosai/warning/data/r8/140000.json", {
-      headers,
-      cache: "no-store",
-      signal: AbortSignal.timeout(15_000),
-    }),
-  ]);
-  if (!forecastRes.ok) throw new Error(`予報 HTTP ${forecastRes.status}`);
+  const warningRes = await fetch("https://www.jma.go.jp/bosai/warning/data/r8/140000.json", {
+    headers: { "User-Agent": USER_AGENT, Accept: "application/json" },
+    cache: "no-store",
+    signal: AbortSignal.timeout(15_000),
+  });
   if (!warningRes.ok) throw new Error(`警報 HTTP ${warningRes.status}`);
   const cache: JmaCache = {
     fetchedAt: Date.now(),
-    forecast: await forecastRes.json(),
     warnings: await warningRes.json(),
   };
   jmaMemory = cache;
@@ -146,15 +135,6 @@ async function resolveGfs(nowMs: number, refresh: boolean): Promise<{
   throw new Error("NOAA GFS を取得できませんでした");
 }
 
-function datesFor(nowMs: number): string[] {
-  const keys = new Set<string>();
-  for (const window of forecastWindows(nowMs)) {
-    keys.add(jstDateKey(window.start));
-    keys.add(jstDateKey(window.end - 1));
-  }
-  return [...keys].sort();
-}
-
 export function getForecast(refresh = false): Promise<ForecastResponse> {
   if (!pending) {
     pending = buildForecast(refresh).finally(() => {
@@ -185,37 +165,28 @@ async function buildForecast(refresh: boolean): Promise<ForecastResponse> {
     );
   }
 
-  const dates = datesFor(nowMs);
   try {
     const cached = await loadJmaCache();
     const useCache = cached && !refresh && Date.now() - cached.fetchedAt < JMA_FRESH_MS;
     const source = useCache && cached ? cached : await fetchJma();
-    const parsed = parseJmaForecast(source.forecast, dates);
     jma = {
-      office: parsed.office,
-      reportDatetime: parsed.reportDatetime,
       fetchedAt: new Date(source.fetchedAt).toISOString(),
       degraded: false,
-      days: parsed.days,
       warnings: parseWarnings(source.warnings),
     };
   } catch (error) {
     const cached = await loadJmaCache();
-    if (cached) {
-      const parsed = parseJmaForecast(cached.forecast, dates);
+    if (cached?.warnings) {
       jma = {
-        office: parsed.office,
-        reportDatetime: parsed.reportDatetime,
         fetchedAt: new Date(cached.fetchedAt).toISOString(),
         degraded: true,
-        days: parsed.days,
         warnings: parseWarnings(cached.warnings),
       };
     } else {
       errors.push(
         error instanceof Error
-          ? `気象庁の予報を取得できませんでした（${error.message}）`
-          : "気象庁の予報を取得できませんでした",
+          ? `気象庁の警報を取得できませんでした（${error.message}）`
+          : "気象庁の警報を取得できませんでした",
       );
     }
   }

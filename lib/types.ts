@@ -13,24 +13,6 @@ export type WindowForecast = {
   windMaxMs: number | null;
 };
 
-export type PopSlot = {
-  label: string;
-  percent: number;
-};
-
-export type JmaDay = {
-  date: string;
-  source: "short" | "weekly" | null;
-  weatherText: string | null;
-  windText: string | null;
-  waveText: string | null;
-  pops: PopSlot[];
-  dailyPop: number | null;
-  reliability: string | null;
-  yokohamaMinC: number | null;
-  yokohamaMaxC: number | null;
-};
-
 export type ActiveWarning = {
   code: string;
   name: string;
@@ -50,11 +32,8 @@ export type ForecastResponse = {
     windows: WindowForecast[];
   } | null;
   jma: {
-    office: string;
-    reportDatetime: string | null;
     fetchedAt: string;
     degraded: boolean;
-    days: JmaDay[];
     warnings: ActiveWarning[];
   } | null;
   errors: string[];

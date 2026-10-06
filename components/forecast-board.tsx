@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import type { ForecastResponse, JmaDay, WindowForecast } from "@/lib/types";
+import type { ForecastResponse, WindowForecast } from "@/lib/types";
 import { jstParts } from "@/lib/time";
 import { cn } from "@/lib/utils";
 
@@ -19,12 +19,6 @@ type DayGroup = {
 function formatStamp(iso: string): string {
   const parts = jstParts(Date.parse(iso));
   return `${parts.month}月${parts.day}日 ${parts.hour}時`;
-}
-
-function formatDay(date: string): string {
-  const [year, month, day] = date.split("-").map(Number);
-  const weekday = new Date(Date.UTC(year, month - 1, day)).getUTCDay();
-  return `${month}月${day}日（${WEEKDAYS[weekday]}）`;
 }
 
 function durationHours(window: WindowForecast): number {
@@ -351,63 +345,6 @@ function WindowCard({ window, scale }: { window: WindowForecast; scale: number }
   );
 }
 
-function PopTrack({ percent }: { percent: number }) {
-  return (
-    <div className="mt-1 h-2 rounded-full bg-ink/10">
-      <div className="h-full rounded-full bg-sea" style={{ width: `${Math.max(0, Math.min(100, percent))}%` }} />
-    </div>
-  );
-}
-
-function DayBand({ day }: { day: JmaDay }) {
-  return (
-    <article className="border-t border-line py-4">
-      <div className="flex items-baseline justify-between gap-3">
-        <h3 className="text-sm text-ink">{formatDay(day.date)}</h3>
-        {day.reliability ? <p className="text-xs text-muted">信頼度 {day.reliability}</p> : null}
-      </div>
-      {day.weatherText ? (
-        <div className="mt-2">
-          <p className="font-serif text-lg leading-7 text-ink">{day.weatherText}</p>
-          {day.windText ? <p className="mt-1 text-sm leading-6">{day.windText}</p> : null}
-          {day.waveText ? <p className="text-sm leading-6">波 {day.waveText}</p> : null}
-          {day.pops.length > 0 ? (
-            <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-4">
-              {day.pops.map((pop) => (
-                <div key={pop.label}>
-                  <div className="flex items-baseline gap-2 text-xs text-muted">
-                    <span>{pop.label}</span>
-                    <span className="tabular-nums">{pop.percent}%</span>
-                  </div>
-                  <PopTrack percent={pop.percent} />
-                </div>
-              ))}
-            </div>
-          ) : null}
-          {day.dailyPop !== null ? (
-            <div className="mt-3 max-w-xs">
-              <div className="flex items-baseline gap-2 text-xs text-muted">
-                <span>降水確率</span>
-                <span className="tabular-nums">{day.dailyPop}%</span>
-              </div>
-              <PopTrack percent={day.dailyPop} />
-            </div>
-          ) : null}
-          {day.yokohamaMinC !== null || day.yokohamaMaxC !== null ? (
-            <p className="mt-3 text-sm text-muted">
-              横浜の気温
-              {day.yokohamaMinC !== null ? ` 最低 ${day.yokohamaMinC}℃` : ""}
-              {day.yokohamaMaxC !== null ? ` 最高 ${day.yokohamaMaxC}℃` : ""}
-            </p>
-          ) : null}
-        </div>
-      ) : (
-        <p className="mt-2 text-sm text-muted">この日の文章予報はありません。</p>
-      )}
-    </article>
-  );
-}
-
 export function ForecastBoard() {
   const [data, setData] = useState<ForecastResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -462,12 +399,6 @@ export function ForecastBoard() {
           )}
           {loading && !data?.gfs ? (
             <p>最初の取得は1分ほどかかることがあります。</p>
-          ) : null}
-          {data?.jma?.reportDatetime ? (
-            <p>
-              {data.jma.office}の発表 {formatStamp(data.jma.reportDatetime)}
-              {data.jma.degraded ? "（保存していた予報）" : ""}
-            </p>
           ) : null}
         </div>
         <Button
@@ -530,29 +461,6 @@ export function ForecastBoard() {
             );
           })}
         </div>
-      </div>
-
-      <div className="mt-12">
-        <h2 className="font-serif text-2xl text-ink">日付ごとの予報</h2>
-        <p className="mt-1 text-sm leading-6 text-muted">
-          横浜地方気象台の文章です。上の数値とは別の予報です。風と波の文章は明後日まで、それより先は週間予報です。
-        </p>
-        {data?.jma ? (
-          <div className="mt-2">
-            {data.jma.days.map((day) => (
-              <DayBand key={day.date} day={day} />
-            ))}
-          </div>
-        ) : (
-          <p className="mt-4 text-sm text-muted">
-            {loading
-              ? "気象庁の発表を取得しています。"
-              : "気象庁の日付予報は取得できませんでした。"}
-          </p>
-        )}
-        {data?.jma?.days.some((day) => day.reliability) ? (
-          <p className="mt-3 text-xs text-muted">信頼度は週間予報に付く A・B・C です。</p>
-        ) : null}
       </div>
     </section>
   );
