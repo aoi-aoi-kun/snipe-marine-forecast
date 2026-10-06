@@ -23,9 +23,16 @@ export type WindowForecast = {
   windFromLabel: string | null;
   windMeanMs: number | null;
   windMaxMs: number | null;
+  noDeparture: boolean;
 };
 
 const CALM_MS = 0.3;
+const NO_DEPARTURE_MEAN_MS = 10;
+const NO_DEPARTURE_MAX_MS = 13;
+
+export function departureBlocked(meanMs: number, maxMs: number): boolean {
+  return meanMs >= NO_DEPARTURE_MEAN_MS || maxMs >= NO_DEPARTURE_MAX_MS;
+}
 
 function hourlyPrecip(hours: HourSample[]): Map<number, number> {
   const byTime = new Map(hours.map((hour) => [hour.validMs, hour]));
@@ -84,6 +91,7 @@ export function buildWindows(hours: HourSample[], nowMs: number): WindowForecast
         windFromLabel: null,
         windMeanMs: null,
         windMaxMs: null,
+        noDeparture: false,
       };
     }
 
@@ -96,6 +104,8 @@ export function buildWindows(hours: HourSample[], nowMs: number): WindowForecast
     const cloudPct = clouds.reduce((sum, value) => sum + value, 0) / clouds.length;
     const calm = Math.hypot(meanU, meanV) < CALM_MS;
     const from = windFromDegrees(meanU, meanV);
+    const windMeanMs = speeds.reduce((sum, value) => sum + value, 0) / speeds.length;
+    const windMaxMs = Math.max(...speeds);
 
     return {
       start: new Date(start).toISOString(),
@@ -108,8 +118,9 @@ export function buildWindows(hours: HourSample[], nowMs: number): WindowForecast
       tempMaxC: Math.max(...temps),
       windFromDeg: calm ? null : from,
       windFromLabel: calm ? "風向なし" : windFromLabel(from),
-      windMeanMs: speeds.reduce((sum, value) => sum + value, 0) / speeds.length,
-      windMaxMs: Math.max(...speeds),
+      windMeanMs,
+      windMaxMs,
+      noDeparture: departureBlocked(windMeanMs, windMaxMs),
     };
   });
 }

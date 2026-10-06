@@ -166,17 +166,25 @@ function WindTrack({
   mean,
   max,
   scale,
+  blocked,
 }: {
   mean: number;
   max: number;
   scale: number;
+  blocked: boolean;
 }) {
   const meanPct = Math.min(100, (mean / scale) * 100);
   const maxPct = Math.min(100, (max / scale) * 100);
   return (
     <div className="relative h-1.5 w-28 rounded-full bg-paper">
-      <div className="absolute inset-y-0 left-0 rounded-full bg-sea/30" style={{ width: `${maxPct}%` }} />
-      <div className="absolute inset-y-0 left-0 rounded-full bg-sea" style={{ width: `${meanPct}%` }} />
+      <div
+        className={cn("absolute inset-y-0 left-0 rounded-full", blocked ? "bg-warn/35" : "bg-sea/30")}
+        style={{ width: `${maxPct}%` }}
+      />
+      <div
+        className={cn("absolute inset-y-0 left-0 rounded-full", blocked ? "bg-warn" : "bg-sea")}
+        style={{ width: `${meanPct}%` }}
+      />
     </div>
   );
 }
@@ -216,6 +224,10 @@ function WindOverview({
           雨
         </li>
       </ul>
+      <p className="mt-2 flex items-center gap-1.5 text-xs text-muted">
+        <span className="size-2.5 bg-warn" />
+        この色の棒は出艇不可能
+      </p>
       <div className="mt-3 flex gap-2" aria-hidden="true">
         <div className="flex w-6 shrink-0 flex-col">
           <div className="h-2" />
@@ -253,8 +265,14 @@ function WindOverview({
                       style={{ flex: durationHours(window) }}
                     >
                       <div className="flex h-full w-full flex-col justify-end">
-                        <div className="w-full bg-sea/25" style={{ height: `${extraPct}%` }} />
-                        <div className="w-full bg-sea" style={{ height: `${meanPct}%` }} />
+                        <div
+                          className={cn("w-full", window.noDeparture ? "bg-warn/35" : "bg-sea/25")}
+                          style={{ height: `${extraPct}%` }}
+                        />
+                        <div
+                          className={cn("w-full", window.noDeparture ? "bg-warn" : "bg-sea")}
+                          style={{ height: `${meanPct}%` }}
+                        />
                       </div>
                     </div>
                   );
@@ -298,11 +316,18 @@ function WindowCard({ window, scale }: { window: WindowForecast; scale: number }
   const { hours, partial } = formatHours(window);
   const wide = durationHours(window) >= 12;
   return (
-    <article className={cn("flex flex-col bg-sand/80 px-3 py-3", wide && "col-span-2")}>
-      <div>
+    <article
+      className={cn(
+        "flex flex-col px-3 py-3",
+        window.noDeparture ? "bg-warn-bg" : "bg-sand/80",
+        wide && "col-span-2",
+      )}
+    >
+      <div className="flex items-baseline justify-between gap-2">
         <h3 className="text-sm text-ink">{hours}</h3>
-        <p className="text-xs text-muted">{partial ?? "\u00a0"}</p>
+        {window.noDeparture ? <p className="text-sm font-medium text-warn">出艇不可能</p> : null}
       </div>
+      <p className="text-xs text-muted">{partial ?? "\u00a0"}</p>
       {window.available ? (
         <div className={cn("mt-3 flex flex-1 flex-col gap-4", wide && "sm:flex-row sm:items-end sm:justify-between")}>
           <div className="flex items-center gap-3">
@@ -327,7 +352,12 @@ function WindowCard({ window, scale }: { window: WindowForecast; scale: number }
               <p className="font-serif text-lg leading-none text-ink">{window.windFromLabel}</p>
             </div>
             <div className="mt-2">
-              <WindTrack mean={window.windMeanMs ?? 0} max={window.windMaxMs ?? 0} scale={scale} />
+              <WindTrack
+                mean={window.windMeanMs ?? 0}
+                max={window.windMaxMs ?? 0}
+                scale={scale}
+                blocked={window.noDeparture}
+              />
             </div>
             <p className="mt-1 text-sm tabular-nums text-ink">
               {formatMs(window.windMeanMs ?? 0)} m/s
@@ -430,8 +460,25 @@ export function ForecastBoard() {
       <div className="mt-8">
         <h2 className="font-serif text-2xl text-ink">風と天気</h2>
         <p className="mt-1 max-w-2xl text-sm leading-6 text-muted">
-          48時間先までは6時間、その先は12時間です。幅は時間の長さ、高さは平均風速、うすい部分は最大まで。上端は {scale} m/s です。矢印は風の向かう向き、言葉は吹いてくる向き。方位の上は北です。
+          48時間先までは6時間、その先は12時間です。幅は時間の長さ、高さは平均風速、うすい部分は最大まで。上端は {scale} m/s です。平均 10 m/s 以上、または最大 13 m/s 以上の枠は出艇不可能です。矢印は風の向かう向き、言葉は吹いてくる向き。方位の上は北です。
         </p>
+        {windows.some((window) => window.noDeparture) ? (
+          <div className="mt-4 border border-warn/30 bg-warn-bg px-4 py-3 text-sm leading-6 text-warn">
+            <p className="font-medium">出艇不可能</p>
+            <ul className="mt-1">
+              {windows.filter((window) => window.noDeparture).map((window) => {
+                const start = jstParts(Date.parse(window.start));
+                const { hours, partial } = formatHours(window);
+                return (
+                  <li key={window.start}>
+                    {start.month}月{start.day}日 {hours}
+                    {partial ? `（${partial}）` : ""}
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        ) : null}
         {loading && !data?.gfs ? (
           <div className="mt-4 space-y-3">
             <div className="h-20 animate-pulse bg-sand/60" />
