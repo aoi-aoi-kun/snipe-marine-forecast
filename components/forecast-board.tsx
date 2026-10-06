@@ -7,7 +7,7 @@ import { jstParts } from "@/lib/time";
 import { cn } from "@/lib/utils";
 
 const WEEKDAYS = ["日", "月", "火", "水", "木", "金", "土"];
-const WIND_SCALE_FLOOR_MS = 12;
+const WIND_SCALE_FLOOR_MS = 10;
 
 type DayGroup = {
   key: string;
@@ -162,28 +162,13 @@ function WindCompass({ degrees }: { degrees: number }) {
   );
 }
 
-function WindTrack({
-  mean,
-  max,
-  scale,
-  blocked,
-}: {
-  mean: number;
-  max: number;
-  scale: number;
-  blocked: boolean;
-}) {
-  const meanPct = Math.min(100, (mean / scale) * 100);
-  const maxPct = Math.min(100, (max / scale) * 100);
+function WindTrack({ speed, scale, blocked }: { speed: number; scale: number; blocked: boolean }) {
+  const width = Math.min(100, (speed / scale) * 100);
   return (
     <div className="relative h-1.5 w-28 rounded-full bg-paper">
       <div
-        className={cn("absolute inset-y-0 left-0 rounded-full", blocked ? "bg-warn/35" : "bg-sea/30")}
-        style={{ width: `${maxPct}%` }}
-      />
-      <div
         className={cn("absolute inset-y-0 left-0 rounded-full", blocked ? "bg-warn" : "bg-sea")}
-        style={{ width: `${meanPct}%` }}
+        style={{ width: `${width}%` }}
       />
     </div>
   );
@@ -252,28 +237,18 @@ function WindOverview({
             {groups.map((group) => (
               <div key={group.key} className="flex h-full min-w-0 items-end" style={{ flex: groupHours(group) }}>
                 {group.windows.map((window) => {
-                  const mean = window.windMeanMs ?? 0;
-                  const max = window.windMaxMs ?? 0;
-                  const meanPct = window.available ? Math.min(100, (mean / scale) * 100) : 0;
-                  const extraPct = window.available
-                    ? Math.max(0, Math.min(100, (max / scale) * 100) - meanPct)
-                    : 0;
+                  const speed = window.windMeanMs ?? 0;
+                  const height = window.available ? Math.min(100, (speed / scale) * 100) : 0;
                   return (
                     <div
                       key={window.start}
                       className="flex h-full min-w-0 items-end px-px"
                       style={{ flex: durationHours(window) }}
                     >
-                      <div className="flex h-full w-full flex-col justify-end">
-                        <div
-                          className={cn("w-full", window.noDeparture ? "bg-warn/35" : "bg-sea/25")}
-                          style={{ height: `${extraPct}%` }}
-                        />
-                        <div
-                          className={cn("w-full", window.noDeparture ? "bg-warn" : "bg-sea")}
-                          style={{ height: `${meanPct}%` }}
-                        />
-                      </div>
+                      <div
+                        className={cn("w-full", window.noDeparture ? "bg-warn" : "bg-sea")}
+                        style={{ height: `${height}%` }}
+                      />
                     </div>
                   );
                 })}
@@ -284,12 +259,12 @@ function WindOverview({
             {groups.map((group) => (
               <div key={group.key} className="flex min-w-0" style={{ flex: groupHours(group) }}>
                 {group.windows.map((window) => (
-                  <p
+                    <p
                     key={window.start}
                     className="min-w-0 truncate text-center text-[10px] tabular-nums text-muted"
                     style={{ flex: durationHours(window) }}
                   >
-                    {startHour(window)}
+                    {startHour(window) % 6 === 0 ? startHour(window) : ""}
                   </p>
                 ))}
               </div>
@@ -314,14 +289,9 @@ function WindOverview({
 
 function WindowCard({ window, scale }: { window: WindowForecast; scale: number }) {
   const { hours, partial } = formatHours(window);
-  const wide = durationHours(window) >= 12;
   return (
     <article
-      className={cn(
-        "flex flex-col px-3 py-3",
-        window.noDeparture ? "bg-warn-bg" : "bg-sand/80",
-        wide && "col-span-2",
-      )}
+      className={cn("flex flex-col px-3 py-3", window.noDeparture ? "bg-warn-bg" : "bg-sand/80")}
     >
       <div className="flex items-baseline justify-between gap-2">
         <h3 className="text-sm text-ink">{hours}</h3>
@@ -329,7 +299,7 @@ function WindowCard({ window, scale }: { window: WindowForecast; scale: number }
       </div>
       <p className="text-xs text-muted">{partial ?? "\u00a0"}</p>
       {window.available ? (
-        <div className={cn("mt-3 flex flex-1 flex-col gap-4", wide && "sm:flex-row sm:items-end sm:justify-between")}>
+        <div className="mt-3 flex flex-1 flex-col gap-4">
           <div className="flex items-center gap-3">
             <WeatherIcon weather={window.weather} className="size-9 shrink-0" />
             <div>
@@ -353,19 +323,13 @@ function WindowCard({ window, scale }: { window: WindowForecast; scale: number }
             </div>
             <div className="mt-2">
               <WindTrack
-                mean={window.windMeanMs ?? 0}
-                max={window.windMaxMs ?? 0}
+                speed={window.windMeanMs ?? 0}
                 scale={scale}
                 blocked={window.noDeparture}
               />
             </div>
-            <p className="mt-1 text-sm tabular-nums text-ink">
-              {formatMs(window.windMeanMs ?? 0)} m/s
-              <span className="text-muted"> 最大 {formatMs(window.windMaxMs ?? 0)}</span>
-            </p>
-            <p className="text-xs tabular-nums text-muted">
-              {formatKt(window.windMeanMs ?? 0)} kt / 最大 {formatKt(window.windMaxMs ?? 0)} kt
-            </p>
+            <p className="mt-1 text-sm tabular-nums text-ink">{formatMs(window.windMeanMs ?? 0)} m/s</p>
+            <p className="text-xs tabular-nums text-muted">{formatKt(window.windMeanMs ?? 0)} kt</p>
           </div>
         </div>
       ) : (
@@ -460,7 +424,7 @@ export function ForecastBoard() {
       <div className="mt-8">
         <h2 className="font-serif text-2xl text-ink">風と天気</h2>
         <p className="mt-1 max-w-2xl text-sm leading-6 text-muted">
-          48時間先までは6時間、その先は12時間です。数値は3時間ごとの予報です。幅は時間の長さ、高さは平均風速、うすい部分は最大まで。上端は {scale} m/s です。平均 10 m/s 以上、または最大 13 m/s 以上の枠は出艇不可能です。矢印は風の向かう向き、言葉は吹いてくる向き。方位の上は北です。
+          96時間先まで、3時間ごとです。高さはその時刻の地上10mの風速で、上端は {scale} m/s です。10 m/s 以上の枠は出艇不可能です。矢印は風の向かう向き、言葉は吹いてくる向き。方位の上は北です。
         </p>
         {windows.some((window) => window.noDeparture) ? (
           <div className="mt-4 border border-warn/30 bg-warn-bg px-4 py-3 text-sm leading-6 text-warn">
@@ -492,12 +456,11 @@ export function ForecastBoard() {
         {groups.length > 0 ? <WindOverview groups={groups} scale={scale} /> : null}
         <div className="mt-6 space-y-8">
           {groups.map((group) => {
-            const step = group.windows.every((window) => durationHours(window) >= 12) ? "12時間" : "6時間";
             return (
               <section key={group.key}>
                 <div className="flex items-baseline justify-between gap-3">
                   <h3 className="font-serif text-xl text-ink">{group.label}</h3>
-                  <p className="text-xs text-muted">{step}ごと</p>
+                  <p className="text-xs text-muted">3時間ごと</p>
                 </div>
                 <div className="mt-3 grid grid-cols-2 gap-2 md:grid-cols-4">
                   {group.windows.map((window) => (

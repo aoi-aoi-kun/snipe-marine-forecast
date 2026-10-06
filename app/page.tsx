@@ -9,7 +9,7 @@ export default function Page() {
           七里ヶ浜沖
         </h1>
         <p className="mt-3 max-w-xl text-sm leading-6 text-muted">
-          北緯 35.25°、東経 139.50°。ECMWF の 0.25° の升で、海岸を含みます。48時間先までは6時間ごと、その先は12時間ごとで、96時間先まで。
+          北緯 35.25°、東経 139.50°。ECMWF の 0.25° の升で、海岸を含みます。3時間ごとで、96時間先まで。
         </p>
       </header>
       <ForecastBoard />
@@ -32,7 +32,7 @@ export default function Page() {
           >
             ECMWF の公開データ
           </a>
-          （IFS 0.25°、3時間ごと）を、6時間または12時間に集約したものです。
+          （IFS 0.25°）の3時間ごとの値です。
           <a
             className="underline decoration-line underline-offset-2 hover:text-ink"
             href="https://creativecommons.org/licenses/by/4.0/"
@@ -42,7 +42,7 @@ export default function Page() {
           で利用しています。気象庁の予報ではなく、ECMWF による承認や提携を示すものでもありません。
         </p>
         <p>
-          平均 10 m/s 以上、または最大 13 m/s 以上の枠は出艇不可能です。それ以外は、現場の状況と気象庁の警報・注意報によります。
+          10 m/s 以上の枠は出艇不可能です。それ以外は、現場の状況と気象庁の警報・注意報によります。
         </p>
       </footer>
     </main>

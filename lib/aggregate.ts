@@ -27,16 +27,15 @@ export type WindowForecast = {
 };
 
 const CALM_MS = 0.3;
-const NO_DEPARTURE_MEAN_MS = 10;
-const NO_DEPARTURE_MAX_MS = 13;
+const NO_DEPARTURE_MS = 10;
 const SAMPLE_MS = 3 * HOUR_MS;
 
 function stepFloor(utcMs: number): number {
   return Math.floor(utcMs / SAMPLE_MS) * SAMPLE_MS;
 }
 
-export function departureBlocked(meanMs: number, maxMs: number): boolean {
-  return meanMs >= NO_DEPARTURE_MEAN_MS || maxMs >= NO_DEPARTURE_MAX_MS;
+export function departureBlocked(speedMs: number): boolean {
+  return speedMs >= NO_DEPARTURE_MS;
 }
 
 function stepPrecip(hours: HourSample[]): Map<number, number> {
@@ -125,7 +124,7 @@ export function buildWindows(hours: HourSample[], nowMs: number): WindowForecast
       windFromLabel: calm ? "風向なし" : windFromLabel(from),
       windMeanMs,
       windMaxMs,
-      noDeparture: departureBlocked(windMeanMs, windMaxMs),
+      noDeparture: departureBlocked(windMeanMs),
     };
   });
 }

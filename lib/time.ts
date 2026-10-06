@@ -1,8 +1,6 @@
 export const JST_OFFSET_MS = 9 * 60 * 60 * 1000;
 export const HOUR_MS = 60 * 60 * 1000;
-export const FINE_WINDOW_MS = 6 * HOUR_MS;
-export const COARSE_WINDOW_MS = 12 * HOUR_MS;
-export const FINE_HORIZON_MS = 48 * HOUR_MS;
+export const WINDOW_MS = 3 * HOUR_MS;
 export const HORIZON_MS = 96 * HOUR_MS;
 
 export type TimeWindow = {
@@ -36,28 +34,14 @@ export function floorBlockStart(utcMs: number, stepHours: number): number {
   return Date.UTC(parts.year, parts.month - 1, parts.day, hour) - JST_OFFSET_MS;
 }
 
-/**
- * 6-hour blocks from the block containing now through 48 hours ahead.
- * If that run ends away from 00 or 12 JST, one more 6-hour block is added
- * so the remainder stays on 00–12 and 12–24 through 96 hours ahead.
- */
+/** 3-hour Japan-time blocks from the block containing now through 96 hours ahead. */
 export function forecastWindows(nowMs: number): TimeWindow[] {
-  const fineUntil = nowMs + FINE_HORIZON_MS;
   const horizon = nowMs + HORIZON_MS;
   const windows: TimeWindow[] = [];
-
-  let start = floorBlockStart(nowMs, 6);
-  while (start < fineUntil) {
-    windows.push({ start, end: start + FINE_WINDOW_MS });
-    start += FINE_WINDOW_MS;
-  }
-  while (jstParts(start).hour % 12 !== 0) {
-    windows.push({ start, end: start + FINE_WINDOW_MS });
-    start += FINE_WINDOW_MS;
-  }
+  let start = floorBlockStart(nowMs, 3);
   while (start < horizon) {
-    windows.push({ start, end: start + COARSE_WINDOW_MS });
-    start += COARSE_WINDOW_MS;
+    windows.push({ start, end: start + WINDOW_MS });
+    start += WINDOW_MS;
   }
   return windows;
 }
