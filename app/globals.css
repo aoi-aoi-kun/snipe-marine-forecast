@@ -1,0 +1,24 @@
+@import "tailwindcss";
+
+@theme {
+  --color-paper: #f3efe6;
+  --color-sand: #e7e0d2;
+  --color-ink: #1c2430;
+  --color-sea: #1b4f5c;
+  --color-line: #ddd4c4;
+  --color-muted: #5e675f;
+  --color-warn: #7a332c;
+  --color-warn-bg: #f6e6e1;
+  --font-sans: var(--font-plex), "Hiragino Sans", "Noto Sans JP", sans-serif;
+  --font-serif: var(--font-mincho), "Hiragino Mincho ProN", "Noto Serif JP", serif;
+}
+
+body {
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+}
+
+::selection {
+  background: #d5e4e4;
+}

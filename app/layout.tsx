@@ -1,0 +1,33 @@
+import type { Metadata } from "next";
+import { IBM_Plex_Sans_JP, Shippori_Mincho } from "next/font/google";
+import "./globals.css";
+
+const plex = IBM_Plex_Sans_JP({
+  variable: "--font-plex",
+  subsets: ["latin"],
+  weight: ["400", "500"],
+  display: "swap",
+  preload: false,
+});
+
+const mincho = Shippori_Mincho({
+  variable: "--font-mincho",
+  subsets: ["latin"],
+  weight: ["500", "600"],
+  display: "swap",
+  preload: false,
+});
+
+export const metadata: Metadata = {
+  title: "七里ヶ浜沖の予報",
+  description:
+    "相模湾、北緯35.25度・東経139.50度の天気・気温・風。12時間ごと、96時間先まで。",
+};
+
+export default function RootLayout({ children }: LayoutProps<"/">) {
+  return (
+    <html lang="ja" className={`${plex.variable} ${mincho.variable} h-full`}>
+      <body className="min-h-full antialiased">{children}</body>
+    </html>
+  );
+}
