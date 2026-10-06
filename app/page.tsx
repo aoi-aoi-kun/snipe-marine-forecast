@@ -2,7 +2,7 @@ import { ForecastBoard } from "@/components/forecast-board";
 
 export default function Page() {
   return (
-    <main className="mx-auto w-full max-w-3xl px-5 py-8 sm:px-8 sm:py-12">
+    <main className="mx-auto w-full max-w-5xl px-5 py-8 sm:px-8 sm:py-12">
       <header className="border-b border-line pb-6">
         <p className="text-sm text-sea">相模湾の格子点</p>
         <h1 className="mt-1 font-serif text-4xl leading-tight text-ink sm:text-5xl">

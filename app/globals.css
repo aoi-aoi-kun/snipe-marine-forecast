@@ -9,6 +9,7 @@
   --color-muted: #5e675f;
   --color-warn: #7a332c;
   --color-warn-bg: #f6e6e1;
+  --color-sun: #8a5a12;
   --font-sans: var(--font-plex), "Hiragino Sans", "Noto Sans JP", sans-serif;
   --font-serif: var(--font-mincho), "Hiragino Mincho ProN", "Noto Serif JP", serif;
 }
