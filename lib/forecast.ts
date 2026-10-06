@@ -1,19 +1,27 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { buildWindows, type HourSample } from "./aggregate";
-import { fetchCycleHours, neededForecastHours, POINT, probeCycle } from "./gfs";
+import {
+  fetchCycleSamples,
+  ifsCycleCandidates,
+  neededSteps,
+  POINT,
+  probeCycle,
+} from "./ecmwf";
+import { getBytes } from "./http";
 import { parseWarnings } from "./jma";
-import { cycleCandidates, HOUR_MS } from "./time";
+import { HOUR_MS } from "./time";
 import type { ForecastResponse } from "./types";
 
 const CACHE_DIR = path.join(process.cwd(), ".cache");
-const GFS_CACHE = path.join(CACHE_DIR, "gfs.json");
+const IFS_CACHE = path.join(CACHE_DIR, "ifs.json");
 const JMA_CACHE = path.join(CACHE_DIR, "jma.json");
 const USER_AGENT = "shichirigahama-forecast/1.0 (local coastal forecast)";
-const GFS_FRESH_MS = 30 * 60 * 1000;
+const IFS_FRESH_MS = 30 * 60 * 1000;
 const JMA_FRESH_MS = 20 * 60 * 1000;
 
-type GfsCache = {
+type IfsCache = {
+  source: "ecmwf-ifs-0p25";
   initMs: number;
   fetchedAt: number;
   hours: HourSample[];
@@ -24,7 +32,7 @@ type JmaCache = {
   warnings: unknown;
 };
 
-let gfsMemory: GfsCache | null = null;
+let ifsMemory: IfsCache | null = null;
 let jmaMemory: JmaCache | null = null;
 let pending: Promise<ForecastResponse> | null = null;
 
@@ -41,15 +49,24 @@ async function writeJson(file: string, value: unknown) {
   await writeFile(file, JSON.stringify(value));
 }
 
-async function loadGfsCache(): Promise<GfsCache | null> {
-  if (gfsMemory) return gfsMemory;
-  gfsMemory = await readJson<GfsCache>(GFS_CACHE);
-  return gfsMemory;
+function isIfsCache(value: IfsCache | null): value is IfsCache {
+  return (
+    value?.source === "ecmwf-ifs-0p25" &&
+    Number.isFinite(value.initMs) &&
+    Array.isArray(value.hours)
+  );
 }
 
-async function saveGfsCache(cache: GfsCache) {
-  gfsMemory = cache;
-  await writeJson(GFS_CACHE, cache);
+async function loadIfsCache(): Promise<IfsCache | null> {
+  if (ifsMemory) return ifsMemory;
+  const stored = await readJson<IfsCache>(IFS_CACHE);
+  ifsMemory = isIfsCache(stored) ? stored : null;
+  return ifsMemory;
+}
+
+async function saveIfsCache(cache: IfsCache) {
+  ifsMemory = cache;
+  await writeJson(IFS_CACHE, cache);
 }
 
 async function loadJmaCache(): Promise<JmaCache | null> {
@@ -58,51 +75,48 @@ async function loadJmaCache(): Promise<JmaCache | null> {
   return jmaMemory;
 }
 
-function covers(cache: GfsCache, nowMs: number): boolean {
-  const needed = new Set(neededForecastHours(cache.initMs, nowMs));
+function covers(cache: IfsCache, nowMs: number): boolean {
+  const needed = neededSteps(cache.initMs, nowMs);
+  if (needed.length === 0) return false;
   const have = new Set(
     cache.hours.map((hour) => Math.round((hour.validMs - cache.initMs) / HOUR_MS)),
   );
-  for (const hour of needed) {
-    if (!have.has(hour)) return false;
-  }
-  return needed.size > 0;
+  return needed.every((step) => have.has(step));
 }
 
 async function fetchJma(): Promise<JmaCache> {
-  const warningRes = await fetch("https://www.jma.go.jp/bosai/warning/data/r8/140000.json", {
+  const warningRes = await getBytes("https://www.jma.go.jp/bosai/warning/data/r8/140000.json", {
     headers: { "User-Agent": USER_AGENT, Accept: "application/json" },
-    cache: "no-store",
-    signal: AbortSignal.timeout(15_000),
+    timeoutMs: 15_000,
   });
-  if (!warningRes.ok) throw new Error(`警報 HTTP ${warningRes.status}`);
+  if (warningRes.status !== 200) throw new Error(`警報 HTTP ${warningRes.status}`);
   const cache: JmaCache = {
     fetchedAt: Date.now(),
-    warnings: await warningRes.json(),
+    warnings: JSON.parse(new TextDecoder().decode(warningRes.body)),
   };
   jmaMemory = cache;
   await writeJson(JMA_CACHE, cache);
   return cache;
 }
 
-async function resolveGfs(nowMs: number, refresh: boolean): Promise<{
-  cache: GfsCache;
+async function resolveIfs(nowMs: number, refresh: boolean): Promise<{
+  cache: IfsCache;
   degraded: boolean;
 }> {
-  const existing = await loadGfsCache();
+  const existing = await loadIfsCache();
   const fresh =
-    existing &&
-    Date.now() - existing.fetchedAt < GFS_FRESH_MS &&
-    covers(existing, nowMs);
+    existing && Date.now() - existing.fetchedAt < IFS_FRESH_MS && covers(existing, nowMs);
   if (fresh && !refresh && existing) return { cache: existing, degraded: false };
 
-  for (const initMs of cycleCandidates(nowMs)) {
+  for (const initMs of ifsCycleCandidates(nowMs)) {
+    const steps = neededSteps(initMs, nowMs);
+    if (steps.length === 0) continue;
     if (existing?.initMs === initMs && covers(existing, nowMs)) {
       const touched = { ...existing, fetchedAt: Date.now() };
-      await saveGfsCache(touched);
+      await saveIfsCache(touched);
       return { cache: touched, degraded: false };
     }
-    const available = await probeCycle(initMs);
+    const available = await probeCycle(initMs, steps);
     if (!available) continue;
     const previous =
       existing?.initMs === initMs
@@ -113,26 +127,62 @@ async function resolveGfs(nowMs: number, refresh: boolean): Promise<{
             ]),
           )
         : new Map<number, HourSample>();
-    const needed = neededForecastHours(initMs, nowMs);
-    const hours = await fetchCycleHours(initMs, needed, previous);
-    const cache: GfsCache = {
+    const hours = await fetchCycleSamples(initMs, steps, previous);
+    const cache: IfsCache = {
+      source: "ecmwf-ifs-0p25",
       initMs,
       fetchedAt: Date.now(),
       hours: [...hours.values()].sort((a, b) => a.validMs - b.validMs),
     };
     if (!covers(cache, nowMs)) {
-      if (existing && covers(existing, nowMs)) {
-        return { cache: existing, degraded: true };
-      }
-      await saveGfsCache(cache);
+      if (existing && covers(existing, nowMs)) return { cache: existing, degraded: true };
+      await saveIfsCache(cache);
       return { cache, degraded: true };
     }
-    await saveGfsCache(cache);
+    await saveIfsCache(cache);
     return { cache, degraded: false };
   }
 
   if (existing) return { cache: existing, degraded: true };
-  throw new Error("NOAA GFS を取得できませんでした");
+  throw new Error("ECMWF の公開データを取得できませんでした");
+}
+
+async function resolveJma(refresh: boolean): Promise<{
+  jma: ForecastResponse["jma"];
+  error: string | null;
+}> {
+  try {
+    const cached = await loadJmaCache();
+    const useCache = cached && !refresh && Date.now() - cached.fetchedAt < JMA_FRESH_MS;
+    const source = useCache && cached ? cached : await fetchJma();
+    return {
+      jma: {
+        fetchedAt: new Date(source.fetchedAt).toISOString(),
+        degraded: false,
+        warnings: parseWarnings(source.warnings),
+      },
+      error: null,
+    };
+  } catch (error) {
+    const cached = await loadJmaCache();
+    if (cached?.warnings) {
+      return {
+        jma: {
+          fetchedAt: new Date(cached.fetchedAt).toISOString(),
+          degraded: true,
+          warnings: parseWarnings(cached.warnings),
+        },
+        error: null,
+      };
+    }
+    return {
+      jma: null,
+      error:
+        error instanceof Error
+          ? `気象庁の警報を取得できませんでした（${error.message}）`
+          : "気象庁の警報を取得できませんでした",
+    };
+  }
 }
 
 export function getForecast(refresh = false): Promise<ForecastResponse> {
@@ -147,55 +197,34 @@ export function getForecast(refresh = false): Promise<ForecastResponse> {
 async function buildForecast(refresh: boolean): Promise<ForecastResponse> {
   const nowMs = Date.now();
   const errors: string[] = [];
-  let gfs: ForecastResponse["gfs"] = null;
-  let jma: ForecastResponse["jma"] = null;
+  const [model, warnings] = await Promise.all([
+    resolveIfs(nowMs, refresh).then(
+      (resolved) => ({ resolved, error: null as string | null }),
+      (error: unknown) => ({
+        resolved: null,
+        error:
+          error instanceof Error ? error.message : "ECMWF の公開データを取得できませんでした",
+      }),
+    ),
+    resolveJma(refresh),
+  ]);
 
-  try {
-    const resolved = await resolveGfs(nowMs, refresh);
-    gfs = {
-      initTime: new Date(resolved.cache.initMs).toISOString(),
-      ageHours: (nowMs - resolved.cache.initMs) / HOUR_MS,
-      fetchedAt: new Date(resolved.cache.fetchedAt).toISOString(),
-      degraded: resolved.degraded,
-      windows: buildWindows(resolved.cache.hours, nowMs),
-    };
-  } catch (error) {
-    errors.push(
-      error instanceof Error ? error.message : "NOAA GFS を取得できませんでした",
-    );
-  }
-
-  try {
-    const cached = await loadJmaCache();
-    const useCache = cached && !refresh && Date.now() - cached.fetchedAt < JMA_FRESH_MS;
-    const source = useCache && cached ? cached : await fetchJma();
-    jma = {
-      fetchedAt: new Date(source.fetchedAt).toISOString(),
-      degraded: false,
-      warnings: parseWarnings(source.warnings),
-    };
-  } catch (error) {
-    const cached = await loadJmaCache();
-    if (cached?.warnings) {
-      jma = {
-        fetchedAt: new Date(cached.fetchedAt).toISOString(),
-        degraded: true,
-        warnings: parseWarnings(cached.warnings),
-      };
-    } else {
-      errors.push(
-        error instanceof Error
-          ? `気象庁の警報を取得できませんでした（${error.message}）`
-          : "気象庁の警報を取得できませんでした",
-      );
-    }
-  }
+  if (model.error) errors.push(model.error);
+  if (warnings.error) errors.push(warnings.error);
 
   return {
     point: POINT,
     generatedAt: new Date(nowMs).toISOString(),
-    gfs,
-    jma,
+    ifs: model.resolved
+      ? {
+          initTime: new Date(model.resolved.cache.initMs).toISOString(),
+          ageHours: (nowMs - model.resolved.cache.initMs) / HOUR_MS,
+          fetchedAt: new Date(model.resolved.cache.fetchedAt).toISOString(),
+          degraded: model.resolved.degraded,
+          windows: buildWindows(model.resolved.cache.hours, nowMs),
+        }
+      : null,
+    jma: warnings.jma,
     errors,
   };
 }

@@ -40,17 +40,17 @@ test("keeps 12-hour blocks on midnight and noon when 48 hours lands on one", () 
   assert.equal(windows.find((window) => window.start === boundary)?.end, boundary + 12 * HOUR_MS);
 });
 
-test("aggregates only the hours still ahead in the current window", () => {
+test("aggregates the 3-hour samples still ahead in the current window", () => {
   const start = Date.parse("2026-10-06T03:00:00.000Z");
   const hours: HourSample[] = [];
   let precip = 0;
-  for (let time = start; time <= start + 12 * HOUR_MS; time += HOUR_MS) {
-    precip += 0.1;
+  for (let time = start; time <= start + 12 * HOUR_MS; time += 3 * HOUR_MS) {
+    precip += 0.2;
     hours.push({
       validMs: time,
-      tempC: 20 + ((time - start) / HOUR_MS) * 0.1,
-      u: -1,
-      v: -1,
+      tempC: 20,
+      u: time === start ? 5 : -1,
+      v: time === start ? 0 : -1,
       cloudPct: 90,
       precipRunMm: precip,
     });
@@ -68,9 +68,10 @@ test("aggregates only the hours still ahead in the current window", () => {
   assert.equal(windows[2].available, false);
   assert.equal(windows[2].noDeparture, false);
 
-  hours.forEach((hour) => {
-    hour.precipRunMm = ((hour.validMs - start) / HOUR_MS) * 0.4;
-  });
+  const atNine = hours.find((hour) => hour.validMs === start + 6 * HOUR_MS);
+  const atSix = hours.find((hour) => hour.validMs === start + 3 * HOUR_MS);
+  assert.ok(atNine && atSix);
+  atNine.precipRunMm = atSix.precipRunMm + 1.2;
   const rainy = buildWindows(hours, now)[0];
   assert.equal(rainy.weather, "雨");
   assert.ok((rainy.precipMm ?? 0) >= 1);
@@ -80,7 +81,7 @@ test("labels calm wind when the vector average is near zero", () => {
   const start = Date.parse("2026-10-06T15:00:00.000Z");
   const later = Date.parse("2026-10-06T15:00:00.000Z");
   const hours: HourSample[] = [];
-  for (let time = start; time <= start + 12 * HOUR_MS; time += HOUR_MS) {
+  for (let time = start; time <= start + 12 * HOUR_MS; time += 3 * HOUR_MS) {
     hours.push({
       validMs: time,
       tempC: 18,
@@ -104,10 +105,10 @@ test("departure is impossible at 10 m/s mean or 13 m/s max", () => {
   assert.equal(departureBlocked(9, 13), true);
   assert.equal(departureBlocked(0, 12.9), false);
 
-  const start = Date.parse("2026-10-06T06:00:00.000Z");
+  const start = Date.parse("2026-10-06T09:00:00.000Z");
   const hours: HourSample[] = [];
-  for (let time = start; time <= start + 3 * HOUR_MS; time += HOUR_MS) {
-    const speed = time === start + 2 * HOUR_MS ? 13 : 8;
+  for (let time = start; time <= start + 6 * HOUR_MS; time += 3 * HOUR_MS) {
+    const speed = time === start + 3 * HOUR_MS ? 13 : 6;
     hours.push({
       validMs: time,
       tempC: 20,
@@ -117,9 +118,9 @@ test("departure is impossible at 10 m/s mean or 13 m/s max", () => {
       precipRunMm: 0,
     });
   }
-  const blocked = buildWindows(hours, now)[0];
+  const blocked = buildWindows(hours, now)[1];
   assert.equal(blocked.available, true);
-  assert.ok((blocked.windMeanMs ?? 0) < 10);
-  assert.ok((blocked.windMaxMs ?? 0) >= 13);
+  assert.ok(Math.abs((blocked.windMeanMs ?? 0) - 9.5) < 0.01);
+  assert.equal(blocked.windMaxMs, 13);
   assert.equal(blocked.noDeparture, true);
 });

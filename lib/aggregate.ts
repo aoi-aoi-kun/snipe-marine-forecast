@@ -1,4 +1,4 @@
-import { forecastWindows, floorHour, HOUR_MS } from "./time";
+import { forecastWindows, HOUR_MS } from "./time";
 import { windFromDegrees, windFromLabel } from "./wind";
 
 export type HourSample = {
@@ -29,16 +29,21 @@ export type WindowForecast = {
 const CALM_MS = 0.3;
 const NO_DEPARTURE_MEAN_MS = 10;
 const NO_DEPARTURE_MAX_MS = 13;
+const SAMPLE_MS = 3 * HOUR_MS;
+
+function stepFloor(utcMs: number): number {
+  return Math.floor(utcMs / SAMPLE_MS) * SAMPLE_MS;
+}
 
 export function departureBlocked(meanMs: number, maxMs: number): boolean {
   return meanMs >= NO_DEPARTURE_MEAN_MS || maxMs >= NO_DEPARTURE_MAX_MS;
 }
 
-function hourlyPrecip(hours: HourSample[]): Map<number, number> {
+function stepPrecip(hours: HourSample[]): Map<number, number> {
   const byTime = new Map(hours.map((hour) => [hour.validMs, hour]));
   const amounts = new Map<number, number>();
   for (const hour of hours) {
-    const previous = byTime.get(hour.validMs - HOUR_MS);
+    const previous = byTime.get(hour.validMs - SAMPLE_MS);
     if (!previous) continue;
     amounts.set(
       hour.validMs,
@@ -56,19 +61,19 @@ function weatherOf(precipMm: number, cloudPct: number): "晴れ" | "くもり" |
 
 export function buildWindows(hours: HourSample[], nowMs: number): WindowForecast[] {
   const byTime = new Map(hours.map((hour) => [hour.validMs, hour]));
-  const precip = hourlyPrecip(hours);
-  const firstHour = floorHour(nowMs);
+  const precip = stepPrecip(hours);
+  const firstStep = stepFloor(nowMs);
 
   return forecastWindows(nowMs).map(({ start, end }) => {
-    const instantFrom = Math.max(start, firstHour);
+    const instantFrom = Math.max(start, firstStep);
     const instants: HourSample[] = [];
-    for (let time = instantFrom; time < end; time += HOUR_MS) {
+    for (let time = instantFrom; time < end; time += SAMPLE_MS) {
       const hour = byTime.get(time);
       if (hour) instants.push(hour);
     }
-    const expectedInstants = Math.round((end - instantFrom) / HOUR_MS);
+    const expectedInstants = Math.round((end - instantFrom) / SAMPLE_MS);
     const precipTimes: number[] = [];
-    for (let time = instantFrom + HOUR_MS; time <= end; time += HOUR_MS) {
+    for (let time = instantFrom + SAMPLE_MS; time <= end; time += SAMPLE_MS) {
       precipTimes.push(time);
     }
     const precipValues = precipTimes.map((time) => precip.get(time));

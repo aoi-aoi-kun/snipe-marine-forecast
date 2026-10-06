@@ -25,7 +25,7 @@ export type ActiveWarning = {
 export type ForecastResponse = {
   point: { lat: number; lon: number; name: string };
   generatedAt: string;
-  gfs: {
+  ifs: {
     initTime: string;
     ageHours: number;
     fetchedAt: string;

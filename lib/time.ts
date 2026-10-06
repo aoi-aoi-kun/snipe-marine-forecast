@@ -36,10 +36,6 @@ export function floorBlockStart(utcMs: number, stepHours: number): number {
   return Date.UTC(parts.year, parts.month - 1, parts.day, hour) - JST_OFFSET_MS;
 }
 
-export function floorHour(utcMs: number): number {
-  return Math.floor(utcMs / HOUR_MS) * HOUR_MS;
-}
-
 /**
  * 6-hour blocks from the block containing now through 48 hours ahead.
  * If that run ends away from 00 or 12 JST, one more 6-hour block is added
@@ -64,12 +60,6 @@ export function forecastWindows(nowMs: number): TimeWindow[] {
     start += COARSE_WINDOW_MS;
   }
   return windows;
-}
-
-export function cycleCandidates(nowMs: number): number[] {
-  const step = 6 * HOUR_MS;
-  const latest = Math.floor(nowMs / step) * step;
-  return Array.from({ length: 6 }, (_, index) => latest - index * step);
 }
 
 export function formatCycle(utcMs: number): { ymd: string; hh: string } {

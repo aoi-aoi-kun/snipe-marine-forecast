@@ -386,7 +386,7 @@ export function ForecastBoard() {
     try {
       const response = await fetch(refresh ? "/api/forecast?refresh=1" : "/api/forecast");
       const body = (await response.json()) as ForecastResponse;
-      if (!body.gfs) {
+      if (!body.ifs) {
         setData(body.jma ? body : null);
         setError(body.errors[0] ?? "数値予報を取得できませんでした。");
         return;
@@ -406,7 +406,7 @@ export function ForecastBoard() {
     return () => window.clearTimeout(timer);
   }, [load]);
 
-  const windows = data?.gfs?.windows ?? [];
+  const windows = data?.ifs?.windows ?? [];
   const groups = groupWindows(windows);
   const scale = windScale(windows);
 
@@ -414,21 +414,21 @@ export function ForecastBoard() {
     <section className="pt-6" aria-live="polite">
       <div className="flex items-start justify-between gap-4">
         <div className="text-sm leading-6 text-muted">
-          {data?.gfs ? (
+          {data?.ifs ? (
             <>
-              <p>GFS 初期値 {formatStamp(data.gfs.initTime)}（日本時間）</p>
-              {data.gfs.ageHours > 24 ? (
+              <p>ECMWF 初期値 {formatStamp(data.ifs.initTime)}（日本時間）</p>
+              {data.ifs.ageHours > 24 ? (
                 <p>この初期値は24時間より古いです。</p>
               ) : null}
-              {data.gfs.degraded ? (
+              {data.ifs.degraded ? (
                 <p>新しい初期値を取りきれなかったため、保存した数値を含みます。</p>
               ) : null}
             </>
           ) : (
-            <p>{loading ? "NOAA の数値予報を取得しています。" : "数値予報はまだありません。"}</p>
+            <p>{loading ? "ECMWF の数値予報を取得しています。" : "数値予報はまだありません。"}</p>
           )}
-          {loading && !data?.gfs ? (
-            <p>最初の取得は1分ほどかかることがあります。</p>
+          {loading && !data?.ifs ? (
+            <p>最初の取得は数分かかることがあります。</p>
           ) : null}
         </div>
         <Button
@@ -460,7 +460,7 @@ export function ForecastBoard() {
       <div className="mt-8">
         <h2 className="font-serif text-2xl text-ink">風と天気</h2>
         <p className="mt-1 max-w-2xl text-sm leading-6 text-muted">
-          48時間先までは6時間、その先は12時間です。幅は時間の長さ、高さは平均風速、うすい部分は最大まで。上端は {scale} m/s です。平均 10 m/s 以上、または最大 13 m/s 以上の枠は出艇不可能です。矢印は風の向かう向き、言葉は吹いてくる向き。方位の上は北です。
+          48時間先までは6時間、その先は12時間です。数値は3時間ごとの予報です。幅は時間の長さ、高さは平均風速、うすい部分は最大まで。上端は {scale} m/s です。平均 10 m/s 以上、または最大 13 m/s 以上の枠は出艇不可能です。矢印は風の向かう向き、言葉は吹いてくる向き。方位の上は北です。
         </p>
         {windows.some((window) => window.noDeparture) ? (
           <div className="mt-4 border border-warn/30 bg-warn-bg px-4 py-3 text-sm leading-6 text-warn">
@@ -479,7 +479,7 @@ export function ForecastBoard() {
             </ul>
           </div>
         ) : null}
-        {loading && !data?.gfs ? (
+        {loading && !data?.ifs ? (
           <div className="mt-4 space-y-3">
             <div className="h-20 animate-pulse bg-sand/60" />
             <div className="grid grid-cols-2 gap-2 md:grid-cols-4">

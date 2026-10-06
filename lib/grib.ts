@@ -1,6 +1,7 @@
-// Minimal GRIB2 reader for the small regular lat/lon subsets NOMADS returns
-// (simple packing, grid definition template 0). Values are checked against
-// eccodes on the fixtures in lib/fixtures.
+// GRIB2 reader for simple packing on a regular lat/lon grid
+// (grid definition template 0). ECMWF open data is CCSDS-packed, so the live
+// forecast decodes those messages with grib_ls. Values below are checked
+// against eccodes on the fixtures in lib/fixtures.
 
 export type GridPoint = { lat: number; lon: number; value: number };
 
