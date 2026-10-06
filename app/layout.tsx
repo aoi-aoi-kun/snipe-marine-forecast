@@ -21,7 +21,7 @@ const mincho = Shippori_Mincho({
 export const metadata: Metadata = {
   title: "七里ヶ浜沖の予報",
   description:
-    "相模湾、北緯35.25度・東経139.50度の天気・気温・風。12時間ごと、96時間先まで。",
+    "相模湾、北緯35.25度・東経139.50度の天気・気温・風。48時間先までは6時間ごと、96時間先までは12時間ごと。",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

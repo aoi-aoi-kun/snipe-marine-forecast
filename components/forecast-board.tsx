@@ -226,9 +226,9 @@ export function ForecastBoard() {
       ) : null}
 
       <div className="mt-8">
-        <h2 className="font-serif text-2xl text-ink">12時間ごと</h2>
+        <h2 className="font-serif text-2xl text-ink">6時間と12時間</h2>
         <p className="mt-1 text-sm leading-6 text-muted">
-          地上10mの風、地上2mの気温。毎時値をまとめています。矢印は風の向かう向き、風向の言葉は吹いてくる向きです。
+          48時間先までは6時間、その先は12時間です。地上10mの風、地上2mの気温。毎時値をまとめています。矢印は風の向かう向き、風向の言葉は吹いてくる向きです。
         </p>
         {loading && !data?.gfs ? (
           <div className="mt-4 space-y-3">
@@ -247,7 +247,7 @@ export function ForecastBoard() {
       <div className="mt-10">
         <h2 className="font-serif text-2xl text-ink">日付ごとの予報</h2>
         <p className="mt-1 text-sm leading-6 text-muted">
-          横浜地方気象台の文章です。12時間の数値とは別の予報です。風と波の文章は明後日まで、それより先は週間予報です。
+          横浜地方気象台の文章です。上の数値とは別の予報です。風と波の文章は明後日まで、それより先は週間予報です。
         </p>
         {data?.jma ? (
           <div className="mt-2">

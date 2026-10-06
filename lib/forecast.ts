@@ -3,7 +3,7 @@ import path from "node:path";
 import { buildWindows, type HourSample } from "./aggregate";
 import { fetchCycleHours, neededForecastHours, POINT, probeCycle } from "./gfs";
 import { parseJmaForecast, parseWarnings } from "./jma";
-import { cycleCandidates, HOUR_MS, jstDateKey, windowStarts } from "./time";
+import { cycleCandidates, forecastWindows, HOUR_MS, jstDateKey } from "./time";
 import type { ForecastResponse } from "./types";
 
 const CACHE_DIR = path.join(process.cwd(), ".cache");
@@ -148,9 +148,9 @@ async function resolveGfs(nowMs: number, refresh: boolean): Promise<{
 
 function datesFor(nowMs: number): string[] {
   const keys = new Set<string>();
-  for (const start of windowStarts(nowMs)) {
-    keys.add(jstDateKey(start));
-    keys.add(jstDateKey(start + 12 * HOUR_MS - 1));
+  for (const window of forecastWindows(nowMs)) {
+    keys.add(jstDateKey(window.start));
+    keys.add(jstDateKey(window.end - 1));
   }
   return [...keys].sort();
 }

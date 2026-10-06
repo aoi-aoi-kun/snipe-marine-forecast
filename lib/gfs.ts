@@ -1,5 +1,5 @@
 import { extractPoint } from "./grib";
-import { formatCycle, HOUR_MS, WINDOW_MS, windowStarts } from "./time";
+import { forecastWindows, formatCycle, HOUR_MS } from "./time";
 import type { HourSample } from "./aggregate";
 
 export const POINT = { lat: 35.25, lon: 139.5, name: "七里ヶ浜沖" };
@@ -73,8 +73,7 @@ async function mapPool<T, R>(
 }
 
 export function neededForecastHours(initMs: number, nowMs: number): number[] {
-  const starts = windowStarts(nowMs);
-  const horizonEnd = (starts.at(-1) ?? nowMs) + WINDOW_MS;
+  const horizonEnd = forecastWindows(nowMs).at(-1)?.end ?? nowMs;
   const from = Math.max(0, Math.floor((nowMs - initMs) / HOUR_MS) - 1);
   const to = Math.min(120, Math.ceil((horizonEnd - initMs) / HOUR_MS));
   if (to < from) return [];

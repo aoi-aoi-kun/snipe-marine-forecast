@@ -1,7 +1,14 @@
 export const JST_OFFSET_MS = 9 * 60 * 60 * 1000;
 export const HOUR_MS = 60 * 60 * 1000;
-export const WINDOW_MS = 12 * HOUR_MS;
+export const FINE_WINDOW_MS = 6 * HOUR_MS;
+export const COARSE_WINDOW_MS = 12 * HOUR_MS;
+export const FINE_HORIZON_MS = 48 * HOUR_MS;
 export const HORIZON_MS = 96 * HOUR_MS;
+
+export type TimeWindow = {
+  start: number;
+  end: number;
+};
 
 export type JstParts = {
   year: number;
@@ -29,10 +36,10 @@ export function jstDateKey(utcMs: number): string {
   return `${parts.year}-${month}-${day}`;
 }
 
-/** Start of the 00–12 or 12–24 Japan-time block that contains utcMs. */
-export function floorWindowStart(utcMs: number): number {
+/** Start of the Japan-time block of `stepHours` that contains utcMs. */
+export function floorBlockStart(utcMs: number, stepHours: number): number {
   const parts = jstParts(utcMs);
-  const hour = parts.hour < 12 ? 0 : 12;
+  const hour = Math.floor(parts.hour / stepHours) * stepHours;
   return Date.UTC(parts.year, parts.month - 1, parts.day, hour) - JST_OFFSET_MS;
 }
 
@@ -40,13 +47,30 @@ export function floorHour(utcMs: number): number {
   return Math.floor(utcMs / HOUR_MS) * HOUR_MS;
 }
 
-export function windowStarts(nowMs: number): number[] {
+/**
+ * 6-hour blocks from the block containing now through 48 hours ahead.
+ * If that run ends away from 00 or 12 JST, one more 6-hour block is added
+ * so the remainder stays on 00–12 and 12–24 through 96 hours ahead.
+ */
+export function forecastWindows(nowMs: number): TimeWindow[] {
+  const fineUntil = nowMs + FINE_HORIZON_MS;
   const horizon = nowMs + HORIZON_MS;
-  const starts: number[] = [];
-  for (let start = floorWindowStart(nowMs); start < horizon; start += WINDOW_MS) {
-    starts.push(start);
+  const windows: TimeWindow[] = [];
+
+  let start = floorBlockStart(nowMs, 6);
+  while (start < fineUntil) {
+    windows.push({ start, end: start + FINE_WINDOW_MS });
+    start += FINE_WINDOW_MS;
   }
-  return starts;
+  while (jstParts(start).hour % 12 !== 0) {
+    windows.push({ start, end: start + FINE_WINDOW_MS });
+    start += FINE_WINDOW_MS;
+  }
+  while (start < horizon) {
+    windows.push({ start, end: start + COARSE_WINDOW_MS });
+    start += COARSE_WINDOW_MS;
+  }
+  return windows;
 }
 
 export function cycleCandidates(nowMs: number): number[] {

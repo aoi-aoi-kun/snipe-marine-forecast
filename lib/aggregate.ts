@@ -1,9 +1,4 @@
-import {
-  HOUR_MS,
-  WINDOW_MS,
-  floorHour,
-  windowStarts,
-} from "./time";
+import { forecastWindows, floorHour, HOUR_MS } from "./time";
 import { windFromDegrees, windFromLabel } from "./wind";
 
 export type HourSample = {
@@ -57,8 +52,7 @@ export function buildWindows(hours: HourSample[], nowMs: number): WindowForecast
   const precip = hourlyPrecip(hours);
   const firstHour = floorHour(nowMs);
 
-  return windowStarts(nowMs).map((start) => {
-    const end = start + WINDOW_MS;
+  return forecastWindows(nowMs).map(({ start, end }) => {
     const instantFrom = Math.max(start, firstHour);
     const instants: HourSample[] = [];
     for (let time = instantFrom; time < end; time += HOUR_MS) {
