@@ -264,7 +264,7 @@ function WindOverview({
     return offsets;
   }, []);
   return (
-    <div className="anim-rise anim-rise-delay-2 surface flex h-full min-h-[18rem] flex-col p-3 sm:min-h-[20rem] sm:p-3.5">
+    <div className="anim-rise anim-rise-delay-2 surface flex h-full min-h-[17.5rem] flex-col p-3 lg:min-h-0 sm:p-3.5">
       <ul className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-muted">
         <li className="font-medium tracking-wide text-ink/65">天気</li>
         <li className="flex items-center gap-1.5">
@@ -419,7 +419,7 @@ function HarborPanel({ harbor }: { harbor: HarborBundle }) {
       {latest || harbor.nowcast.length > 0 ? (
         <div
           className={cn(
-            "flex min-h-[18rem] flex-1 flex-col px-2.5 py-2.5 sm:min-h-[20rem] sm:px-3 sm:py-3",
+            "flex min-h-[17.5rem] flex-1 flex-col px-2.5 py-2.5 lg:min-h-0 sm:px-3 sm:py-3",
             panelWarn ? "surface-warn" : "surface",
           )}
         >
@@ -527,25 +527,49 @@ function HarborPanel({ harbor }: { harbor: HarborBundle }) {
             })}
           </ol>
 
-          {harbor.nowcast.length > 0 ? (
-            <details className="group mt-2 border-t border-line/40 pt-2">
-              <summary className="cursor-pointer list-none text-[11px] marker:content-none">
-                <span className="soft-link group-open:text-ink">ナウキャストの説明</span>
+          <div className="mt-auto flex flex-wrap items-baseline gap-x-3 gap-y-1 border-t border-line/40 pt-2">
+            {harbor.nowcast.length > 0 ? (
+              <details className="group">
+                <summary className="cursor-pointer list-none text-[11px] marker:content-none">
+                  <span className="soft-link group-open:text-ink">ナウキャストの説明</span>
+                </summary>
+                <div className="mt-1.5 space-y-1 text-[11px] leading-4 text-muted">
+                  <p>
+                    {harbor.nowcastSkill.calibrated
+                      ? "過去実況で校正した風速・風向の短時間予測です。"
+                      : "直近の傾きが続く場合の風速・風向の短時間予測です。"}
+                  </p>
+                  <p>{harbor.nowcastSkill.note}</p>
+                </div>
+              </details>
+            ) : latest ? (
+              <p className="text-[11px] text-muted">ナウキャストに必要な直近の傾きがまだ足りません。</p>
+            ) : null}
+            <details className="group">
+              <summary className="cursor-pointer list-none text-[11px] text-muted marker:content-none">
+                <span className="soft-link group-open:text-ink">学習の状態</span>
               </summary>
-              <div className="mt-1.5 space-y-1 text-[11px] leading-4 text-muted">
+              <div className="mt-1.5 space-y-1.5 text-[11px] leading-4 text-muted">
                 <p>
-                  {harbor.nowcastSkill.calibrated
-                    ? "過去実況で校正した風速・風向の短時間予測です。"
-                    : "直近の傾きが続く場合の風速・風向の短時間予測です。"}
+                  学習はサーバ起動中、約 {harbor.mos?.continuous.intervalMinutes ?? 15}{" "}
+                  分ごとに自動継続します
+                  {harbor.mos?.continuous.started ? "（稼働中）" : "（次の取得で開始）"}
+                  {harbor.mos?.continuous.lastTickAt
+                    ? ` · 前回 ${formatStamp(harbor.mos.continuous.lastTickAt)}`
+                    : ""}
+                  。
                 </p>
-                <p>{harbor.nowcastSkill.note}</p>
+                <p>
+                  ナウキャスト
+                  {harbor.nowcastSkill.calibrated
+                    ? `校正済み（検証 ${harbor.nowcastSkill.caseCount} 件）。`
+                    : `検証 ${harbor.nowcastSkill.caseCount} 件を蓄積中。`}
+                  沖予報（MOS）と急上昇パターン（{harbor.pattern.storedEvents} 件）も更新します。
+                  {harbor.mos ? ` ${harbor.mos.note}` : ""}
+                </p>
               </div>
             </details>
-          ) : latest ? (
-            <p className="mt-2 border-t border-line/40 pt-2 text-[11px] text-muted">
-              ナウキャストに必要な直近の傾きがまだ足りません。
-            </p>
-          ) : null}
+          </div>
         </div>
       ) : (
         <p className="text-sm text-muted">実況はまだありません。</p>
@@ -575,35 +599,6 @@ function HarborPanel({ harbor }: { harbor: HarborBundle }) {
           <p className="mt-0.5">{harbor.pattern.match.note}</p>
         </div>
       ) : null}
-
-      <details className="group">
-        <summary className="cursor-pointer list-none text-[11px] text-muted marker:content-none">
-          <span className="soft-link group-open:text-ink">学習の状態</span>
-        </summary>
-        <div className="mt-1.5 space-y-1.5 text-[11px] leading-4 text-muted">
-          <p>
-            学習はサーバ起動中、約 {harbor.mos?.continuous.intervalMinutes ?? 15}{" "}
-            分ごとに自動継続します
-            {harbor.mos?.continuous.started ? "（稼働中）" : "（次の取得で開始）"}
-            {harbor.mos?.continuous.lastTickAt
-              ? ` · 前回 ${formatStamp(harbor.mos.continuous.lastTickAt)}`
-              : ""}
-            。止める場合は環境変数 DISABLE_CONTINUOUS_LEARN=1 です。
-          </p>
-          <p>
-            ナウキャスト：傾き延長と実況の突合で減衰・バイアスを更新。
-            {harbor.nowcastSkill.calibrated
-              ? `校正済み（検証 ${harbor.nowcastSkill.caseCount} 件）。`
-              : `検証 ${harbor.nowcastSkill.caseCount} 件を蓄積中。`}
-            約6時間ごとに広域再学習も行います。
-          </p>
-          <p>
-            沖予報（MOS）と急上昇パターン（{harbor.pattern.storedEvents}{" "}
-            件）も同じ間隔で更新します。
-            {harbor.mos ? ` ${harbor.mos.note}` : ""}
-          </p>
-        </div>
-      </details>
 
       {harbor.degraded ? (
         <p className="text-[11px] text-muted">取得に失敗したため、保存した実況を表示しています。</p>
@@ -770,18 +765,18 @@ export function ForecastBoard() {
       ) : null}
 
       <div className="grid items-stretch gap-4 lg:grid-cols-2 lg:gap-5">
-        <div className="flex min-w-0 flex-col">
+        <div className="flex min-h-0 min-w-0 flex-col">
           {data?.harbor ? (
             <HarborPanel harbor={data.harbor} />
           ) : (
             <div className="flex h-full flex-col gap-2">
               <h2 className="section-title min-h-7">江の島ハーバー実況</h2>
-              <div className="skeleton-pulse min-h-[18rem] flex-1 bg-sand/70 sm:min-h-[20rem]" />
+              <div className="skeleton-pulse min-h-[17.5rem] flex-1 bg-sand/70" />
             </div>
           )}
         </div>
 
-        <div className="flex min-w-0 flex-col gap-2">
+        <div className="flex min-h-0 min-w-0 flex-col gap-2">
           <div className="flex min-h-7 flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
             <h2 className="section-title">風と天気</h2>
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
