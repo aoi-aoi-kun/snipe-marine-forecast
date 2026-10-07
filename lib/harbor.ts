@@ -12,6 +12,7 @@ import { buildNowcast } from "./nowcast";
 import {
   learnNowcastCalibration,
   loadNowcastCalib,
+  needsDeepNowcastLearn,
   summarizeNowcastCalib,
 } from "./nowcast-learn";
 import {
@@ -124,13 +125,14 @@ export async function resolveHarbor(
   }
 
   let calibStore = await loadNowcastCalib();
-  if (refresh || calibStore.cases.length < 120) {
+  // Always absorb the latest harbor window into the rolling verification set.
+  calibStore = await learnNowcastCalibration(resolved.samples);
+  if (refresh || needsDeepNowcastLearn(calibStore, nowMs)) {
     const deepHarbor = await fetchHarborSamples(nowMs, 14);
     calibStore = await learnNowcastCalibration(
       deepHarbor.length > resolved.samples.length ? deepHarbor : resolved.samples,
+      { deep: true },
     );
-  } else {
-    calibStore = await learnNowcastCalibration(resolved.samples);
   }
   const nowcastSkill = summarizeNowcastCalib(calibStore);
   const nowcast = buildNowcast(resolved.samples, nowMs, calibStore);

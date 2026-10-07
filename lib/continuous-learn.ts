@@ -7,8 +7,11 @@ import {
 
 const TICK_MS = 15 * 60 * 1000;
 const START_DELAY_MS = 45_000;
+/** Every 4th tick (~1h) force refresh so harbor/IFS caches do not stall learning. */
+const REFRESH_EVERY_N_TICKS = 4;
 
 let timer: ReturnType<typeof setInterval> | null = null;
+let tickCount = 0;
 
 async function tick(reason: string) {
   const status = getContinuousLearnStatus();
@@ -17,15 +20,24 @@ async function tick(reason: string) {
     return;
   }
   setContinuousLearnTicking(true);
+  tickCount += 1;
+  const refresh = reason === "startup" || tickCount % REFRESH_EVERY_N_TICKS === 0;
   try {
-    console.info(`continuous-learn: tick (${reason})`);
+    console.info(`continuous-learn: tick (${reason}) refresh=${refresh}`);
     const { getForecast } = await import("./forecast");
     const { loadMosStore, summarizeMos } = await import("./mos");
-    const forecast = await getForecast(false);
-    const summary = summarizeMos(await loadMosStore());
+    const { loadNowcastCalib, summarizeNowcastCalib } = await import("./nowcast-learn");
+    const { loadPatternStore } = await import("./pattern");
+
+    const forecast = await getForecast(refresh);
+    const mos = summarizeMos(await loadMosStore());
+    const nowcast = summarizeNowcastCalib(await loadNowcastCalib());
+    const patterns = await loadPatternStore();
+
     setContinuousLearnTickResult(forecast.errors[0] ?? null);
     console.info(
-      `continuous-learn: done pairs=${summary.pairCount} activeBins=${summary.activeBins}` +
+      `continuous-learn: done mosPairs=${mos.pairCount} nowcastCases=${nowcast.caseCount} ` +
+        `rampPatterns=${patterns.events.length}` +
         (forecast.errors[0] ? ` error=${forecast.errors[0]}` : ""),
     );
   } catch (error) {
@@ -46,7 +58,8 @@ export function startContinuousLearning() {
   }
   setContinuousLearnStarted(true, TICK_MS / 60_000);
   console.info(
-    `continuous-learn: scheduled every ${TICK_MS / 60_000} minutes (first tick in ${START_DELAY_MS / 1000}s)`,
+    `continuous-learn: MOS + nowcast + ramp patterns every ${TICK_MS / 60_000} min ` +
+      `(first tick in ${START_DELAY_MS / 1000}s)`,
   );
   const delay = setTimeout(() => {
     void tick("startup");

@@ -56,7 +56,7 @@ describe("nowcast learning", () => {
     const samples = series(36, start, 4, 0.2);
     const cases = collectNowcastCases(samples);
     const horizons = rebuildCalib(cases);
-    const store = { updatedAt: Date.now(), cases, horizons };
+    const store = { updatedAt: Date.now(), lastDeepLearnAt: Date.now(), cases, horizons };
     // Force a strong recent rise
     const rising = Array.from({ length: 8 }, (_, index) => ({
       atMs: start + 35 * 3600_000 + index * 5 * 60_000,

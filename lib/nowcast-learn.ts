@@ -37,16 +37,19 @@ export type NowcastHorizonCalib = {
 
 export type NowcastCalibStore = {
   updatedAt: number;
+  lastDeepLearnAt: number;
   cases: NowcastCase[];
   horizons: NowcastHorizonCalib[];
 };
+
+const DEEP_LEARN_MS = 6 * 60 * 60 * 1000;
 
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
 }
 
 function emptyStore(): NowcastCalibStore {
-  return { updatedAt: 0, cases: [], horizons: [] };
+  return { updatedAt: 0, lastDeepLearnAt: 0, cases: [], horizons: [] };
 }
 
 export async function loadNowcastCalib(): Promise<NowcastCalibStore> {
@@ -55,12 +58,21 @@ export async function loadNowcastCalib(): Promise<NowcastCalibStore> {
     if (!Array.isArray(raw.cases)) return emptyStore();
     return {
       updatedAt: raw.updatedAt ?? 0,
+      lastDeepLearnAt: raw.lastDeepLearnAt ?? 0,
       cases: raw.cases,
       horizons: Array.isArray(raw.horizons) ? raw.horizons : rebuildCalib(raw.cases),
     };
   } catch {
     return emptyStore();
   }
+}
+
+export function needsDeepNowcastLearn(store: NowcastCalibStore, nowMs: number): boolean {
+  return (
+    store.cases.length < 120 ||
+    nowMs - store.lastDeepLearnAt > DEEP_LEARN_MS ||
+    store.horizons.length < HORIZONS.length
+  );
 }
 
 export async function saveNowcastCalib(store: NowcastCalibStore): Promise<void> {
@@ -180,13 +192,15 @@ export function rebuildCalib(cases: NowcastCase[]): NowcastHorizonCalib[] {
 
 export async function learnNowcastCalibration(
   samples: HarborSample[],
+  options: { deep?: boolean } = {},
 ): Promise<NowcastCalibStore> {
   const store = await loadNowcastCalib();
   const incoming = collectNowcastCases(samples);
-  if (incoming.length === 0) return store;
+  if (incoming.length === 0 && !options.deep) return store;
   const cases = mergeNowcastCases(store.cases, incoming);
   const next: NowcastCalibStore = {
     updatedAt: Date.now(),
+    lastDeepLearnAt: options.deep ? Date.now() : store.lastDeepLearnAt,
     cases,
     horizons: rebuildCalib(cases),
   };
@@ -210,9 +224,13 @@ export function summarizeNowcastCalib(store: NowcastCalibStore): {
     (item) =>
       `${item.minutesAhead}分 MAE ${item.maeCalibrated.toFixed(2)}（減衰 ${item.dampen.toFixed(2)}）`,
   );
+  const deepAgo =
+    store.lastDeepLearnAt > 0
+      ? `広域再学習は継続中。`
+      : `広域再学習は初回以降、約6時間ごとに自動実行。`;
   return {
     caseCount: store.cases.length,
     horizons: store.horizons,
-    note: `過去検証 ${store.cases.length} 件で校正。${parts.join(" · ")}`,
+    note: `過去検証 ${store.cases.length} 件で校正（自動継続）。${parts.join(" · ")} ${deepAgo}`,
   };
 }

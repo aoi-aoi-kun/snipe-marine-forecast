@@ -595,21 +595,26 @@ function HarborPanel({ harbor }: { harbor: HarborBundle }) {
         </summary>
         <div className="mt-2 space-y-2 text-xs leading-5 text-muted">
           <p>
-            ナウキャストは過去の「傾き延長」と実況を突合し、時間先ごとの減衰とバイアスを学習します。
-            {harbor.nowcastSkill.calibrated
-              ? ` いま校正済み（検証 ${harbor.nowcastSkill.caseCount} 件）。`
-              : ` 検証 ${harbor.nowcastSkill.caseCount} 件（校正に必要な件数に達すると自動適用）。`}
+            学習はサーバ起動中、約 {harbor.mos?.continuous.intervalMinutes ?? 15}{" "}
+            分ごとに自動継続します
+            {harbor.mos?.continuous.started ? "（稼働中）" : "（次の取得で開始）"}
+            {harbor.mos?.continuous.lastTickAt
+              ? ` · 前回 ${formatStamp(harbor.mos.continuous.lastTickAt)}`
+              : ""}
+            。止める場合は環境変数 DISABLE_CONTINUOUS_LEARN=1 です。
           </p>
           <p>
-            沖予報は3時間枠でハーバーと突合し、時間帯・風向のずれ（MOS）を学習。急上昇の型は{" "}
-            {harbor.pattern.storedEvents} 件。サーバ起動中は約{" "}
-            {harbor.mos?.continuous.intervalMinutes ?? 15} 分ごとに更新します
-            {harbor.mos?.continuous.lastTickAt
-              ? `（前回 ${formatStamp(harbor.mos.continuous.lastTickAt)}）`
-              : ""}
-            。
+            ナウキャスト：傾き延長と実況の突合で減衰・バイアスを更新。
+            {harbor.nowcastSkill.calibrated
+              ? `校正済み（検証 ${harbor.nowcastSkill.caseCount} 件）。`
+              : `検証 ${harbor.nowcastSkill.caseCount} 件を蓄積中。`}
+            約6時間ごとに広域再学習も行います。
           </p>
-          {harbor.mos ? <p>{harbor.mos.note}</p> : null}
+          <p>
+            沖予報（MOS）と急上昇パターン（{harbor.pattern.storedEvents}{" "}
+            件）も同じ間隔で更新します。
+            {harbor.mos ? ` ${harbor.mos.note}` : ""}
+          </p>
         </div>
       </details>
 
