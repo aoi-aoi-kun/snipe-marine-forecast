@@ -679,9 +679,12 @@ export function ForecastBoard() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const load = useCallback(async (mode: "page" | "full" = "page") => {
-    setLoading(true);
-    setError(null);
+  const load = useCallback(async (mode: "page" | "full" | "harbor" = "page") => {
+    const silent = mode === "harbor";
+    if (!silent) {
+      setLoading(true);
+      setError(null);
+    }
     try {
       const path =
         mode === "full"
@@ -690,16 +693,18 @@ export function ForecastBoard() {
       const response = await fetch(path, { cache: "no-store" });
       const body = (await response.json()) as ForecastResponse;
       if (!body.ifs && !body.harbor && !body.jma) {
-        setData(null);
-        setError(body.errors[0] ?? "予報を取得できませんでした。");
+        if (!silent) {
+          setData(null);
+          setError(body.errors[0] ?? "予報を取得できませんでした。");
+        }
         return;
       }
       setData(body);
-      if (!body.ifs && body.errors[0]) setError(body.errors[0]);
+      if (!silent && !body.ifs && body.errors[0]) setError(body.errors[0]);
     } catch {
-      setError("予報を取得できませんでした。");
+      if (!silent) setError("予報を取得できませんでした。");
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, []);
 
@@ -708,6 +713,23 @@ export function ForecastBoard() {
       void load("page");
     }, 0);
     return () => window.clearTimeout(timer);
+  }, [load]);
+
+  // enowin は5分更新。開いたままの画面でもハーバー実況だけ自動で取り直す。
+  useEffect(() => {
+    const HARBOR_POLL_MS = 5 * 60 * 1000;
+    const timer = window.setInterval(() => {
+      if (document.visibilityState !== "visible") return;
+      void load("harbor");
+    }, HARBOR_POLL_MS);
+    const onVisible = () => {
+      if (document.visibilityState === "visible") void load("harbor");
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
   }, [load]);
 
   const windows = data?.ifs?.windows ?? [];
