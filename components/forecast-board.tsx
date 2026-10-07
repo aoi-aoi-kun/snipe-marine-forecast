@@ -452,28 +452,28 @@ function HarborPanel({ harbor }: { harbor: HarborBundle }) {
           >
             {latest ? (
               <li className={cn(harborWindCardClass(sourceStale), "flex flex-col justify-center")}>
-                <p className="text-[11px] font-medium text-muted">いま</p>
+                <p className="text-[10px] font-medium text-muted">いま</p>
                 <p
                   className={cn(
-                    "mt-0.5 text-[10px] leading-3",
+                    "mt-px text-[9px] leading-3",
                     sourceStale ? "font-medium text-warn" : "text-muted",
                   )}
                 >
                   {formatHarborObsTime(latest.at)}
                   {lagMinutes !== null ? `（${lagMinutes}分前）` : ""}
                 </p>
-                <div className="mt-1.5 flex justify-center">
+                <div className="mt-1 flex justify-center">
                   <WindArrow
                     degrees={latest.fromDeg}
                     label={latest.fromLabel}
-                    size="md"
+                    size="sm"
                   />
                 </div>
-                <p className="mt-1.5 font-serif text-2xl tabular-nums leading-none tracking-tight text-ink sm:text-[1.75rem]">
+                <p className="mt-1 font-serif text-xl tabular-nums leading-none tracking-tight text-ink sm:text-2xl">
                   {latest.meanMs.toFixed(1)}
+                  <span className="ml-0.5 text-[10px] font-sans text-muted">m/s</span>
                 </p>
-                <p className="mt-1 text-[10px] text-muted">m/s</p>
-                <p className="mt-1.5 text-[10px] tabular-nums text-muted">
+                <p className="mt-1 text-[9px] tabular-nums text-muted">
                   最大 {latest.maxMs.toFixed(1)}
                 </p>
               </li>
@@ -488,33 +488,33 @@ function HarborPanel({ harbor }: { harbor: HarborBundle }) {
                   className={cn(harborWindCardClass(over10), "flex flex-col justify-center")}
                   style={{ animationDelay: `${0.05 + index * 0.06}s` }}
                 >
-                  <p className="text-[11px] font-medium text-muted">
+                  <p className="text-[10px] font-medium text-muted">
                     {point.minutesAhead}分後
                   </p>
-                  <p className="mt-0.5 min-h-3 text-[10px] leading-3" aria-hidden="true" />
-                  <div className="mt-1.5 flex justify-center">
+                  <p className="mt-px min-h-3 text-[9px] leading-3" aria-hidden="true" />
+                  <div className="mt-1 flex justify-center">
                     <WindArrow
                       degrees={point.fromDeg}
                       blocked={over10}
                       label={point.fromLabel}
-                      size="md"
+                      size="sm"
                     />
                   </div>
                   <p
                     className={cn(
-                      "mt-1.5 font-serif text-2xl tabular-nums leading-none tracking-tight sm:text-[1.75rem]",
+                      "mt-1 font-serif text-xl tabular-nums leading-none tracking-tight sm:text-2xl",
                       over10 ? "text-warn" : "text-ink",
                     )}
                   >
                     {point.meanMs.toFixed(1)}
+                    <span className="ml-0.5 text-[10px] font-sans text-muted">m/s</span>
                   </p>
-                  <p className="mt-1 text-[10px] text-muted">m/s</p>
                   {over10 ? (
-                    <p className="mt-1.5 text-[10px] font-medium text-warn">10超え</p>
+                    <p className="mt-1 text-[9px] font-medium text-warn">10超え</p>
                   ) : delta !== null ? (
                     <p
                       className={cn(
-                        "mt-1.5 text-[10px] tabular-nums font-medium",
+                        "mt-1 text-[9px] tabular-nums font-medium",
                         delta > 0.15 ? "text-warn" : delta < -0.15 ? "text-sea" : "text-muted",
                       )}
                     >
