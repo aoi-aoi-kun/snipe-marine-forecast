@@ -1,8 +1,21 @@
 import type { HarborSample } from "./enowin";
 
+export type NowcastHorizon = 15 | 30 | 60;
+
+/** Minimal calibration view used when projecting (avoids import cycles). */
+export type NowcastCalibView = {
+  horizons: {
+    minutesAhead: NowcastHorizon;
+    count: number;
+    dampen: number;
+    biasMs: number;
+  }[];
+};
+
 export type NowcastPoint = {
-  minutesAhead: number;
+  minutesAhead: NowcastHorizon;
   meanMs: number;
+  rawMeanMs?: number;
 };
 
 export type HarborAlert = {
@@ -16,12 +29,14 @@ export type NowcastResult = {
   directionChangeDeg: number | null;
   nowcast: NowcastPoint[];
   alerts: HarborAlert[];
+  calibrated: boolean;
 };
 
-const TREND_MS = 30 * 60 * 1000;
+export const TREND_MS = 30 * 60 * 1000;
+export const HORIZONS: readonly NowcastHorizon[] = [15, 30, 60];
+export const MAX_PROJECTED_MS = 22;
+
 const MIN_POINTS = 4;
-const HORIZONS = [15, 30, 60] as const;
-const MAX_PROJECTED_MS = 22;
 const RAMP_15_MS = 1.5;
 const RAMP_30_MS = 2.5;
 const THRESHOLD_MEAN_MS = 8;
@@ -77,10 +92,79 @@ function riseOver(samples: HarborSample[], endMs: number, widthMs: number): numb
   return window[window.length - 1].meanMs - window[0].meanMs;
 }
 
+/** Nearest sample within tolerance of target time. */
+export function sampleNear(
+  samples: HarborSample[],
+  targetMs: number,
+  toleranceMs: number,
+): HarborSample | null {
+  let best: HarborSample | null = null;
+  let bestDist = Infinity;
+  for (const sample of samples) {
+    const dist = Math.abs(sample.atMs - targetMs);
+    if (dist <= toleranceMs && dist < bestDist) {
+      best = sample;
+      bestDist = dist;
+    }
+  }
+  return best;
+}
+
+/** Trend estimate anchored at the sample nearest to atMs. */
+export function estimateTrendAt(
+  samples: HarborSample[],
+  atMs: number,
+): { currentMs: number; riseRateMsPerHour: number; atMs: number } | null {
+  const anchor = sampleNear(samples, atMs, 3 * 60 * 1000);
+  if (!anchor) return null;
+  const trend = samplesInWindow(samples, anchor.atMs, TREND_MS);
+  const slopePerMs = linearSlope(trend);
+  if (slopePerMs === null) return null;
+  return {
+    currentMs: anchor.meanMs,
+    riseRateMsPerHour: slopePerMs * 60 * 60 * 1000,
+    atMs: anchor.atMs,
+  };
+}
+
 /** Build short-range nowcast and ramp alerts from harbor samples. */
-export function buildNowcast(samples: HarborSample[], nowMs = Date.now()): NowcastResult {
+function projectCalibrated(
+  currentMs: number,
+  riseRateMsPerHour: number,
+  minutesAhead: NowcastHorizon,
+  calib: NowcastCalibView | null,
+): { meanMs: number; rawMeanMs: number } {
+  const rawMeanMs = Math.max(
+    0,
+    Math.min(MAX_PROJECTED_MS, currentMs + (riseRateMsPerHour * minutesAhead) / 60),
+  );
+  const row = calib?.horizons.find(
+    (item) => item.minutesAhead === minutesAhead && item.count >= 24,
+  );
+  if (!row) return { meanMs: rawMeanMs, rawMeanMs };
+  const meanMs = Math.max(
+    0,
+    Math.min(
+      MAX_PROJECTED_MS,
+      currentMs + row.dampen * ((riseRateMsPerHour * minutesAhead) / 60) + row.biasMs,
+    ),
+  );
+  return { meanMs, rawMeanMs };
+}
+
+export function buildNowcast(
+  samples: HarborSample[],
+  nowMs = Date.now(),
+  calib: NowcastCalibView | null = null,
+): NowcastResult {
   if (samples.length === 0) {
-    return { riseRateMsPerHour: null, directionChangeDeg: null, nowcast: [], alerts: [] };
+    return {
+      riseRateMsPerHour: null,
+      directionChangeDeg: null,
+      nowcast: [],
+      alerts: [],
+      calibrated: false,
+    };
   }
 
   const latest = samples[samples.length - 1];
@@ -95,13 +179,25 @@ export function buildNowcast(samples: HarborSample[], nowMs = Date.now()): Nowca
   const directionChangeDeg =
     earlyDir !== null && lateDir !== null ? circularDeltaDeg(earlyDir, lateDir) : null;
 
+  const calibrated =
+    calib !== null &&
+    HORIZONS.every((minutes) =>
+      calib.horizons.some((item) => item.minutesAhead === minutes && item.count >= 24),
+    );
+
   const nowcast: NowcastPoint[] = [];
   if (riseRateMsPerHour !== null) {
     for (const minutes of HORIZONS) {
-      const projected = latest.meanMs + (riseRateMsPerHour * minutes) / 60;
+      const projected = projectCalibrated(
+        latest.meanMs,
+        riseRateMsPerHour,
+        minutes,
+        calib,
+      );
       nowcast.push({
         minutesAhead: minutes,
-        meanMs: Math.max(0, Math.min(MAX_PROJECTED_MS, projected)),
+        meanMs: projected.meanMs,
+        rawMeanMs: projected.rawMeanMs,
       });
     }
   }
@@ -174,7 +270,6 @@ export function buildNowcast(samples: HarborSample[], nowMs = Date.now()): Nowca
     });
   }
 
-  // Stale data note as info if latest is older than 20 minutes vs wall clock
   if (nowMs - latest.atMs > 20 * 60 * 1000) {
     alerts.push({
       kind: "rising",
@@ -183,7 +278,7 @@ export function buildNowcast(samples: HarborSample[], nowMs = Date.now()): Nowca
     });
   }
 
-  return { riseRateMsPerHour, directionChangeDeg, nowcast, alerts };
+  return { riseRateMsPerHour, directionChangeDeg, nowcast, alerts, calibrated };
 }
 
 export type RampEvent = {

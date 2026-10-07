@@ -25,11 +25,11 @@ export function ForecastGuide() {
         <ul className="space-y-1.5">
           <li>
             <span className="font-medium text-ink/80">役割分担</span>
-            {" — "}数時間〜数日は沖予報、いま〜1時間はナウキャスト。
+            {" — "}数時間〜数日は沖予報、いま〜1時間はナウキャスト（過去実況で校正）。
           </li>
           <li>
             <span className="font-medium text-ink/80">補正</span>
-            {" — "}過去の「予報と実況のずれ」で沖の値を倍率調整。置き換えではありません。
+            {" — "}ナウキャストは傾きの過大評価を抑え、沖予報は時間帯・風向のMOSで倍率調整。
           </li>
           <li>
             <span className="font-medium text-ink/80">出艇不可能</span>

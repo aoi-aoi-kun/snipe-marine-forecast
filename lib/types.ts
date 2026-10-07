@@ -30,6 +30,21 @@ export type HarborObservation = {
 export type HarborNowcastPoint = {
   minutesAhead: number;
   meanMs: number;
+  rawMeanMs?: number;
+};
+
+export type NowcastSkill = {
+  caseCount: number;
+  calibrated: boolean;
+  note: string;
+  horizons: {
+    minutesAhead: number;
+    count: number;
+    maeCalibrated: number;
+    maeRaw: number;
+    dampen: number;
+    skillVsPersistence: number;
+  }[];
 };
 
 export type HarborAlert = {
@@ -49,6 +64,7 @@ export type HarborBundle = {
   riseRateMsPerHour: number | null;
   directionChangeDeg: number | null;
   nowcast: HarborNowcastPoint[];
+  nowcastSkill: NowcastSkill;
   alerts: HarborAlert[];
   pattern: {
     storedEvents: number;

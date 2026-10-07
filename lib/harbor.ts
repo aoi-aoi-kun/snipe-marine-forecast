@@ -10,6 +10,11 @@ import { learnMos } from "./mos-learn";
 import { applyMosCorrection, summarizeMos } from "./mos";
 import { buildNowcast } from "./nowcast";
 import {
+  learnNowcastCalibration,
+  loadNowcastCalib,
+  summarizeNowcastCalib,
+} from "./nowcast-learn";
+import {
   applyHarborBoost,
   learnFromSamples,
   matchPattern,
@@ -62,7 +67,7 @@ async function resolveSamples(nowMs: number, refresh: boolean): Promise<{
   }
 
   try {
-    const samples = await fetchHarborSamples(nowMs, 5);
+    const samples = await fetchHarborSamples(nowMs, 7);
     if (samples.length === 0) throw new Error("実況行がありません");
     const next = { fetchedAt: Date.now(), samples };
     await saveCache(next);
@@ -118,7 +123,18 @@ export async function resolveHarbor(
     return { harbor: null, windows, error: resolved.error };
   }
 
-  const nowcast = buildNowcast(resolved.samples, nowMs);
+  let calibStore = await loadNowcastCalib();
+  if (refresh || calibStore.cases.length < 120) {
+    const deepHarbor = await fetchHarborSamples(nowMs, 14);
+    calibStore = await learnNowcastCalibration(
+      deepHarbor.length > resolved.samples.length ? deepHarbor : resolved.samples,
+    );
+  } else {
+    calibStore = await learnNowcastCalibration(resolved.samples);
+  }
+  const nowcastSkill = summarizeNowcastCalib(calibStore);
+  const nowcast = buildNowcast(resolved.samples, nowMs, calibStore);
+
   const mosStore = await learnMos({
     nowMs,
     harbor: resolved.samples,
@@ -150,6 +166,19 @@ export async function resolveHarbor(
     riseRateMsPerHour: nowcast.riseRateMsPerHour,
     directionChangeDeg: nowcast.directionChangeDeg,
     nowcast: nowcast.nowcast,
+    nowcastSkill: {
+      caseCount: nowcastSkill.caseCount,
+      calibrated: nowcast.calibrated,
+      note: nowcastSkill.note,
+      horizons: nowcastSkill.horizons.map((item) => ({
+        minutesAhead: item.minutesAhead,
+        count: item.count,
+        maeCalibrated: item.maeCalibrated,
+        maeRaw: item.maeRaw,
+        dampen: item.dampen,
+        skillVsPersistence: item.skillVsPersistence,
+      })),
+    },
     alerts: nowcast.alerts,
     pattern: {
       storedEvents: patternStore.events.length,

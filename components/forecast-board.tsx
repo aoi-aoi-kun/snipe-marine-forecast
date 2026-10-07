@@ -493,9 +493,14 @@ function HarborPanel({ harbor }: { harbor: HarborBundle }) {
               </h3>
             </div>
             <p className="max-w-xs text-right text-xs leading-5 text-muted sm:text-sm">
-              直近の傾きが続く場合の平均風速
+              {harbor.nowcastSkill.calibrated
+                ? "過去実況で校正した短時間予測"
+                : "直近の傾きが続く場合の平均風速"}
             </p>
           </div>
+          <p className="mt-2 text-xs leading-5 text-muted sm:text-sm">
+            {harbor.nowcastSkill.note}
+          </p>
           {harbor.nowcast.some((point) => point.meanMs > 10) ? (
             <div className="mt-3 border-l-2 border-warn bg-warn-bg/90 px-3 py-2 text-sm leading-6 text-warn">
               <p className="font-medium tracking-wide">警告 · 10 m/s 超え</p>
@@ -590,21 +595,21 @@ function HarborPanel({ harbor }: { harbor: HarborBundle }) {
         </summary>
         <div className="mt-2 space-y-2 text-xs leading-5 text-muted">
           <p>
-            沖予報とハーバー実況を3時間枠で突合し、時間帯・風向ごとのずれを学習しています。サーバ起動中は約{" "}
-            {harbor.mos?.continuous.intervalMinutes ?? 15} 分ごとに更新します。
+            ナウキャストは過去の「傾き延長」と実況を突合し、時間先ごとの減衰とバイアスを学習します。
+            {harbor.nowcastSkill.calibrated
+              ? ` いま校正済み（検証 ${harbor.nowcastSkill.caseCount} 件）。`
+              : ` 検証 ${harbor.nowcastSkill.caseCount} 件（校正に必要な件数に達すると自動適用）。`}
           </p>
-          {harbor.mos ? (
-            <p>
-              {harbor.mos.note}
-              {harbor.mos.continuous.lastTickAt
-                ? ` 前回の更新は ${formatStamp(harbor.mos.continuous.lastTickAt)}。`
-                : ""}
-            </p>
-          ) : null}
           <p>
-            急上昇の型は {harbor.pattern.storedEvents}{" "}
-            件。似た前兆のときだけ、直近の沖予報を短く上振れします。
+            沖予報は3時間枠でハーバーと突合し、時間帯・風向のずれ（MOS）を学習。急上昇の型は{" "}
+            {harbor.pattern.storedEvents} 件。サーバ起動中は約{" "}
+            {harbor.mos?.continuous.intervalMinutes ?? 15} 分ごとに更新します
+            {harbor.mos?.continuous.lastTickAt
+              ? `（前回 ${formatStamp(harbor.mos.continuous.lastTickAt)}）`
+              : ""}
+            。
           </p>
+          {harbor.mos ? <p>{harbor.mos.note}</p> : null}
         </div>
       </details>
 
