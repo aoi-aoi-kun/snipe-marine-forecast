@@ -1,4 +1,3 @@
-import { AreaMap } from "@/components/area-map";
 import { HARBOR_TO_OFFSHORE_KM } from "@/lib/geo";
 
 export function ForecastGuide() {
@@ -8,12 +7,9 @@ export function ForecastGuide() {
         <div className="flex items-baseline justify-between gap-3">
           <div>
             <p className="text-xs font-medium tracking-[0.14em] text-muted">補足</p>
-            <h2 className="mt-1 font-serif text-xl tracking-tight text-ink sm:text-2xl">
+            <h2 className="mt-1 font-serif text-lg tracking-tight text-ink sm:text-xl">
               この予報の読み方
             </h2>
-            <p className="mt-1 max-w-2xl text-sm leading-6 text-muted">
-              升の範囲、ハーバー実況との違い、設計の前提。タップして開く。
-            </p>
           </div>
           <span className="shrink-0 text-sm text-sea transition-transform group-open:rotate-45">
             ＋
@@ -21,33 +17,19 @@ export function ForecastGuide() {
         </div>
       </summary>
 
-      <div className="mt-5 space-y-6">
-        <AreaMap />
-
-        <div className="grid gap-5 md:grid-cols-2">
-          <article className="space-y-1.5">
-            <h3 className="text-sm font-medium text-ink">沖の3時間予報</h3>
-            <p className="text-sm leading-6 text-muted">
-              ECMWF IFS 0.25°（約25km升）の格子値。144時間先まで。大まかな傾向向けで、岸際の数分単位の変化は捉えません。
-            </p>
-          </article>
-          <article className="space-y-1.5">
-            <h3 className="text-sm font-medium text-ink">江の島ハーバー実況</h3>
-            <p className="text-sm leading-6 text-muted">
-              格子点から約 {HARBOR_TO_OFFSHORE_KM.toFixed(1)}{" "}
-              km の岸の5分値。ナウキャスト・吹き上がり検知・MOS局地補正に使い、沖の真値とはみなしません。
-            </p>
-          </article>
-        </div>
-
-        <ul className="space-y-2 border-t border-line/60 pt-4 text-sm leading-6 text-muted">
+      <div className="mt-4 space-y-4 text-sm leading-6 text-muted">
+        <p>
+          沖の見通しは ECMWF IFS 0.25°（約25km升）の3時間値、いまの風は江の島ヨットハーバー（格子点から約{" "}
+          {HARBOR_TO_OFFSHORE_KM.toFixed(1)} km）の5分実況です。地点が違うため、ハーバーを沖の真値とはみなしません。
+        </p>
+        <ul className="space-y-2">
           <li>
-            <span className="font-medium text-ink/80">粒度を分ける</span>
-            {" — "}見通しは3時間、いまは5分実況。
+            <span className="font-medium text-ink/80">粒度</span>
+            {" — "}見通しは3時間、直近は5分実況とナウキャスト。
           </li>
           <li>
-            <span className="font-medium text-ink/80">出典</span>
-            {" — "}ECMWF（CC BY 4.0）、気象庁警報、ハーバー実況（enowin）。
+            <span className="font-medium text-ink/80">補正</span>
+            {" — "}MOS局地補正と急上昇パターンは統計的な倍率で、置き換えではありません。
           </li>
           <li>
             <span className="font-medium text-ink/80">出艇不可能</span>

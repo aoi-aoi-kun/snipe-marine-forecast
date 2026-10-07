@@ -142,7 +142,7 @@ export async function resolveHarbor(
   const harbor: HarborBundle = {
     source: ENOWIN_SOURCE,
     pointName: "江の島ヨットハーバー",
-    note: "岸の5分実況です。沖の3時間予報と地点が異なります。MOS局地補正と吹き上がり検知に使います。",
+    note: "岸の5分実況です。沖の3時間予報とは地点が異なります。",
     fetchedAt: new Date(resolved.fetchedAt).toISOString(),
     degraded: resolved.degraded,
     latest: toObservation(latest),
