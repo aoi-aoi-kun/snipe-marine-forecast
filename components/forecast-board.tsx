@@ -141,42 +141,6 @@ function WeatherIcon({
   return <span className={className} />;
 }
 
-function WindCompass({ degrees }: { degrees: number }) {
-  return (
-    <svg viewBox="0 0 48 48" aria-hidden="true" className="size-11 shrink-0 text-sea">
-      <circle cx="24" cy="24" r="15" fill="none" stroke="currentColor" strokeOpacity="0.18" />
-      <path
-        d="M24 5.5v4.2M24 38.3V43M5.5 24h4.2M38.3 24H43"
-        fill="none"
-        stroke="currentColor"
-        strokeOpacity="0.35"
-        strokeWidth="1.3"
-        strokeLinecap="round"
-      />
-      <g
-        transform={`rotate(${degrees + 180} 24 24)`}
-        style={{ transition: "transform 0.5s cubic-bezier(0.22, 1, 0.36, 1)" }}
-      >
-        <path
-          d="M24 13.5v15.5"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.8"
-          strokeLinecap="round"
-        />
-        <path
-          d="M24 13.2 19.4 19.4M24 13.2l4.6 6.2"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.8"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-      </g>
-    </svg>
-  );
-}
-
 function WindTrack({
   mean,
   gust,
@@ -215,52 +179,58 @@ function startHour(window: WindowForecast): number {
   return jstParts(Date.parse(window.start)).hour;
 }
 
-function ChartWindArrow({
+/** Unified wind arrow: points to the direction the wind is going (fromDeg + 180). */
+function WindArrow({
   degrees,
-  blocked,
+  blocked = false,
   label,
-  sizeClass = "size-5 sm:size-6",
+  size = "md",
 }: {
   degrees: number | null;
-  blocked: boolean;
+  blocked?: boolean;
   label?: string | null;
-  sizeClass?: string;
+  size?: "sm" | "md" | "lg";
 }) {
+  const sizeClass =
+    size === "sm" ? "size-4" : size === "lg" ? "size-9 sm:size-10" : "size-7 sm:size-8";
   if (degrees === null) {
     return (
       <span
-        className="mx-auto block size-1 rounded-full bg-muted/45"
+        className={cn(
+          "mx-auto block rounded-full bg-muted/45",
+          size === "sm" ? "size-1.5" : "size-2",
+        )}
         title="風向なし"
       />
     );
   }
   return (
     <svg
-      viewBox="0 0 12 12"
+      viewBox="0 0 24 24"
       aria-hidden={label ? undefined : true}
       aria-label={label ?? undefined}
       role={label ? "img" : undefined}
-      className={cn("mx-auto block", sizeClass, blocked ? "text-warn" : "text-sea")}
+      className={cn("mx-auto block shrink-0", sizeClass, blocked ? "text-warn" : "text-sea")}
     >
       <g
         style={{
           transform: `rotate(${degrees + 180}deg)`,
-          transformOrigin: "6px 6px",
+          transformOrigin: "12px 12px",
           transition: "transform 0.45s cubic-bezier(0.22, 1, 0.36, 1)",
         }}
       >
         <path
-          d="M6 1.6v7.2"
+          d="M12 3.2v14.4"
           fill="none"
           stroke="currentColor"
-          strokeWidth="1.4"
+          strokeWidth="2.2"
           strokeLinecap="round"
         />
         <path
-          d="M6 1.5 3.6 4M6 1.5 8.4 4"
+          d="M12 3.1 7.2 8.8M12 3.1l4.8 5.7"
           fill="none"
           stroke="currentColor"
-          strokeWidth="1.4"
+          strokeWidth="2.2"
           strokeLinecap="round"
           strokeLinejoin="round"
         />
@@ -294,7 +264,7 @@ function WindOverview({
     return offsets;
   }, []);
   return (
-    <div className="anim-rise anim-rise-delay-2 mt-5 rounded-xl border border-line/70 bg-paper/55 p-4 backdrop-blur-sm sm:p-5">
+    <div className="anim-rise anim-rise-delay-2 mt-5 rounded-xl border border-sea/30 bg-[linear-gradient(165deg,#e7f3f4_0%,#edf3f4_55%,#e8eef0_100%)] p-4 sm:p-5">
       <ul className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-muted">
         <li className="font-medium text-ink/70">天気</li>
         <li className="flex items-center gap-1.5">
@@ -313,24 +283,11 @@ function WindOverview({
           <span className="size-2.5 rounded-sm bg-warn" />
           出艇不可能
         </li>
-        <li className="flex items-center gap-1.5">
-          <svg viewBox="0 0 12 12" aria-hidden="true" className="size-3 text-sea">
-            <path
-              d="M6 1.6v7.2M6 1.5 3.6 4M6 1.5 8.4 4"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.4"
-              strokeLinecap="round"
-            />
-          </svg>
-          矢印は向かう向き
-        </li>
-        <li>棒を押すとその日へ</li>
       </ul>
       <div className="mt-4 flex gap-2">
         <div className="flex w-7 shrink-0 flex-col" aria-hidden="true">
           <div className="h-1.5" />
-          <div className="mt-1.5 h-4" />
+          <div className="mt-1.5 h-5" />
           <div className="mt-1.5 flex h-28 flex-col justify-between text-[10px] tabular-nums leading-none text-muted">
             <span>{scale}</span>
             <span>0</span>
@@ -357,21 +314,19 @@ function WindOverview({
                   </div>
                 ))}
               </div>
-              <div className="mt-1.5 flex h-4 items-center gap-px">
+              <div className="mt-1.5 flex h-5 items-center gap-px">
                 {group.windows.map((window) => (
                   <div
                     key={window.start}
                     className="flex min-w-0 justify-center px-px"
                     style={{ flex: durationHours(window) }}
-                    title={
-                      window.windFromLabel
-                        ? `${window.windFromLabel}（向かう向きの矢印）`
-                        : "風向なし"
-                    }
+                    title={window.windFromLabel ?? "風向なし"}
                   >
-                    <ChartWindArrow
+                    <WindArrow
                       degrees={window.windFromDeg}
                       blocked={window.noDeparture}
+                      label={window.windFromLabel}
+                      size="sm"
                     />
                   </div>
                 ))}
@@ -443,8 +398,6 @@ function HarborPanel({ harbor }: { harbor: HarborBundle }) {
   const latest = harbor.latest;
   const rising =
     harbor.riseRateMsPerHour !== null && harbor.riseRateMsPerHour >= 1.5;
-  const falling =
-    harbor.riseRateMsPerHour !== null && harbor.riseRateMsPerHour <= -1.5;
   const nowcastOver10 = harbor.nowcast.some((point) => point.meanMs > 10);
   const panelWarn = nowcastOver10 || rising;
 
@@ -452,10 +405,10 @@ function HarborPanel({ harbor }: { harbor: HarborBundle }) {
     <section className="anim-rise space-y-4">
       <div className="flex flex-wrap items-end justify-between gap-2">
         <div>
-          <h2 className="font-serif text-xl tracking-tight text-ink sm:text-2xl">
+          <h2 className="font-serif text-2xl tracking-tight text-ink sm:text-3xl">
             江の島ハーバー実況
           </h2>
-          <p className="mt-1 max-w-2xl text-xs leading-5 text-muted sm:text-sm sm:leading-6">
+          <p className="mt-1 max-w-2xl text-sm leading-6 text-muted">
             {harbor.note}
           </p>
         </div>
@@ -497,10 +450,10 @@ function HarborPanel({ harbor }: { harbor: HarborBundle }) {
                   {formatHarborObsTime(latest.at)}の観測
                 </p>
                 <div className="mt-2 flex justify-center">
-                  <ChartWindArrow
+                  <WindArrow
                     degrees={latest.fromDeg}
-                    blocked={false}
                     label={latest.fromLabel}
+                    size="lg"
                   />
                 </div>
                 <p className="mt-2 font-serif text-3xl tabular-nums leading-none text-ink sm:text-4xl">
@@ -530,10 +483,11 @@ function HarborPanel({ harbor }: { harbor: HarborBundle }) {
                   </p>
                   <p className="mt-0.5 min-h-4 text-[10px] sm:min-h-5 sm:text-xs" aria-hidden="true" />
                   <div className="mt-2 flex justify-center">
-                    <ChartWindArrow
+                    <WindArrow
                       degrees={point.fromDeg}
                       blocked={over10}
                       label={point.fromLabel}
+                      size="lg"
                     />
                   </div>
                   <p
@@ -562,28 +516,6 @@ function HarborPanel({ harbor }: { harbor: HarborBundle }) {
               );
             })}
           </ol>
-
-          {latest && (harbor.riseRateMsPerHour !== null || harbor.directionChangeDeg !== null) ? (
-            <div className="mt-4 flex flex-wrap gap-x-6 gap-y-1 border-t border-line/50 pt-3 text-sm">
-              <p
-                className={cn(
-                  "font-serif tabular-nums",
-                  rising ? "text-warn" : falling ? "text-sea" : "text-ink",
-                )}
-              >
-                風速の変化{" "}
-                {harbor.riseRateMsPerHour === null
-                  ? "—"
-                  : `${harbor.riseRateMsPerHour >= 0 ? "+" : ""}${harbor.riseRateMsPerHour.toFixed(1)} m/s毎時`}
-              </p>
-              <p className="text-muted">
-                風向変化{" "}
-                {harbor.directionChangeDeg === null
-                  ? "—"
-                  : `${harbor.directionChangeDeg >= 0 ? "+" : ""}${Math.round(harbor.directionChangeDeg)}°`}
-              </p>
-            </div>
-          ) : null}
 
           {harbor.nowcast.length > 0 ? (
             <details className="group mt-3 border-t border-line/50 pt-3">
@@ -712,15 +644,24 @@ function WindowCard({ window, scale }: { window: WindowForecast; scale: number }
           </div>
         </div>
         <div>
-          <div className="flex items-center gap-2">
-            {window.windFromDeg !== null ? (
-              <WindCompass degrees={window.windFromDeg} />
-            ) : (
-              <span className="size-11 shrink-0" />
-            )}
-            <p className="font-serif text-lg leading-none text-ink">{window.windFromLabel}</p>
+          <div className="flex items-center gap-3">
+            <WindArrow
+              degrees={window.windFromDeg}
+              blocked={window.noDeparture}
+              label={window.windFromLabel}
+              size="lg"
+            />
+            <div className="min-w-0 flex-1">
+              <p className="font-serif text-2xl tabular-nums leading-none text-ink">
+                {formatMs(window.windMeanMs ?? 0)}
+                <span className="ml-1 text-sm font-sans text-muted">m/s</span>
+              </p>
+              <p className="mt-1 text-xs tabular-nums text-muted">
+                瞬間 {formatMs(window.windGustMs ?? 0)} m/s
+              </p>
+            </div>
           </div>
-          <div className="mt-2">
+          <div className="mt-2.5">
             <WindTrack
               mean={window.windMeanMs ?? 0}
               gust={window.windGustMs ?? 0}
@@ -728,11 +669,7 @@ function WindowCard({ window, scale }: { window: WindowForecast; scale: number }
               blocked={window.noDeparture}
             />
           </div>
-          <p className="mt-1.5 text-sm tabular-nums text-ink">
-            {formatMs(window.windMeanMs ?? 0)} m/s
-            <span className="text-muted"> 瞬間 {formatMs(window.windGustMs ?? 0)}</span>
-          </p>
-          <p className="text-xs tabular-nums text-muted">
+          <p className="mt-1.5 text-xs tabular-nums text-muted">
             {formatKt(window.windMeanMs ?? 0)} kt / 瞬間 {formatKt(window.windGustMs ?? 0)} kt
           </p>
         </div>
@@ -840,10 +777,9 @@ export function ForecastBoard() {
             </summary>
             <ul className="mt-2 space-y-1.5 text-sm leading-6 text-muted">
               <li>棒は地上10mの平均風速、うすい部分は最大瞬間風速（目盛の上端は {scale} m/s）。</li>
-              <li>矢印は風の向かう向き（上が北）。日付を押すとその日の詳細へ。</li>
               <li>平均 10 m/s 以上、または瞬間 13 m/s 以上は出艇不可能。</li>
               <li className="text-xs">
-                瞬間は初期値から90時間先までが枠末の1時間、それ以降は3時間の最大。下の方位は吹いてくる向き。
+                瞬間は初期値から90時間先までが枠末の1時間、それ以降は3時間の最大。
               </li>
             </ul>
           </details>
