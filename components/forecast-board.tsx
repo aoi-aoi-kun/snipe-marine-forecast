@@ -264,7 +264,7 @@ function WindOverview({
     return offsets;
   }, []);
   return (
-    <div className="anim-rise anim-rise-delay-2 surface flex h-full min-h-[17.5rem] flex-col p-3 lg:min-h-0 sm:p-3.5">
+    <div className="anim-rise anim-rise-delay-2 surface p-3 sm:p-3.5">
       <ul className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-muted">
         <li className="font-medium tracking-wide text-ink/65">天気</li>
         <li className="flex items-center gap-1.5">
@@ -387,7 +387,7 @@ function WindOverview({
 }
 
 function harborWindCardClass(over10: boolean): string {
-  return cn("tile px-2 py-2.5 text-center sm:px-2.5 sm:py-3", over10 && "tile-warn");
+  return cn("tile px-1.5 py-1.5 text-center sm:px-2 sm:py-2", over10 && "tile-warn");
 }
 
 function HarborPanel({ harbor }: { harbor: HarborBundle }) {
