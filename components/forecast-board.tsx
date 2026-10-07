@@ -400,7 +400,7 @@ function HarborPanel({ harbor }: { harbor: HarborBundle }) {
       ? null
       : Math.max(0, Math.floor((Date.now() - Date.parse(latest.at)) / 60_000));
   const sourceStale = lagMinutes !== null && lagMinutes >= 20;
-  const panelWarn = nowcastOver10 || rising || sourceStale;
+  const panelWarn = nowcastOver10 || rising;
 
   return (
     <section className="anim-rise space-y-4">
