@@ -446,11 +446,21 @@ function HarborPanel({ harbor }: { harbor: HarborBundle }) {
               <span className="ml-1 text-base font-sans text-muted">m/s</span>
             </p>
           </div>
-          <div className="pb-0.5">
-            <p className="font-serif text-xl text-ink">{latest.fromLabel ?? "—"}</p>
-            <p className="text-xs tabular-nums text-muted">
-              最大 {latest.maxMs.toFixed(1)} · {formatStamp(latest.at)}
-            </p>
+          <div className="flex items-center gap-2 pb-0.5">
+            {latest.fromDeg !== null ? (
+              <WindCompass degrees={latest.fromDeg} />
+            ) : (
+              <span className="size-11 shrink-0" />
+            )}
+            <div>
+              <p className="font-serif text-xl leading-none text-ink">
+                {latest.fromLabel ?? "—"}
+              </p>
+              <p className="mt-1 text-xs text-muted">吹いてくる向き · 矢印は向かう向き</p>
+              <p className="text-xs tabular-nums text-muted">
+                最大 {latest.maxMs.toFixed(1)} · {formatStamp(latest.at)}
+              </p>
+            </div>
           </div>
           <div className="pb-0.5">
             <p
