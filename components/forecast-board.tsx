@@ -7,7 +7,7 @@ import { jstParts } from "@/lib/time";
 import { cn } from "@/lib/utils";
 
 const WEEKDAYS = ["日", "月", "火", "水", "木", "金", "土"];
-const WIND_SCALE_FLOOR_MS = 10;
+const WIND_SCALE_FLOOR_MS = 13;
 
 type DayGroup = {
   key: string;
@@ -50,7 +50,10 @@ function formatKt(ms: number): string {
 }
 
 function windScale(windows: WindowForecast[]): number {
-  const peak = Math.max(0, ...windows.map((window) => window.windMaxMs ?? 0));
+  const peak = Math.max(
+    0,
+    ...windows.map((window) => Math.max(window.windMeanMs ?? 0, window.windGustMs ?? 0)),
+  );
   return Math.max(WIND_SCALE_FLOOR_MS, Math.ceil(peak));
 }
 
@@ -162,13 +165,28 @@ function WindCompass({ degrees }: { degrees: number }) {
   );
 }
 
-function WindTrack({ speed, scale, blocked }: { speed: number; scale: number; blocked: boolean }) {
-  const width = Math.min(100, (speed / scale) * 100);
+function WindTrack({
+  mean,
+  gust,
+  scale,
+  blocked,
+}: {
+  mean: number;
+  gust: number;
+  scale: number;
+  blocked: boolean;
+}) {
+  const meanPct = Math.min(100, (mean / scale) * 100);
+  const gustPct = Math.min(100, (Math.max(mean, gust) / scale) * 100);
   return (
     <div className="relative h-1.5 w-28 rounded-full bg-paper">
       <div
+        className={cn("absolute inset-y-0 left-0 rounded-full", blocked ? "bg-warn/35" : "bg-sea/30")}
+        style={{ width: `${gustPct}%` }}
+      />
+      <div
         className={cn("absolute inset-y-0 left-0 rounded-full", blocked ? "bg-warn" : "bg-sea")}
-        style={{ width: `${width}%` }}
+        style={{ width: `${meanPct}%` }}
       />
     </div>
   );
@@ -237,18 +255,28 @@ function WindOverview({
             {groups.map((group) => (
               <div key={group.key} className="flex h-full min-w-0 items-end" style={{ flex: groupHours(group) }}>
                 {group.windows.map((window) => {
-                  const speed = window.windMeanMs ?? 0;
-                  const height = window.available ? Math.min(100, (speed / scale) * 100) : 0;
+                  const mean = window.windMeanMs ?? 0;
+                  const gust = window.windGustMs ?? 0;
+                  const meanPct = window.available ? Math.min(100, (mean / scale) * 100) : 0;
+                  const extraPct = window.available
+                    ? Math.max(0, Math.min(100, (Math.max(mean, gust) / scale) * 100) - meanPct)
+                    : 0;
                   return (
                     <div
                       key={window.start}
                       className="flex h-full min-w-0 items-end px-px"
                       style={{ flex: durationHours(window) }}
                     >
-                      <div
-                        className={cn("w-full", window.noDeparture ? "bg-warn" : "bg-sea")}
-                        style={{ height: `${height}%` }}
-                      />
+                      <div className="flex h-full w-full flex-col justify-end">
+                        <div
+                          className={cn("w-full", window.noDeparture ? "bg-warn/35" : "bg-sea/25")}
+                          style={{ height: `${extraPct}%` }}
+                        />
+                        <div
+                          className={cn("w-full", window.noDeparture ? "bg-warn" : "bg-sea")}
+                          style={{ height: `${meanPct}%` }}
+                        />
+                      </div>
                     </div>
                   );
                 })}
@@ -323,13 +351,19 @@ function WindowCard({ window, scale }: { window: WindowForecast; scale: number }
             </div>
             <div className="mt-2">
               <WindTrack
-                speed={window.windMeanMs ?? 0}
+                mean={window.windMeanMs ?? 0}
+                gust={window.windGustMs ?? 0}
                 scale={scale}
                 blocked={window.noDeparture}
               />
             </div>
-            <p className="mt-1 text-sm tabular-nums text-ink">{formatMs(window.windMeanMs ?? 0)} m/s</p>
-            <p className="text-xs tabular-nums text-muted">{formatKt(window.windMeanMs ?? 0)} kt</p>
+            <p className="mt-1 text-sm tabular-nums text-ink">
+              {formatMs(window.windMeanMs ?? 0)} m/s
+              <span className="text-muted"> 瞬間 {formatMs(window.windGustMs ?? 0)}</span>
+            </p>
+            <p className="text-xs tabular-nums text-muted">
+              {formatKt(window.windMeanMs ?? 0)} kt / 瞬間 {formatKt(window.windGustMs ?? 0)} kt
+            </p>
           </div>
         </div>
       ) : (
@@ -424,7 +458,7 @@ export function ForecastBoard() {
       <div className="mt-8">
         <h2 className="font-serif text-2xl text-ink">風と天気</h2>
         <p className="mt-1 max-w-2xl text-sm leading-6 text-muted">
-          96時間先まで、3時間ごとです。高さはその時刻の地上10mの風速で、上端は {scale} m/s です。10 m/s 以上の枠は出艇不可能です。矢印は風の向かう向き、言葉は吹いてくる向き。方位の上は北です。
+          96時間先まで、3時間ごとです。高さは地上10mの風速、うすい部分は最大瞬間風速まで。上端は {scale} m/s です。平均 10 m/s 以上、または最大瞬間風速 13 m/s 以上の枠は出艇不可能です。最大瞬間風速は、枠の終わり直前1時間の値です。矢印は風の向かう向き、言葉は吹いてくる向き。方位の上は北です。
         </p>
         {windows.some((window) => window.noDeparture) ? (
           <div className="mt-4 border border-warn/30 bg-warn-bg px-4 py-3 text-sm leading-6 text-warn">

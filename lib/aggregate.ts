@@ -8,6 +8,7 @@ export type HourSample = {
   v: number;
   cloudPct: number;
   precipRunMm: number;
+  gustMs: number;
 };
 
 export type WindowForecast = {
@@ -23,19 +24,21 @@ export type WindowForecast = {
   windFromLabel: string | null;
   windMeanMs: number | null;
   windMaxMs: number | null;
+  windGustMs: number | null;
   noDeparture: boolean;
 };
 
 const CALM_MS = 0.3;
-const NO_DEPARTURE_MS = 10;
+const NO_DEPARTURE_MEAN_MS = 10;
+const NO_DEPARTURE_GUST_MS = 13;
 const SAMPLE_MS = 3 * HOUR_MS;
 
 function stepFloor(utcMs: number): number {
   return Math.floor(utcMs / SAMPLE_MS) * SAMPLE_MS;
 }
 
-export function departureBlocked(speedMs: number): boolean {
-  return speedMs >= NO_DEPARTURE_MS;
+export function departureBlocked(meanMs: number, gustMs: number): boolean {
+  return meanMs >= NO_DEPARTURE_MEAN_MS || gustMs >= NO_DEPARTURE_GUST_MS;
 }
 
 function stepPrecip(hours: HourSample[]): Map<number, number> {
@@ -76,10 +79,12 @@ export function buildWindows(hours: HourSample[], nowMs: number): WindowForecast
       precipTimes.push(time);
     }
     const precipValues = precipTimes.map((time) => precip.get(time));
+    const gustValues = precipTimes.map((time) => byTime.get(time)?.gustMs);
     const complete =
       expectedInstants > 0 &&
       instants.length === expectedInstants &&
-      precipValues.every((value) => value !== undefined);
+      precipValues.every((value) => value !== undefined) &&
+      gustValues.every((value) => value !== undefined);
 
     if (!complete) {
       return {
@@ -95,6 +100,7 @@ export function buildWindows(hours: HourSample[], nowMs: number): WindowForecast
         windFromLabel: null,
         windMeanMs: null,
         windMaxMs: null,
+        windGustMs: null,
         noDeparture: false,
       };
     }
@@ -110,6 +116,7 @@ export function buildWindows(hours: HourSample[], nowMs: number): WindowForecast
     const from = windFromDegrees(meanU, meanV);
     const windMeanMs = speeds.reduce((sum, value) => sum + value, 0) / speeds.length;
     const windMaxMs = Math.max(...speeds);
+    const windGustMs = Math.max(...gustValues.map((value) => value ?? 0));
 
     return {
       start: new Date(start).toISOString(),
@@ -124,7 +131,8 @@ export function buildWindows(hours: HourSample[], nowMs: number): WindowForecast
       windFromLabel: calm ? "風向なし" : windFromLabel(from),
       windMeanMs,
       windMaxMs,
-      noDeparture: departureBlocked(windMeanMs),
+      windGustMs,
+      noDeparture: departureBlocked(windMeanMs, windGustMs),
     };
   });
 }

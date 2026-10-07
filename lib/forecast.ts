@@ -21,7 +21,7 @@ const IFS_FRESH_MS = 30 * 60 * 1000;
 const JMA_FRESH_MS = 20 * 60 * 1000;
 
 type IfsCache = {
-  source: "ecmwf-ifs-0p25";
+  source: "ecmwf-ifs-0p25-10fg";
   initMs: number;
   fetchedAt: number;
   hours: HourSample[];
@@ -51,7 +51,7 @@ async function writeJson(file: string, value: unknown) {
 
 function isIfsCache(value: IfsCache | null): value is IfsCache {
   return (
-    value?.source === "ecmwf-ifs-0p25" &&
+    value?.source === "ecmwf-ifs-0p25-10fg" &&
     Number.isFinite(value.initMs) &&
     Array.isArray(value.hours)
   );
@@ -78,10 +78,10 @@ async function loadJmaCache(): Promise<JmaCache | null> {
 function covers(cache: IfsCache, nowMs: number): boolean {
   const needed = neededSteps(cache.initMs, nowMs);
   if (needed.length === 0) return false;
-  const have = new Set(
-    cache.hours.map((hour) => Math.round((hour.validMs - cache.initMs) / HOUR_MS)),
+  const have = new Map(
+    cache.hours.map((hour) => [Math.round((hour.validMs - cache.initMs) / HOUR_MS), hour]),
   );
-  return needed.every((step) => have.has(step));
+  return needed.every((step) => Number.isFinite(have.get(step)?.gustMs));
 }
 
 async function fetchJma(): Promise<JmaCache> {
@@ -129,7 +129,7 @@ async function resolveIfs(nowMs: number, refresh: boolean): Promise<{
         : new Map<number, HourSample>();
     const hours = await fetchCycleSamples(initMs, steps, previous);
     const cache: IfsCache = {
-      source: "ecmwf-ifs-0p25",
+      source: "ecmwf-ifs-0p25-10fg",
       initMs,
       fetchedAt: Date.now(),
       hours: [...hours.values()].sort((a, b) => a.validMs - b.validMs),

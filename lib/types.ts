@@ -11,6 +11,7 @@ export type WindowForecast = {
   windFromLabel: string | null;
   windMeanMs: number | null;
   windMaxMs: number | null;
+  windGustMs: number | null;
   noDeparture: boolean;
 };
 

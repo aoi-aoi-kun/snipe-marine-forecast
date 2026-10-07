@@ -14,7 +14,7 @@ const USER_AGENT = "shichirigahama-forecast/1.0 (local coastal forecast)";
 const STEP_HOURS = 3;
 const STEP_MS = STEP_HOURS * HOUR_MS;
 const MAX_STEP_HOURS = 144;
-const FIELDS = ["10u", "10v", "2t", "tcc", "tp"] as const;
+const FIELDS = ["10u", "10v", "2t", "tcc", "tp", "10fg"] as const;
 
 export type IndexEntry = {
   param: string;
@@ -142,7 +142,8 @@ export function samplesFromValues(initMs: number, values: PointValue[]): HourSam
       bag["10v"] == null ||
       bag["2t"] == null ||
       bag.tcc == null ||
-      bag.tp == null
+      bag.tp == null ||
+      bag["10fg"] == null
     ) {
       continue;
     }
@@ -153,6 +154,7 @@ export function samplesFromValues(initMs: number, values: PointValue[]): HourSam
       v: bag["10v"],
       cloudPct: Math.min(100, Math.max(0, bag.tcc * 100)),
       precipRunMm: Math.max(0, bag.tp * 1000),
+      gustMs: Math.max(0, bag["10fg"]),
     });
   }
   samples.sort((a, b) => a.validMs - b.validMs);
@@ -261,7 +263,7 @@ export async function fetchCycleSamples(
   steps: number[],
   already: Map<number, HourSample>,
 ): Promise<Map<number, HourSample>> {
-  const missing = steps.filter((step) => !already.has(step));
+  const missing = steps.filter((step) => !Number.isFinite(already.get(step)?.gustMs));
   const { ymd, hh } = formatCycle(initMs);
   console.info(`ECMWF IFS ${ymd} ${hh}z: ${missing.length} steps`);
   const downloaded = await mapPool(missing, 6, (step) => downloadStep(initMs, step));

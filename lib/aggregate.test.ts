@@ -42,6 +42,7 @@ test("aggregates the single 3-hour sample in each window", () => {
       v: -1,
       cloudPct: 90,
       precipRunMm: precip,
+      gustMs: 4,
     });
   }
 
@@ -53,6 +54,7 @@ test("aggregates the single 3-hour sample in each window", () => {
   assert.equal(windows[0].partialFrom, null);
   assert.equal(windows[0].windMeanMs, windows[0].windMaxMs);
   assert.ok((windows[0].precipMm ?? 0) < 1);
+  assert.equal(windows[0].windGustMs, 4);
   assert.equal(windows[0].noDeparture, false);
   assert.equal(windows[2].available, false);
   assert.equal(windows[2].noDeparture, false);
@@ -78,6 +80,7 @@ test("labels calm wind when the vector average is near zero", () => {
       v: 0,
       cloudPct: 10,
       precipRunMm: 0,
+      gustMs: 1,
     });
   }
   const window = buildWindows(hours, later)[0];
@@ -88,22 +91,24 @@ test("labels calm wind when the vector average is near zero", () => {
   assert.equal(window.noDeparture, false);
 });
 
-test("departure is impossible when the 3-hour wind is at least 10 m/s", () => {
-  assert.equal(departureBlocked(10), true);
-  assert.equal(departureBlocked(9.9), false);
+test("departure is impossible at 10 m/s mean or 13 m/s gust", () => {
+  assert.equal(departureBlocked(10, 0), true);
+  assert.equal(departureBlocked(9.9, 12.9), false);
+  assert.equal(departureBlocked(9, 13), true);
 
   const start = Date.parse("2026-10-06T06:00:00.000Z");
   const hours: HourSample[] = [0, 3].map((step) => ({
     validMs: start + step * HOUR_MS,
     tempC: 20,
-    u: 10,
+    u: step === 0 ? 9 : 0,
     v: 0,
     cloudPct: 10,
     precipRunMm: 0,
+    gustMs: step === 0 ? 0 : 13,
   }));
   const blocked = buildWindows(hours, now)[0];
   assert.equal(blocked.available, true);
-  assert.equal(blocked.windMeanMs, 10);
-  assert.equal(blocked.windMaxMs, 10);
+  assert.equal(blocked.windMeanMs, 9);
+  assert.equal(blocked.windGustMs, 13);
   assert.equal(blocked.noDeparture, true);
 });

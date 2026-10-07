@@ -56,6 +56,7 @@ test("selects the surface fields for one step", () => {
       '{"param":"2t","step":"3","levtype":"sfc","_offset":50,"_length":20}',
       '{"param":"tcc","step":"3","levtype":"sfc","_offset":70,"_length":20}',
       '{"param":"tp","step":"3","levtype":"sfc","_offset":90,"_length":20}',
+      '{"param":"10fg","step":"3","levtype":"sfc","_offset":110,"_length":20}',
       '{"param":"t","step":"3","levtype":"pl","_offset":1,"_length":2}',
       '{"param":"10u","step":"0","levtype":"sfc","_offset":2,"_length":3}',
     ].join("\n"),
@@ -63,7 +64,7 @@ test("selects the surface fields for one step", () => {
   const fields = selectFields(entries, 3);
   assert.deepEqual(
     fields.map((field) => field.param),
-    ["10u", "10v", "2t", "tcc", "tp"],
+    ["10u", "10v", "2t", "tcc", "tp", "10fg"],
   );
   assert.equal(selectFields(entries, 6).length, 0);
 });
@@ -75,12 +76,14 @@ test("converts ECMWF units at the grid point", () => {
     { param: "10v", step: 3, value: 0 },
     { param: "tcc", step: 3, value: 0.25 },
     { param: "tp", step: 3, value: 0.0015 },
+    { param: "10fg", step: 3, value: 8.5 },
   ]);
   assert.equal(sample.validMs, Date.parse("2026-10-06T03:00:00.000Z"));
   assert.equal(sample.tempC, 20);
   assert.equal(sample.u, -2);
   assert.equal(sample.cloudPct, 25);
   assert.equal(sample.precipRunMm, 1.5);
+  assert.equal(sample.gustMs, 8.5);
 });
 
 test("reads the published grid point from a GRIB message", async () => {
