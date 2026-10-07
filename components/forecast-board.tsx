@@ -192,7 +192,7 @@ function WindArrow({
   size?: "sm" | "md" | "lg";
 }) {
   const sizeClass =
-    size === "sm" ? "size-4" : size === "lg" ? "size-9 sm:size-10" : "size-7 sm:size-8";
+    size === "sm" ? "size-5" : size === "lg" ? "size-10 sm:size-11" : "size-8 sm:size-9";
   if (degrees === null) {
     return (
       <span
@@ -287,7 +287,7 @@ function WindOverview({
       <div className="mt-4 flex gap-2">
         <div className="flex w-7 shrink-0 flex-col" aria-hidden="true">
           <div className="h-1.5" />
-          <div className="mt-1.5 h-5" />
+          <div className="mt-1.5 h-6" />
           <div className="mt-1.5 flex h-28 flex-col justify-between text-[10px] tabular-nums leading-none text-muted">
             <span>{scale}</span>
             <span>0</span>
@@ -314,7 +314,7 @@ function WindOverview({
                   </div>
                 ))}
               </div>
-              <div className="mt-1.5 flex h-5 items-center gap-px">
+              <div className="mt-1.5 flex h-6 items-center gap-px">
                 {group.windows.map((window) => (
                   <div
                     key={window.start}
@@ -386,11 +386,10 @@ function WindOverview({
   );
 }
 
-function harborWindCardClass(active: boolean, over10: boolean): string {
+function harborWindCardClass(over10: boolean): string {
   return cn(
     "rounded-lg px-2 py-3 text-center sm:px-3 sm:py-4",
     over10 ? "bg-warn-bg ring-1 ring-warn/40" : "bg-paper/80",
-    !over10 && active && "ring-1 ring-sea/25",
   );
 }
 
@@ -444,7 +443,7 @@ function HarborPanel({ harbor }: { harbor: HarborBundle }) {
             )}
           >
             {latest ? (
-              <li className={harborWindCardClass(true, false)}>
+              <li className={harborWindCardClass(false)}>
                 <p className="text-xs font-medium text-muted sm:text-sm">いま</p>
                 <p className="mt-0.5 text-[10px] leading-4 text-muted sm:text-xs">
                   {formatHarborObsTime(latest.at)}の観測
@@ -472,10 +471,7 @@ function HarborPanel({ harbor }: { harbor: HarborBundle }) {
               return (
                 <li
                   key={point.minutesAhead}
-                  className={harborWindCardClass(
-                    !over10 && index === harbor.nowcast.length - 1,
-                    over10,
-                  )}
+                  className={harborWindCardClass(over10)}
                   style={{ animationDelay: `${0.05 + index * 0.06}s` }}
                 >
                   <p className="text-xs font-medium text-muted sm:text-sm">
@@ -611,10 +607,10 @@ function WindowCard({ window, scale }: { window: WindowForecast; scale: number }
   return (
     <article
       className={cn(
-        "flex flex-col border-t-2 px-2.5 py-3 transition-colors sm:px-3 sm:py-3.5",
+        "flex flex-col rounded-lg px-2.5 py-3 transition-colors sm:px-3 sm:py-3.5",
         window.noDeparture
-          ? "border-warn bg-warn-bg/70"
-          : "border-sea/25 bg-paper/40 hover:bg-paper/70",
+          ? "bg-warn-bg ring-1 ring-warn/40"
+          : "bg-paper/80 ring-1 ring-sea/15 hover:ring-sea/30",
       )}
     >
       <div className="flex items-baseline justify-between gap-2">
