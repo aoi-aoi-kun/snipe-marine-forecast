@@ -264,9 +264,9 @@ function WindOverview({
     return offsets;
   }, []);
   return (
-    <div className="anim-rise anim-rise-delay-2 surface mt-5 p-4 sm:p-5">
-      <ul className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-muted">
-        <li className="font-medium tracking-wide text-ink/75">天気</li>
+    <div className="anim-rise anim-rise-delay-2 surface mt-3 p-3 sm:p-4">
+      <ul className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[11px] text-muted">
+        <li className="font-medium tracking-wide text-ink/65">天気</li>
         <li className="flex items-center gap-1.5">
           <span className="size-2.5 rounded-sm bg-sun" />
           晴れ
@@ -403,20 +403,23 @@ function HarborPanel({ harbor }: { harbor: HarborBundle }) {
   const panelWarn = nowcastOver10 || rising;
 
   return (
-    <section className="anim-rise space-y-4">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <p className="eyebrow">HARBOR</p>
-          <h2 className="section-title mt-1.5">江の島ハーバー実況</h2>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">{harbor.note}</p>
-        </div>
-        <p className="text-xs tracking-wide text-muted">出典：{harbor.source}</p>
+    <section className="anim-rise space-y-2.5">
+      <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+        <h2 className="section-title">江の島ハーバー実況</h2>
+        <details className="group">
+          <summary className="cursor-pointer list-none text-[11px] text-muted marker:content-none">
+            <span className="soft-link">補足</span>
+          </summary>
+          <p className="mt-1 max-w-md text-[11px] leading-4 text-muted">
+            {harbor.note} 出典：{harbor.source}
+          </p>
+        </details>
       </div>
 
       {latest || harbor.nowcast.length > 0 ? (
-        <div className={cn("px-4 py-4 sm:px-5 sm:py-5", panelWarn ? "surface-warn" : "surface")}>
+        <div className={cn("px-3 py-3 sm:px-4 sm:py-4", panelWarn ? "surface-warn" : "surface")}>
           {nowcastOver10 ? (
-            <div className="callout mb-4">
+            <div className="callout mb-3 py-2 text-xs leading-5">
               <p className="font-medium tracking-wide">警告 · 10 m/s 超え</p>
               <p className="mt-0.5 text-warn/90">
                 ナウキャストの平均風速が 10 m/s を超えます。出艇の目安を上回る見込みです。
@@ -424,11 +427,10 @@ function HarborPanel({ harbor }: { harbor: HarborBundle }) {
             </div>
           ) : null}
           {sourceStale ? (
-            <div className="callout mb-4">
+            <div className="callout mb-3 py-2 text-xs leading-5">
               <p className="font-medium tracking-wide">実況の公開が停止中</p>
               <p className="mt-0.5 text-warn/90">
-                enowin の最新行が約 {lagMinutes} 分前のままです。このアプリは再取得していますが、
-                公開ファイルに新しい観測がまだありません。
+                enowin の最新行が約 {lagMinutes} 分前のままです。公開ファイルに新しい観測がまだありません。
               </p>
             </div>
           ) : null}
@@ -521,11 +523,11 @@ function HarborPanel({ harbor }: { harbor: HarborBundle }) {
           </ol>
 
           {harbor.nowcast.length > 0 ? (
-            <details className="group mt-4 border-t border-line/45 pt-3.5">
-              <summary className="cursor-pointer list-none text-xs marker:content-none">
+            <details className="group mt-3 border-t border-line/40 pt-2.5">
+              <summary className="cursor-pointer list-none text-[11px] marker:content-none">
                 <span className="soft-link group-open:text-ink">ナウキャストの説明</span>
               </summary>
-              <div className="mt-2.5 space-y-1.5 text-xs leading-5 text-muted sm:text-sm sm:leading-6">
+              <div className="mt-1.5 space-y-1 text-[11px] leading-4 text-muted">
                 <p>
                   {harbor.nowcastSkill.calibrated
                     ? "過去実況で校正した風速・風向の短時間予測です。"
@@ -535,7 +537,7 @@ function HarborPanel({ harbor }: { harbor: HarborBundle }) {
               </div>
             </details>
           ) : latest ? (
-            <p className="mt-4 border-t border-line/45 pt-3.5 text-sm text-muted">
+            <p className="mt-3 border-t border-line/40 pt-2.5 text-[11px] text-muted">
               ナウキャストに必要な直近の傾きがまだ足りません。
             </p>
           ) : null}
@@ -545,13 +547,16 @@ function HarborPanel({ harbor }: { harbor: HarborBundle }) {
       )}
 
       {harbor.alerts.some((alert) => alert.kind !== "stale") ? (
-        <div className="space-y-2">
+        <div className="space-y-1.5">
           {harbor.alerts
             .filter((alert) => alert.kind !== "stale")
             .map((alert) => (
               <div
                 key={`${alert.kind}-${alert.message}`}
-                className={cn(alert.level === "watch" ? "callout" : "callout-sea")}
+                className={cn(
+                  "py-2 text-xs leading-5",
+                  alert.level === "watch" ? "callout" : "callout-sea",
+                )}
               >
                 {alert.message}
               </div>
@@ -560,17 +565,17 @@ function HarborPanel({ harbor }: { harbor: HarborBundle }) {
       ) : null}
 
       {harbor.pattern.match ? (
-        <div className="callout-sea">
+        <div className="callout-sea py-2 text-xs leading-5">
           <p className="font-medium tracking-wide text-sea">急上昇補正</p>
-          <p className="mt-1">{harbor.pattern.match.note}</p>
+          <p className="mt-0.5">{harbor.pattern.match.note}</p>
         </div>
       ) : null}
 
-      <details className="group border-t border-line/50 pt-3.5">
-        <summary className="cursor-pointer list-none text-xs text-muted marker:content-none">
+      <details className="group">
+        <summary className="cursor-pointer list-none text-[11px] text-muted marker:content-none">
           <span className="soft-link group-open:text-ink">学習の状態</span>
         </summary>
-        <div className="mt-2.5 space-y-2 text-xs leading-5 text-muted">
+        <div className="mt-1.5 space-y-1.5 text-[11px] leading-4 text-muted">
           <p>
             学習はサーバ起動中、約 {harbor.mos?.continuous.intervalMinutes ?? 15}{" "}
             分ごとに自動継続します
@@ -596,7 +601,7 @@ function HarborPanel({ harbor }: { harbor: HarborBundle }) {
       </details>
 
       {harbor.degraded ? (
-        <p className="text-xs text-muted">取得に失敗したため、保存した実況を表示しています。</p>
+        <p className="text-[11px] text-muted">取得に失敗したため、保存した実況を表示しています。</p>
       ) : null}
     </section>
   );
@@ -742,46 +747,46 @@ export function ForecastBoard() {
   const scale = windScale(windows);
 
   return (
-    <section className="anim-rise space-y-8 sm:space-y-10" aria-live="polite">
-      <div className="surface flex flex-col gap-3 px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:px-5">
-        <div className="min-w-0 text-sm leading-6 text-muted">
+    <section className="anim-rise space-y-5 sm:space-y-6" aria-live="polite">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="min-w-0 text-[11px] leading-4 text-muted">
           {data?.ifs ? (
             <>
-              <p className="font-medium text-ink/85">
+              <p>
                 ECMWF 初期値 {formatStamp(data.ifs.initTime)}
-                <span className="font-normal text-muted">（日本時間）</span>
+                <span className="text-muted/80">（日本時間）</span>
               </p>
               {data.ifs.ageHours > 24 ? (
-                <p className="mt-1 text-warn">この初期値は24時間より古いです。</p>
+                <p className="mt-0.5 text-warn">この初期値は24時間より古いです。</p>
               ) : null}
               {data.ifs.degraded ? (
-                <p className="mt-1">新しい初期値を取りきれなかったため、保存した数値を含みます。</p>
+                <p className="mt-0.5">新しい初期値を取りきれなかったため、保存した数値を含みます。</p>
               ) : null}
             </>
           ) : (
             <p>{loading ? "ECMWF の数値予報を取得しています。" : "数値予報はまだありません。"}</p>
           )}
           {loading && !data?.ifs ? (
-            <p className="mt-1">最初の取得は数分かかることがあります。</p>
+            <p className="mt-0.5">最初の取得は数分かかることがあります。</p>
           ) : null}
         </div>
         <Button
           variant="outline"
           size="sm"
-          className="w-full shrink-0 sm:w-auto"
+          className="h-7 shrink-0 px-2.5 text-[11px]"
           onClick={() => void load("full")}
           disabled={loading}
         >
-          {loading ? "取得しています" : "再取得"}
+          {loading ? "取得中" : "再取得"}
         </Button>
       </div>
 
-      {error ? <p className="callout">{error}</p> : null}
+      {error ? <p className="callout py-2 text-xs">{error}</p> : null}
 
       {data?.jma && data.jma.warnings.length > 0 ? (
-        <div className="callout">
+        <div className="callout py-2 text-xs leading-5">
           <p className="font-medium tracking-wide">鎌倉市に発表中</p>
-          <ul className="mt-1.5 space-y-0.5 text-warn/90">
+          <ul className="mt-1 space-y-0.5 text-warn/90">
             {data.jma.warnings.map((warning) => (
               <li key={warning.code} className={warning.severe ? "font-medium" : undefined}>
                 {warning.name}（{warning.status}
@@ -795,27 +800,24 @@ export function ForecastBoard() {
       {data?.harbor ? <HarborPanel harbor={data.harbor} /> : null}
 
       <div>
-        <div>
-          <p className="eyebrow">FORECAST</p>
-          <h2 className="section-title mt-1.5">風と天気</h2>
-          <p className="mt-2 text-sm leading-6 text-muted">ECMWF · 3時間ごと · 144時間先まで</p>
-          <details className="group mt-3 max-w-2xl">
-            <summary className="cursor-pointer list-none text-xs marker:content-none">
+        <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+          <h2 className="section-title">風と天気</h2>
+          <details className="group">
+            <summary className="cursor-pointer list-none text-[11px] marker:content-none">
               <span className="soft-link">図の見方</span>
             </summary>
-            <ul className="mt-2.5 space-y-1.5 text-sm leading-6 text-muted">
+            <ul className="mt-1.5 max-w-xl space-y-1 text-[11px] leading-4 text-muted">
+              <li>ECMWF · 3時間ごと · 144時間先まで</li>
               <li>棒は地上10mの平均風速、うすい部分は最大瞬間風速（目盛の上端は {scale} m/s）。</li>
               <li>平均 10 m/s 以上、または瞬間 13 m/s 以上は出艇不可能。</li>
-              <li className="text-xs leading-5">
-                瞬間は初期値から90時間先までが枠末の1時間、それ以降は3時間の最大。
-              </li>
+              <li>瞬間は初期値から90時間先までが枠末の1時間、それ以降は3時間の最大。</li>
             </ul>
           </details>
         </div>
         {windows.some((window) => window.noDeparture) ? (
-          <div className="callout mt-5">
+          <div className="callout mt-3 py-2 text-xs leading-5">
             <p className="font-medium tracking-wide">出艇不可能</p>
-            <ul className="mt-1.5 columns-1 gap-x-8 text-warn/90 sm:columns-2">
+            <ul className="mt-1 columns-1 gap-x-8 text-warn/90 sm:columns-2">
               {windows.filter((window) => window.noDeparture).map((window) => {
                 const start = jstParts(Date.parse(window.start));
                 const { hours, partial } = formatHours(window);
@@ -830,17 +832,17 @@ export function ForecastBoard() {
           </div>
         ) : null}
         {loading && !data?.ifs ? (
-          <div className="mt-5 space-y-3">
-            <div className="skeleton-pulse h-40 bg-sand/75" />
-            <div className="grid grid-cols-2 gap-2.5 md:grid-cols-4">
+          <div className="mt-3 space-y-2.5">
+            <div className="skeleton-pulse h-36 bg-sand/75" />
+            <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
               {Array.from({ length: 4 }, (_, index) => (
-                <div key={index} className="skeleton-pulse h-48 bg-sand/65" />
+                <div key={index} className="skeleton-pulse h-40 bg-sand/65" />
               ))}
             </div>
           </div>
         ) : null}
         {groups.length > 0 ? <WindOverview groups={groups} scale={scale} /> : null}
-        <div className="mt-10 space-y-11">
+        <div className="mt-7 space-y-7">
           {groups.map((group, groupIndex) => (
             <section
               key={group.key}
@@ -848,13 +850,13 @@ export function ForecastBoard() {
               className="anim-rise scroll-mt-[max(1.5rem,env(safe-area-inset-top))]"
               style={{ animationDelay: `${0.08 + groupIndex * 0.04}s` }}
             >
-              <div className="flex items-baseline justify-between gap-3 border-b border-line/55 pb-2.5">
-                <h3 className="font-serif text-xl tracking-tight text-ink sm:text-[1.35rem]">
+              <div className="flex items-baseline justify-between gap-3 border-b border-line/45 pb-1.5">
+                <h3 className="font-serif text-base tracking-tight text-ink/90 sm:text-lg">
                   {group.label}
                 </h3>
-                <p className="text-[11px] tracking-[0.12em] text-muted">3時間ごと</p>
+                <p className="text-[10px] tracking-wide text-muted">3時間ごと</p>
               </div>
-              <div className="mt-3.5 grid grid-cols-2 gap-2.5 md:grid-cols-4">
+              <div className="mt-2.5 grid grid-cols-2 gap-2 md:grid-cols-4">
                 {group.windows.map((window) => (
                   <WindowCard key={window.start} window={window} scale={scale} />
                 ))}

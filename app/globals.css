@@ -130,7 +130,7 @@ a {
   inset: 0;
   z-index: -1;
   background:
-    linear-gradient(180deg, transparent 0%, rgba(238, 244, 245, 0.12) 48%, var(--color-paper) 100%),
+    linear-gradient(180deg, transparent 0%, rgba(238, 244, 245, 0.1) 55%, var(--color-paper) 100%),
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='36' viewBox='0 0 240 36' fill='none'%3E%3Cpath d='M0 18c20-8 40-8 60 0s40 8 60 0 40-8 60 0 40 8 60 0v18H0V18Z' fill='%23eef4f5' fill-opacity='.3'/%3E%3C/svg%3E")
       repeat-x bottom / 240px 36px;
   animation: wave-shift 14s linear infinite;
@@ -165,18 +165,24 @@ a {
 }
 
 .eyebrow {
-  font-size: 0.7rem;
+  font-size: 0.65rem;
   font-weight: 500;
-  letter-spacing: 0.16em;
-  color: var(--color-sea);
+  letter-spacing: 0.14em;
+  color: color-mix(in srgb, var(--color-muted) 85%, var(--color-sea));
 }
 
 .section-title {
   font-family: var(--font-serif);
-  font-size: clamp(1.5rem, 2.4vw, 1.875rem);
-  line-height: 1.15;
-  letter-spacing: -0.02em;
-  color: var(--color-ink);
+  font-size: 1.125rem;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+  color: color-mix(in srgb, var(--color-ink) 82%, var(--color-muted));
+}
+
+@media (min-width: 640px) {
+  .section-title {
+    font-size: 1.25rem;
+  }
 }
 
 .callout {
@@ -198,16 +204,16 @@ a {
 }
 
 .soft-link {
-  color: var(--color-sea);
+  color: var(--color-muted);
   text-decoration: underline;
-  text-decoration-color: var(--color-line);
-  text-underline-offset: 3px;
+  text-decoration-color: color-mix(in srgb, var(--color-line) 80%, transparent);
+  text-underline-offset: 2px;
   transition: color 0.2s ease, text-decoration-color 0.2s ease;
 }
 
 .soft-link:hover {
-  color: var(--color-ink);
-  text-decoration-color: color-mix(in srgb, var(--color-sea) 45%, transparent);
+  color: var(--color-sea);
+  text-decoration-color: color-mix(in srgb, var(--color-sea) 40%, transparent);
 }
 
 .anim-rise {

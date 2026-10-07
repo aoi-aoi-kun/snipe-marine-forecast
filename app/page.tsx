@@ -18,11 +18,11 @@ export default function Page() {
 
       <ForecastBoard />
 
-      <div className="mt-14 sm:mt-20">
+      <div className="mt-8 sm:mt-10">
         <ForecastGuide />
       </div>
 
-      <footer className="anim-rise mt-14 space-y-3.5 border-t border-line/70 pt-8 text-xs leading-5 text-muted sm:mt-20">
+      <footer className="anim-rise mt-8 space-y-2.5 border-t border-line/60 pt-5 text-[11px] leading-4 text-muted sm:mt-10">
         <p>
           出典：気象庁ホームページ（
           <a
