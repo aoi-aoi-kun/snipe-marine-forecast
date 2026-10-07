@@ -99,7 +99,12 @@ function WeatherIcon({
 }) {
   if (weather === "晴れ") {
     return (
-      <svg viewBox="0 0 24 24" aria-hidden="true" className={cn("text-sun", className)}>
+      <svg
+        viewBox="0 0 24 24"
+        role="img"
+        aria-label="晴れ"
+        className={cn("text-sun", className)}
+      >
         <circle cx="12" cy="12" r="3.4" fill="currentColor" />
         <path
           d="M12 2.4v2.2M12 19.4v2.2M2.4 12h2.2M19.4 12h2.2M5.05 5.05l1.55 1.55M17.4 17.4l1.55 1.55M18.95 5.05l-1.55 1.55M6.6 17.4l-1.55 1.55"
@@ -113,7 +118,12 @@ function WeatherIcon({
   }
   if (weather === "雨") {
     return (
-      <svg viewBox="0 0 24 24" aria-hidden="true" className={cn("text-sea", className)}>
+      <svg
+        viewBox="0 0 24 24"
+        role="img"
+        aria-label="雨"
+        className={cn("text-sea", className)}
+      >
         <path
           fill="currentColor"
           d="M7.2 14.2h8.6a3.1 3.1 0 0 0 .3-6.2 4.2 4.2 0 0 0-8.1-1.1 2.9 2.9 0 0 0-.8 7.3z"
@@ -130,7 +140,12 @@ function WeatherIcon({
   }
   if (weather === "くもり") {
     return (
-      <svg viewBox="0 0 24 24" aria-hidden="true" className={cn("text-muted", className)}>
+      <svg
+        viewBox="0 0 24 24"
+        role="img"
+        aria-label="くもり"
+        className={cn("text-muted", className)}
+      >
         <path
           fill="currentColor"
           d="M7.1 17.2h9.4a3.5 3.5 0 0 0 .4-7 4.7 4.7 0 0 0-9-1.3 3.3 3.3 0 0 0-.8 8.3z"
@@ -138,7 +153,7 @@ function WeatherIcon({
       </svg>
     );
   }
-  return <span className={className} />;
+  return <span className={className} aria-hidden="true" />;
 }
 
 function WindTrack({
@@ -612,62 +627,57 @@ function WindowCard({ window, scale }: { window: WindowForecast; scale: number }
   return (
     <article
       className={cn(
-        "tile flex flex-col px-2.5 py-3.5 sm:px-3 sm:py-4",
+        "tile flex flex-col px-2 py-2 sm:px-2.5 sm:py-2.5",
         window.noDeparture ? "tile-warn" : "hover:shadow-[0_0_0_1px_color-mix(in_srgb,var(--color-sea)_28%,transparent)]",
       )}
     >
       <div className="flex items-baseline justify-between gap-2">
-        <h3 className="text-sm font-medium tabular-nums tracking-tight text-ink">{hours}</h3>
-        <div className="flex flex-col items-end gap-0.5">
+        <h3 className="text-xs font-medium tabular-nums tracking-tight text-ink sm:text-sm">{hours}</h3>
+        <div className="flex flex-col items-end gap-px">
           {window.noDeparture ? (
-            <p className="text-[10px] font-medium tracking-wide text-warn sm:text-xs">出艇不可能</p>
+            <p className="text-[9px] font-medium tracking-wide text-warn">出艇不可能</p>
           ) : null}
           {window.mosAdjusted ? (
-            <p className="text-[10px] font-medium tracking-wide text-sea">局地補正</p>
+            <p className="text-[9px] font-medium tracking-wide text-sea">局地補正</p>
           ) : null}
           {window.harborAdjusted ? (
-            <p className="text-[10px] font-medium tracking-wide text-sea">急上昇補正</p>
+            <p className="text-[9px] font-medium tracking-wide text-sea">急上昇補正</p>
           ) : null}
         </div>
       </div>
-      <p className="mt-0.5 text-xs text-muted">{partial ?? "\u00a0"}</p>
-      <div className="mt-3.5 flex flex-1 flex-col gap-4">
-        <div className="flex items-center gap-3">
-          <WeatherIcon weather={window.weather} className="size-9 shrink-0" />
-          <div>
-            <p className="font-serif text-xl leading-none tracking-tight text-ink">{window.weather}</p>
-            <p
-              className={cn(
-                "mt-1.5 text-xs tabular-nums",
-                (window.precipMm ?? 0) >= 1 ? "text-ink" : "text-muted",
-              )}
-            >
+      {partial ? <p className="mt-px text-[10px] text-muted">{partial}</p> : null}
+      <div className="mt-2 flex flex-1 flex-col gap-2.5">
+        <div className="flex items-center gap-2">
+          <WeatherIcon
+            weather={window.weather}
+            className="size-6 shrink-0"
+          />
+          <div className="min-w-0 text-[11px] tabular-nums leading-4">
+            <p className={cn((window.precipMm ?? 0) >= 1 ? "text-ink" : "text-muted")}>
               {window.precipMm?.toFixed(1)} mm
             </p>
-            <p className="mt-0.5 text-sm tabular-nums text-ink">
-              {formatTemp(window.tempMinC ?? 0, window.tempMaxC ?? 0)}
-            </p>
+            <p className="text-ink">{formatTemp(window.tempMinC ?? 0, window.tempMaxC ?? 0)}</p>
           </div>
         </div>
         <div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             <WindArrow
               degrees={window.windFromDeg}
               blocked={window.noDeparture}
               label={window.windFromLabel}
-              size="lg"
+              size="md"
             />
             <div className="min-w-0 flex-1">
-              <p className="font-serif text-2xl tabular-nums leading-none tracking-tight text-ink">
+              <p className="font-serif text-xl tabular-nums leading-none tracking-tight text-ink">
                 {formatMs(window.windMeanMs ?? 0)}
-                <span className="ml-1 text-sm font-sans text-muted">m/s</span>
+                <span className="ml-0.5 text-[10px] font-sans text-muted">m/s</span>
               </p>
-              <p className="mt-1.5 text-xs tabular-nums text-muted">
-                瞬間 {formatMs(window.windGustMs ?? 0)} m/s
+              <p className="mt-1 text-[10px] tabular-nums text-muted">
+                瞬間 {formatMs(window.windGustMs ?? 0)}
               </p>
             </div>
           </div>
-          <div className="mt-3">
+          <div className="mt-2">
             <WindTrack
               mean={window.windMeanMs ?? 0}
               gust={window.windGustMs ?? 0}
@@ -675,7 +685,7 @@ function WindowCard({ window, scale }: { window: WindowForecast; scale: number }
               blocked={window.noDeparture}
             />
           </div>
-          <p className="mt-2 text-xs tabular-nums text-muted">
+          <p className="mt-1.5 text-[10px] tabular-nums text-muted">
             {formatKt(window.windMeanMs ?? 0)} kt / 瞬間 {formatKt(window.windGustMs ?? 0)} kt
           </p>
         </div>
