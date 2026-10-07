@@ -36,7 +36,7 @@ type JmaCache = {
 
 let ifsMemory: IfsCache | null = null;
 let jmaMemory: JmaCache | null = null;
-let pending: Promise<ForecastResponse> | null = null;
+let pending: { key: string; promise: Promise<ForecastResponse> } | null = null;
 
 async function readJson<T>(file: string): Promise<T | null> {
   try {
@@ -187,16 +187,40 @@ async function resolveJma(refresh: boolean): Promise<{
   }
 }
 
-export function getForecast(refresh = false): Promise<ForecastResponse> {
-  if (!pending) {
-    pending = buildForecast(refresh).finally(() => {
-      pending = null;
-    });
+export type ForecastFetchOptions = {
+  refresh?: boolean;
+  refreshHarbor?: boolean;
+};
+
+function normalizeForecastOptions(
+  options: boolean | ForecastFetchOptions = false,
+): Required<ForecastFetchOptions> {
+  if (typeof options === "boolean") {
+    return { refresh: options, refreshHarbor: options };
   }
-  return pending;
+  const refresh = Boolean(options.refresh);
+  return {
+    refresh,
+    refreshHarbor: Boolean(options.refreshHarbor) || refresh,
+  };
 }
 
-async function buildForecast(refresh: boolean): Promise<ForecastResponse> {
+export function getForecast(
+  options: boolean | ForecastFetchOptions = false,
+): Promise<ForecastResponse> {
+  const opts = normalizeForecastOptions(options);
+  const key = `${opts.refresh ? 1 : 0}:${opts.refreshHarbor ? 1 : 0}`;
+  if (!pending || pending.key !== key) {
+    const promise = buildForecast(opts).finally(() => {
+      if (pending?.promise === promise) pending = null;
+    });
+    pending = { key, promise };
+  }
+  return pending.promise;
+}
+
+async function buildForecast(options: Required<ForecastFetchOptions>): Promise<ForecastResponse> {
+  const { refresh, refreshHarbor } = options;
   const nowMs = Date.now();
   const errors: string[] = [];
   const [model, warnings] = await Promise.all([
@@ -216,7 +240,13 @@ async function buildForecast(refresh: boolean): Promise<ForecastResponse> {
 
   const ifsHours = model.resolved?.cache.hours ?? [];
   const baseWindows = model.resolved ? buildWindows(ifsHours, nowMs) : [];
-  const harborResolved = await resolveHarbor(nowMs, baseWindows, refresh, ifsHours);
+  const harborResolved = await resolveHarbor(
+    nowMs,
+    baseWindows,
+    refresh,
+    ifsHours,
+    refreshHarbor,
+  );
   if (harborResolved.error) errors.push(harborResolved.error);
 
   const harbor = harborResolved.harbor

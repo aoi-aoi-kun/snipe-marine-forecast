@@ -8,8 +8,10 @@ export const maxDuration = 300;
 
 export async function GET(request: Request) {
   startContinuousLearning();
-  const refresh = new URL(request.url).searchParams.get("refresh") === "1";
-  const forecast = await getForecast(refresh);
+  const url = new URL(request.url);
+  const refresh = url.searchParams.get("refresh") === "1";
+  const refreshHarbor = url.searchParams.get("refreshHarbor") === "1";
+  const forecast = await getForecast({ refresh, refreshHarbor });
   return NextResponse.json(forecast, {
     status: forecast.ifs ? 200 : 503,
     headers: { "Cache-Control": "no-store" },

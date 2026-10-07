@@ -679,11 +679,15 @@ export function ForecastBoard() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const load = useCallback(async (refresh: boolean) => {
+  const load = useCallback(async (mode: "page" | "full" = "page") => {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch(refresh ? "/api/forecast?refresh=1" : "/api/forecast");
+      const path =
+        mode === "full"
+          ? "/api/forecast?refresh=1"
+          : "/api/forecast?refreshHarbor=1";
+      const response = await fetch(path, { cache: "no-store" });
       const body = (await response.json()) as ForecastResponse;
       if (!body.ifs && !body.harbor && !body.jma) {
         setData(null);
@@ -701,7 +705,7 @@ export function ForecastBoard() {
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
-      void load(false);
+      void load("page");
     }, 0);
     return () => window.clearTimeout(timer);
   }, [load]);
@@ -738,7 +742,7 @@ export function ForecastBoard() {
           variant="outline"
           size="sm"
           className="w-full shrink-0 sm:w-auto"
-          onClick={() => void load(true)}
+          onClick={() => void load("full")}
           disabled={loading}
         >
           {loading ? "取得しています" : "再取得"}

@@ -114,12 +114,13 @@ export async function resolveHarbor(
   windows: WindowForecast[],
   refresh: boolean,
   ifsHours: HourSample[] = [],
+  refreshHarbor = refresh,
 ): Promise<{
   harbor: HarborBundle | null;
   windows: WindowForecast[];
   error: string | null;
 }> {
-  const resolved = await resolveSamples(nowMs, refresh);
+  const resolved = await resolveSamples(nowMs, refresh || refreshHarbor);
   if (resolved.samples.length === 0) {
     return { harbor: null, windows, error: resolved.error };
   }
