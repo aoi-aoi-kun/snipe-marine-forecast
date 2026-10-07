@@ -65,6 +65,12 @@ export type HarborBundle = {
     activeBins: number;
     lastBackfillAt: string | null;
     note: string;
+    continuous: {
+      started: boolean;
+      intervalMinutes: number;
+      lastTickAt: string | null;
+      lastTickError: string | null;
+    };
   };
 };
 

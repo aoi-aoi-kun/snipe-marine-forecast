@@ -1,3 +1,4 @@
+import { startContinuousLearning } from "@/lib/continuous-learn";
 import { getForecast } from "@/lib/forecast";
 import { NextResponse } from "next/server";
 
@@ -6,6 +7,7 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
 export async function GET(request: Request) {
+  startContinuousLearning();
   const refresh = new URL(request.url).searchParams.get("refresh") === "1";
   const forecast = await getForecast(refresh);
   return NextResponse.json(forecast, {

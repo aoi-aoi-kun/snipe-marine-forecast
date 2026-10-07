@@ -81,6 +81,7 @@ export async function learnMos(options: {
 
   if (!needsBackfill) return store;
 
+  // Keep API / continuous ticks responsive: run archive backfill in the background.
   if (!backfillPending) {
     backfillPending = (async () => {
       try {
@@ -108,7 +109,8 @@ export async function learnMos(options: {
         backfillPending = null;
       }
     })();
+    void backfillPending;
   }
 
-  return backfillPending;
+  return store;
 }

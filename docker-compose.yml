@@ -6,6 +6,8 @@ services:
     environment:
       PORT: "3847"
       HOSTNAME: "0.0.0.0"
+      # Leave unset to keep ~15-minute continuous MOS / pattern learning.
+      # DISABLE_CONTINUOUS_LEARN: "1"
     volumes:
       - forecast-cache:/app/.cache
     restart: unless-stopped

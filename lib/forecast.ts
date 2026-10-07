@@ -8,6 +8,7 @@ import {
   POINT,
   probeCycle,
 } from "./ecmwf";
+import { getContinuousLearnStatus } from "./continuous-learn-state";
 import { resolveHarbor } from "./harbor";
 import { getBytes } from "./http";
 import { parseWarnings } from "./jma";
@@ -218,6 +219,16 @@ async function buildForecast(refresh: boolean): Promise<ForecastResponse> {
   const harborResolved = await resolveHarbor(nowMs, baseWindows, refresh, ifsHours);
   if (harborResolved.error) errors.push(harborResolved.error);
 
+  const harbor = harborResolved.harbor
+    ? {
+        ...harborResolved.harbor,
+        mos: {
+          ...harborResolved.harbor.mos,
+          continuous: getContinuousLearnStatus(),
+        },
+      }
+    : null;
+
   return {
     point: POINT,
     generatedAt: new Date(nowMs).toISOString(),
@@ -231,7 +242,7 @@ async function buildForecast(refresh: boolean): Promise<ForecastResponse> {
         }
       : null,
     jma: warnings.jma,
-    harbor: harborResolved.harbor,
+    harbor,
     errors,
   };
 }

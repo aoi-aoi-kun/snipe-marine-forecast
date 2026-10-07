@@ -478,6 +478,14 @@ function HarborPanel({ harbor }: { harbor: HarborBundle }) {
             ペア {harbor.mos.pairCount} · ビン {harbor.mos.binCount} · 適用可能{" "}
             {harbor.mos.activeBins}
           </p>
+          <p className="mt-1 text-xs leading-5 text-muted">
+            学習はサーバ起動中、約 {harbor.mos.continuous.intervalMinutes}{" "}
+            分ごとに自動継続します
+            {harbor.mos.continuous.lastTickAt
+              ? `（前回 ${formatStamp(harbor.mos.continuous.lastTickAt)}）`
+              : "（初回は起動直後）"}
+            。
+          </p>
         </div>
       ) : null}
 

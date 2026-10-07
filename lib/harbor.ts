@@ -62,7 +62,7 @@ async function resolveSamples(nowMs: number, refresh: boolean): Promise<{
   }
 
   try {
-    const samples = await fetchHarborSamples(nowMs, 3);
+    const samples = await fetchHarborSamples(nowMs, 5);
     if (samples.length === 0) throw new Error("実況行がありません");
     const next = { fetchedAt: Date.now(), samples };
     await saveCache(next);
@@ -162,7 +162,15 @@ export async function resolveHarbor(
           }
         : null,
     },
-    mos: mosSummary,
+    mos: {
+      ...mosSummary,
+      continuous: {
+        started: false,
+        intervalMinutes: 15,
+        lastTickAt: null,
+        lastTickError: null,
+      },
+    },
   };
 
   return { harbor, windows: adjusted, error: resolved.error };
