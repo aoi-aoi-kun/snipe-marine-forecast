@@ -403,8 +403,8 @@ function HarborPanel({ harbor }: { harbor: HarborBundle }) {
   const panelWarn = nowcastOver10 || rising;
 
   return (
-    <section className="anim-rise flex h-full min-h-0 flex-col gap-2">
-      <div className="flex min-h-7 flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+    <section className="anim-rise space-y-2">
+      <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
         <h2 className="section-title">江の島ハーバー実況</h2>
         <details className="group">
           <summary className="cursor-pointer list-none text-[11px] text-muted marker:content-none">
@@ -419,7 +419,7 @@ function HarborPanel({ harbor }: { harbor: HarborBundle }) {
       {latest || harbor.nowcast.length > 0 ? (
         <div
           className={cn(
-            "flex min-h-[17.5rem] flex-1 flex-col px-2.5 py-2.5 lg:min-h-0 sm:px-3 sm:py-3",
+            "px-2.5 py-2.5 sm:px-3 sm:py-3",
             panelWarn ? "surface-warn" : "surface",
           )}
         >
@@ -442,11 +442,11 @@ function HarborPanel({ harbor }: { harbor: HarborBundle }) {
 
           <ol
             className={cn(
-              "grid flex-1 gap-1.5 content-stretch",
+              "grid gap-1.5 sm:gap-2",
               latest && harbor.nowcast.length > 0
-                ? "grid-cols-2"
+                ? "grid-cols-4"
                 : latest || harbor.nowcast.length === 1
-                  ? "grid-cols-1"
+                  ? "grid-cols-1 sm:max-w-xs"
                   : "grid-cols-3",
             )}
           >
@@ -527,7 +527,7 @@ function HarborPanel({ harbor }: { harbor: HarborBundle }) {
             })}
           </ol>
 
-          <div className="mt-auto flex flex-wrap items-baseline gap-x-3 gap-y-1 border-t border-line/40 pt-2">
+          <div className="mt-2.5 flex flex-wrap items-baseline gap-x-3 gap-y-1 border-t border-line/40 pt-2">
             {harbor.nowcast.length > 0 ? (
               <details className="group">
                 <summary className="cursor-pointer list-none text-[11px] marker:content-none">
@@ -747,7 +747,7 @@ export function ForecastBoard() {
   const scale = windScale(windows);
 
   return (
-    <section className="anim-rise space-y-5 sm:space-y-6" aria-live="polite">
+    <section className="anim-rise space-y-4 sm:space-y-5" aria-live="polite">
       {error ? <p className="callout py-2 text-xs">{error}</p> : null}
 
       {data?.jma && data.jma.warnings.length > 0 ? (
@@ -764,116 +764,112 @@ export function ForecastBoard() {
         </div>
       ) : null}
 
-      <div className="grid items-stretch gap-4 lg:grid-cols-2 lg:gap-5">
-        <div className="flex min-h-0 min-w-0 flex-col">
-          {data?.harbor ? (
-            <HarborPanel harbor={data.harbor} />
-          ) : (
-            <div className="flex h-full flex-col gap-2">
-              <h2 className="section-title min-h-7">江の島ハーバー実況</h2>
-              <div className="skeleton-pulse min-h-[17.5rem] flex-1 bg-sand/70" />
-            </div>
-          )}
+      {data?.harbor ? (
+        <HarborPanel harbor={data.harbor} />
+      ) : (
+        <div className="space-y-2">
+          <h2 className="section-title">江の島ハーバー実況</h2>
+          <div className="skeleton-pulse h-36 bg-sand/70" />
         </div>
+      )}
 
-        <div className="flex min-h-0 min-w-0 flex-col gap-2">
-          <div className="flex min-h-7 flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-            <h2 className="section-title">風と天気</h2>
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-              <details className="group">
-                <summary className="cursor-pointer list-none text-[11px] marker:content-none">
-                  <span className="soft-link">図の見方</span>
-                </summary>
-                <ul className="mt-1.5 max-w-xl space-y-1 text-[11px] leading-4 text-muted">
+      <div>
+        <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+          <h2 className="section-title">風と天気</h2>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            <details className="group">
+              <summary className="cursor-pointer list-none text-[11px] marker:content-none">
+                <span className="soft-link">図の見方</span>
+              </summary>
+              <ul className="mt-1.5 max-w-xl space-y-1 text-[11px] leading-4 text-muted">
+                <li>
+                  {data?.ifs
+                    ? `ECMWF 初期値 ${formatStamp(data.ifs.initTime)}（日本時間）· 3時間ごと · 144時間先まで`
+                    : "ECMWF · 3時間ごと · 144時間先まで"}
+                </li>
+                {data?.ifs?.ageHours && data.ifs.ageHours > 24 ? (
+                  <li className="text-warn">この初期値は24時間より古いです。</li>
+                ) : null}
+                {data?.ifs?.degraded ? (
+                  <li>新しい初期値を取りきれなかったため、保存した数値を含みます。</li>
+                ) : null}
+                {!data?.ifs ? (
                   <li>
-                    {data?.ifs
-                      ? `ECMWF 初期値 ${formatStamp(data.ifs.initTime)}（日本時間）· 3時間ごと · 144時間先まで`
-                      : "ECMWF · 3時間ごと · 144時間先まで"}
+                    {loading
+                      ? "ECMWF の数値予報を取得しています。最初の取得は数分かかることがあります。"
+                      : "数値予報はまだありません。"}
                   </li>
-                  {data?.ifs?.ageHours && data.ifs.ageHours > 24 ? (
-                    <li className="text-warn">この初期値は24時間より古いです。</li>
-                  ) : null}
-                  {data?.ifs?.degraded ? (
-                    <li>新しい初期値を取りきれなかったため、保存した数値を含みます。</li>
-                  ) : null}
-                  {!data?.ifs ? (
-                    <li>
-                      {loading
-                        ? "ECMWF の数値予報を取得しています。最初の取得は数分かかることがあります。"
-                        : "数値予報はまだありません。"}
-                    </li>
-                  ) : null}
-                  <li>棒は地上10mの平均風速、うすい部分は最大瞬間風速（目盛の上端は {scale} m/s）。</li>
-                  <li>平均 10 m/s 以上、または瞬間 13 m/s 以上は出艇不可能。</li>
-                  <li>瞬間は初期値から90時間先までが枠末の1時間、それ以降は3時間の最大。</li>
-                </ul>
-              </details>
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-7 shrink-0 px-2.5 text-[11px]"
-                onClick={() => void load("full")}
-                disabled={loading}
-              >
-                {loading ? "取得中" : "再取得"}
-              </Button>
-            </div>
-          </div>
-
-          {windows.some((window) => window.noDeparture) ? (
-            <div className="callout mt-2 py-2 text-xs leading-5">
-              <p className="font-medium tracking-wide">出艇不可能</p>
-              <ul className="mt-1 columns-1 gap-x-8 text-warn/90 sm:columns-2">
-                {windows.filter((window) => window.noDeparture).map((window) => {
-                  const start = jstParts(Date.parse(window.start));
-                  const { hours, partial } = formatHours(window);
-                  return (
-                    <li key={window.start} className="break-inside-avoid">
-                      {start.month}月{start.day}日 {hours}
-                      {partial ? `（${partial}）` : ""}
-                    </li>
-                  );
-                })}
+                ) : null}
+                <li>棒は地上10mの平均風速、うすい部分は最大瞬間風速（目盛の上端は {scale} m/s）。</li>
+                <li>平均 10 m/s 以上、または瞬間 13 m/s 以上は出艇不可能。</li>
+                <li>瞬間は初期値から90時間先までが枠末の1時間、それ以降は3時間の最大。</li>
               </ul>
-            </div>
-          ) : null}
-
-          {groups.length > 0 ? (
-            <div className="min-h-0 flex-1">
-              <WindOverview groups={groups} scale={scale} />
-            </div>
-          ) : loading ? (
-            <div className="skeleton-pulse min-h-[18rem] flex-1 bg-sand/75 sm:min-h-[20rem]" />
-          ) : (
-            <p className="text-[11px] text-muted">数値予報はまだありません。</p>
-          )}
-        </div>
-      </div>
-
-      {groups.length > 0 ? (
-        <div className="space-y-7">
-          {groups.map((group, groupIndex) => (
-            <section
-              key={group.key}
-              id={daySectionId(group.key)}
-              className="anim-rise scroll-mt-[max(1.5rem,env(safe-area-inset-top))]"
-              style={{ animationDelay: `${0.08 + groupIndex * 0.04}s` }}
+            </details>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 shrink-0 px-2.5 text-[11px]"
+              onClick={() => void load("full")}
+              disabled={loading}
             >
-              <div className="flex items-baseline justify-between gap-3 border-b border-line/45 pb-1.5">
-                <h3 className="font-serif text-base tracking-tight text-ink/90 sm:text-lg">
-                  {group.label}
-                </h3>
-                <p className="text-[10px] tracking-wide text-muted">3時間ごと</p>
-              </div>
-              <div className="mt-2.5 grid grid-cols-2 gap-2 md:grid-cols-4">
-                {group.windows.map((window) => (
-                  <WindowCard key={window.start} window={window} scale={scale} />
-                ))}
-              </div>
-            </section>
-          ))}
+              {loading ? "取得中" : "再取得"}
+            </Button>
+          </div>
         </div>
-      ) : null}
+
+        {windows.some((window) => window.noDeparture) ? (
+          <div className="callout mt-2 py-2 text-xs leading-5">
+            <p className="font-medium tracking-wide">出艇不可能</p>
+            <ul className="mt-1 columns-1 gap-x-8 text-warn/90 sm:columns-2">
+              {windows.filter((window) => window.noDeparture).map((window) => {
+                const start = jstParts(Date.parse(window.start));
+                const { hours, partial } = formatHours(window);
+                return (
+                  <li key={window.start} className="break-inside-avoid">
+                    {start.month}月{start.day}日 {hours}
+                    {partial ? `（${partial}）` : ""}
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        ) : null}
+
+        {groups.length > 0 ? (
+          <div className="mt-2">
+            <WindOverview groups={groups} scale={scale} />
+          </div>
+        ) : loading ? (
+          <div className="skeleton-pulse mt-2 h-40 bg-sand/75" />
+        ) : (
+          <p className="mt-2 text-[11px] text-muted">数値予報はまだありません。</p>
+        )}
+
+        {groups.length > 0 ? (
+          <div className="mt-7 space-y-7">
+            {groups.map((group, groupIndex) => (
+              <section
+                key={group.key}
+                id={daySectionId(group.key)}
+                className="anim-rise scroll-mt-[max(1.5rem,env(safe-area-inset-top))]"
+                style={{ animationDelay: `${0.08 + groupIndex * 0.04}s` }}
+              >
+                <div className="flex items-baseline justify-between gap-3 border-b border-line/45 pb-1.5">
+                  <h3 className="font-serif text-base tracking-tight text-ink/90 sm:text-lg">
+                    {group.label}
+                  </h3>
+                  <p className="text-[10px] tracking-wide text-muted">3時間ごと</p>
+                </div>
+                <div className="mt-2.5 grid grid-cols-2 gap-2 md:grid-cols-4">
+                  {group.windows.map((window) => (
+                    <WindowCard key={window.start} window={window} scale={scale} />
+                  ))}
+                </div>
+              </section>
+            ))}
+          </div>
+        ) : null}
+      </div>
     </section>
   );
 }
