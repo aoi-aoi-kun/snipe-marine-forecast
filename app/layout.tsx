@@ -21,7 +21,7 @@ const mincho = Shippori_Mincho({
 export const metadata: Metadata = {
   title: "七里ヶ浜沖の予報",
   description:
-    "相模湾、北緯35.25度・東経139.50度の天気・気温・風。ECMWF の公開データから、3時間ごと、144時間先まで。",
+    "七里ヶ浜沖のECMWF 3時間予報と江の島ヨットハーバー実況。升の範囲と設計思想を明示した、スナイプ出艇向けの参考画面。",
   appleWebApp: {
     capable: true,
     title: "七里ヶ浜沖",

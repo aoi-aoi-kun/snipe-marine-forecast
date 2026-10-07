@@ -617,7 +617,7 @@ export function ForecastBoard() {
   const scale = windScale(windows);
 
   return (
-    <section className="anim-rise anim-rise-delay-3 -mt-2 space-y-6 sm:space-y-8" aria-live="polite">
+    <section className="anim-rise space-y-6 sm:space-y-8" aria-live="polite">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
         <div className="min-w-0 text-sm leading-6 text-muted">
           {data?.ifs ? (
