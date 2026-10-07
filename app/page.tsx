@@ -40,7 +40,7 @@ export default function Page() {
           <a className="soft-link" href="http://enowin.japaneast.cloudapp.azure.com/">
             enowin
           </a>
-          （運営・ハーバー確認済み）。読み方は上の「補足」を参照。
+          。読み方は上の「補足」を参照。
         </p>
       </footer>
     </main>
