@@ -98,8 +98,15 @@ export function parseEnowinCsv(text: string): HarborSample[] {
 
 async function fetchText(url: string): Promise<string | null> {
   try {
-    const response = await fetch(url, {
-      headers: { "User-Agent": USER_AGENT, Accept: "text/html,text/csv,*/*" },
+    const bust = url.includes("?") ? `&t=${Date.now()}` : `?t=${Date.now()}`;
+    const response = await fetch(`${url}${bust}`, {
+      headers: {
+        "User-Agent": USER_AGENT,
+        Accept: "text/html,text/csv,*/*",
+        "Cache-Control": "no-cache",
+        Pragma: "no-cache",
+      },
+      cache: "no-store",
       signal: AbortSignal.timeout(20_000),
     });
     if (!response.ok) return null;

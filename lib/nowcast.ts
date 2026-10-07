@@ -335,11 +335,14 @@ export function buildNowcast(
     });
   }
 
-  if (nowMs - latest.atMs > 20 * 60 * 1000) {
+  const lagMinutes = Math.floor((nowMs - latest.atMs) / 60_000);
+  if (lagMinutes >= 20) {
     alerts.push({
-      kind: "rising",
+      kind: "stale",
       level: "info",
-      message: "ハーバー実況の最新時刻が20分以上前です。更新を確認してください。",
+      message:
+        `enowin の公開データが約 ${lagMinutes} 分止まっています（最終観測から）。` +
+        `こちらは再取得していますが、新しい行がまだありません。`,
     });
   }
 

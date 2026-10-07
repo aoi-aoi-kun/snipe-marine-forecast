@@ -398,7 +398,12 @@ function HarborPanel({ harbor }: { harbor: HarborBundle }) {
   const rising =
     harbor.riseRateMsPerHour !== null && harbor.riseRateMsPerHour >= 1.5;
   const nowcastOver10 = harbor.nowcast.some((point) => point.meanMs > 10);
-  const panelWarn = nowcastOver10 || rising;
+  const lagMinutes =
+    latest === null
+      ? null
+      : Math.max(0, Math.floor((Date.now() - Date.parse(latest.at)) / 60_000));
+  const sourceStale = lagMinutes !== null && lagMinutes >= 20;
+  const panelWarn = nowcastOver10 || rising || sourceStale;
 
   return (
     <section className="anim-rise space-y-4">
@@ -431,6 +436,15 @@ function HarborPanel({ harbor }: { harbor: HarborBundle }) {
               </p>
             </div>
           ) : null}
+          {sourceStale ? (
+            <div className="mb-4 border-l-2 border-warn bg-warn-bg/90 px-3 py-2 text-sm leading-6 text-warn">
+              <p className="font-medium tracking-wide">実況の公開が停止中</p>
+              <p className="mt-0.5">
+                enowin の最新行が約 {lagMinutes} 分前のままです。このアプリは再取得していますが、
+                公開ファイルに新しい観測がまだありません。
+              </p>
+            </div>
+          ) : null}
 
           <ol
             className={cn(
@@ -443,10 +457,16 @@ function HarborPanel({ harbor }: { harbor: HarborBundle }) {
             )}
           >
             {latest ? (
-              <li className={harborWindCardClass(false)}>
+              <li className={harborWindCardClass(sourceStale)}>
                 <p className="text-xs font-medium text-muted sm:text-sm">いま</p>
-                <p className="mt-0.5 text-[10px] leading-4 text-muted sm:text-xs">
+                <p
+                  className={cn(
+                    "mt-0.5 text-[10px] leading-4 sm:text-xs",
+                    sourceStale ? "font-medium text-warn" : "text-muted",
+                  )}
+                >
                   {formatHarborObsTime(latest.at)}の観測
+                  {lagMinutes !== null ? `（${lagMinutes}分前）` : ""}
                 </p>
                 <div className="mt-2 flex justify-center">
                   <WindArrow
@@ -539,21 +559,23 @@ function HarborPanel({ harbor }: { harbor: HarborBundle }) {
         <p className="text-sm text-muted">実況はまだありません。</p>
       )}
 
-      {harbor.alerts.length > 0 ? (
+      {harbor.alerts.some((alert) => alert.kind !== "stale") ? (
         <div className="space-y-2">
-          {harbor.alerts.map((alert) => (
-            <div
-              key={`${alert.kind}-${alert.message}`}
-              className={cn(
-                "border-l-2 px-3 py-2 text-sm leading-6",
-                alert.level === "watch"
-                  ? "border-warn bg-warn-bg/80 text-warn"
-                  : "border-sea/50 bg-sand/60 text-ink/80",
-              )}
-            >
-              {alert.message}
-            </div>
-          ))}
+          {harbor.alerts
+            .filter((alert) => alert.kind !== "stale")
+            .map((alert) => (
+              <div
+                key={`${alert.kind}-${alert.message}`}
+                className={cn(
+                  "border-l-2 px-3 py-2 text-sm leading-6",
+                  alert.level === "watch"
+                    ? "border-warn bg-warn-bg/80 text-warn"
+                    : "border-sea/50 bg-sand/60 text-ink/80",
+                )}
+              >
+                {alert.message}
+              </div>
+            ))}
         </div>
       ) : null}
 
@@ -715,9 +737,9 @@ export function ForecastBoard() {
     return () => window.clearTimeout(timer);
   }, [load]);
 
-  // enowin は5分更新。開いたままの画面でもハーバー実況だけ自動で取り直す。
+  // 公開側が止まったあと再開したときすぐ拾えるよう、実況だけ短間隔で取り直す。
   useEffect(() => {
-    const HARBOR_POLL_MS = 5 * 60 * 1000;
+    const HARBOR_POLL_MS = 60 * 1000;
     const timer = window.setInterval(() => {
       if (document.visibilityState !== "visible") return;
       void load("harbor");

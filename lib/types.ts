@@ -51,7 +51,7 @@ export type NowcastSkill = {
 };
 
 export type HarborAlert = {
-  kind: "ramp" | "threshold" | "rising";
+  kind: "ramp" | "threshold" | "rising" | "stale";
   level: "info" | "watch";
   message: string;
 };
