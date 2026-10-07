@@ -420,7 +420,7 @@ function HarborPanel({ harbor }: { harbor: HarborBundle }) {
   return (
     <section className="anim-rise space-y-2">
       <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-        <h2 className="section-title">江の島ハーバー実況</h2>
+        <h2 className="section-title">江の島ヨットハーバー</h2>
         <details className="group">
           <summary className="cursor-pointer list-none text-[11px] text-muted marker:content-none">
             <span className="soft-link">補足</span>
@@ -778,7 +778,7 @@ export function ForecastBoard() {
         <HarborPanel harbor={data.harbor} />
       ) : (
         <div className="space-y-2">
-          <h2 className="section-title">江の島ハーバー実況</h2>
+          <h2 className="section-title">江の島ヨットハーバー</h2>
           <div className="skeleton-pulse h-36 bg-sand/70" />
         </div>
       )}
