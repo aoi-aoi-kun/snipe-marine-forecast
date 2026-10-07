@@ -3,19 +3,7 @@ import { ForecastGuide } from "@/components/forecast-guide";
 
 export default function Page() {
   return (
-    <main className="mx-auto w-full max-w-5xl px-4 pb-[max(3.75rem,env(safe-area-inset-bottom))] pt-[env(safe-area-inset-top)] sm:px-8 sm:pb-24">
-      <header className="site-hero -mx-4 px-4 pb-6 pt-5 text-paper sm:-mx-8 sm:px-8 sm:pb-8 sm:pt-7">
-        <p className="anim-rise text-[0.65rem] font-medium tracking-[0.18em] text-mist/95 sm:text-[0.7rem]">
-          相模湾 · スナイプ出艇向け
-        </p>
-        <h1 className="anim-rise anim-rise-delay-1 mt-1.5 font-serif text-[2rem] leading-[1.05] tracking-[-0.03em] sm:mt-2 sm:text-4xl md:text-5xl">
-          七里ヶ浜沖
-        </h1>
-        <p className="anim-rise anim-rise-delay-2 mt-2 max-w-sm text-xs leading-5 text-mist/90 sm:mt-2.5 sm:text-sm sm:leading-6">
-          沖の3時間予報と、江の島ハーバーの5分実況。
-        </p>
-      </header>
-
+    <main className="mx-auto w-full max-w-5xl px-4 pb-[max(3.75rem,env(safe-area-inset-bottom))] pt-[max(0.75rem,env(safe-area-inset-top))] sm:px-8 sm:pb-24 sm:pt-4">
       <ForecastBoard />
 
       <div className="mt-8 sm:mt-10">

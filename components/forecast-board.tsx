@@ -748,38 +748,14 @@ export function ForecastBoard() {
 
   return (
     <section className="anim-rise space-y-5 sm:space-y-6" aria-live="polite">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="min-w-0 text-[11px] leading-4 text-muted">
-          {data?.ifs ? (
-            <>
-              <p>
-                ECMWF 初期値 {formatStamp(data.ifs.initTime)}
-                <span className="text-muted/80">（日本時間）</span>
-              </p>
-              {data.ifs.ageHours > 24 ? (
-                <p className="mt-0.5 text-warn">この初期値は24時間より古いです。</p>
-              ) : null}
-              {data.ifs.degraded ? (
-                <p className="mt-0.5">新しい初期値を取りきれなかったため、保存した数値を含みます。</p>
-              ) : null}
-            </>
-          ) : (
-            <p>{loading ? "ECMWF の数値予報を取得しています。" : "数値予報はまだありません。"}</p>
-          )}
-          {loading && !data?.ifs ? (
-            <p className="mt-0.5">最初の取得は数分かかることがあります。</p>
-          ) : null}
+      {data?.harbor ? (
+        <HarborPanel harbor={data.harbor} />
+      ) : loading ? (
+        <div className="space-y-2">
+          <h2 className="section-title">江の島ハーバー実況</h2>
+          <div className="skeleton-pulse h-36 bg-sand/70" />
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          className="h-7 shrink-0 px-2.5 text-[11px]"
-          onClick={() => void load("full")}
-          disabled={loading}
-        >
-          {loading ? "取得中" : "再取得"}
-        </Button>
-      </div>
+      ) : null}
 
       {error ? <p className="callout py-2 text-xs">{error}</p> : null}
 
@@ -797,22 +773,48 @@ export function ForecastBoard() {
         </div>
       ) : null}
 
-      {data?.harbor ? <HarborPanel harbor={data.harbor} /> : null}
-
       <div>
         <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
           <h2 className="section-title">風と天気</h2>
-          <details className="group">
-            <summary className="cursor-pointer list-none text-[11px] marker:content-none">
-              <span className="soft-link">図の見方</span>
-            </summary>
-            <ul className="mt-1.5 max-w-xl space-y-1 text-[11px] leading-4 text-muted">
-              <li>ECMWF · 3時間ごと · 144時間先まで</li>
-              <li>棒は地上10mの平均風速、うすい部分は最大瞬間風速（目盛の上端は {scale} m/s）。</li>
-              <li>平均 10 m/s 以上、または瞬間 13 m/s 以上は出艇不可能。</li>
-              <li>瞬間は初期値から90時間先までが枠末の1時間、それ以降は3時間の最大。</li>
-            </ul>
-          </details>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            <details className="group">
+              <summary className="cursor-pointer list-none text-[11px] marker:content-none">
+                <span className="soft-link">図の見方</span>
+              </summary>
+              <ul className="mt-1.5 max-w-xl space-y-1 text-[11px] leading-4 text-muted">
+                <li>
+                  {data?.ifs
+                    ? `ECMWF 初期値 ${formatStamp(data.ifs.initTime)}（日本時間）· 3時間ごと · 144時間先まで`
+                    : "ECMWF · 3時間ごと · 144時間先まで"}
+                </li>
+                {data?.ifs?.ageHours && data.ifs.ageHours > 24 ? (
+                  <li className="text-warn">この初期値は24時間より古いです。</li>
+                ) : null}
+                {data?.ifs?.degraded ? (
+                  <li>新しい初期値を取りきれなかったため、保存した数値を含みます。</li>
+                ) : null}
+                {!data?.ifs ? (
+                  <li>
+                    {loading
+                      ? "ECMWF の数値予報を取得しています。最初の取得は数分かかることがあります。"
+                      : "数値予報はまだありません。"}
+                  </li>
+                ) : null}
+                <li>棒は地上10mの平均風速、うすい部分は最大瞬間風速（目盛の上端は {scale} m/s）。</li>
+                <li>平均 10 m/s 以上、または瞬間 13 m/s 以上は出艇不可能。</li>
+                <li>瞬間は初期値から90時間先までが枠末の1時間、それ以降は3時間の最大。</li>
+              </ul>
+            </details>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 shrink-0 px-2.5 text-[11px]"
+              onClick={() => void load("full")}
+              disabled={loading}
+            >
+              {loading ? "取得中" : "再取得"}
+            </Button>
+          </div>
         </div>
         {windows.some((window) => window.noDeparture) ? (
           <div className="callout mt-3 py-2 text-xs leading-5">
