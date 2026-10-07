@@ -60,15 +60,57 @@ function emptyStore(): NowcastCalibStore {
   return { updatedAt: 0, lastDeepLearnAt: 0, cases: [], horizons: [] };
 }
 
+function normalizeHorizon(item: Partial<NowcastHorizonCalib>): NowcastHorizonCalib | null {
+  if (
+    item.minutesAhead === undefined ||
+    item.count === undefined ||
+    item.dampen === undefined ||
+    item.biasMs === undefined ||
+    item.maeRaw === undefined ||
+    item.maeCalibrated === undefined ||
+    item.skillVsPersistence === undefined
+  ) {
+    return null;
+  }
+  return {
+    minutesAhead: item.minutesAhead,
+    count: item.count,
+    dampen: item.dampen,
+    biasMs: item.biasMs,
+    maeRaw: item.maeRaw,
+    maeCalibrated: item.maeCalibrated,
+    skillVsPersistence: item.skillVsPersistence,
+    dirDampen: Number.isFinite(item.dirDampen) ? (item.dirDampen as number) : 0.45,
+    dirMaeRaw: Number.isFinite(item.dirMaeRaw) ? (item.dirMaeRaw as number) : 0,
+    dirMaeCalibrated: Number.isFinite(item.dirMaeCalibrated)
+      ? (item.dirMaeCalibrated as number)
+      : 0,
+  };
+}
+
+function hasFiniteDirMae(item: Partial<NowcastHorizonCalib>): boolean {
+  return Number.isFinite(item.dirMaeCalibrated);
+}
+
 export async function loadNowcastCalib(): Promise<NowcastCalibStore> {
   try {
     const raw = JSON.parse(await readFile(STORE_PATH, "utf8")) as NowcastCalibStore;
     if (!Array.isArray(raw.cases)) return emptyStore();
+    const cases = raw.cases;
+    const rawHorizons = Array.isArray(raw.horizons) ? raw.horizons : [];
+    const needsDirRefit =
+      rawHorizons.length > 0 && rawHorizons.some((item) => !hasFiniteDirMae(item));
+    let horizons = rawHorizons
+      .map((item) => normalizeHorizon(item))
+      .filter((item): item is NowcastHorizonCalib => item !== null);
+    if (horizons.length < HORIZONS.length || needsDirRefit) {
+      horizons = rebuildCalib(cases);
+    }
     return {
       updatedAt: raw.updatedAt ?? 0,
       lastDeepLearnAt: raw.lastDeepLearnAt ?? 0,
-      cases: raw.cases,
-      horizons: Array.isArray(raw.horizons) ? raw.horizons : rebuildCalib(raw.cases),
+      cases,
+      horizons,
     };
   } catch {
     return emptyStore();
@@ -79,7 +121,8 @@ export function needsDeepNowcastLearn(store: NowcastCalibStore, nowMs: number): 
   return (
     store.cases.length < 120 ||
     nowMs - store.lastDeepLearnAt > DEEP_LEARN_MS ||
-    store.horizons.length < HORIZONS.length
+    store.horizons.length < HORIZONS.length ||
+    store.horizons.some((item) => !hasFiniteDirMae(item))
   );
 }
 
@@ -288,10 +331,15 @@ export function summarizeNowcastCalib(store: NowcastCalibStore): {
       note: "ナウキャスト校正のデータがまだ足りません。実況が貯まると自動で精度を合わせます。",
     };
   }
-  const parts = store.horizons.map(
-    (item) =>
-      `${item.minutesAhead}分 風速MAE ${item.maeCalibrated.toFixed(2)} / 風向MAE ${item.dirMaeCalibrated.toFixed(0)}°`,
-  );
+  const parts = store.horizons.map((item) => {
+    const speed = Number.isFinite(item.maeCalibrated)
+      ? item.maeCalibrated.toFixed(2)
+      : "—";
+    const dir = Number.isFinite(item.dirMaeCalibrated)
+      ? `${Math.round(item.dirMaeCalibrated)}°`
+      : "学習中";
+    return `${item.minutesAhead}分 風速MAE ${speed} / 風向MAE ${dir}`;
+  });
   const deepAgo =
     store.lastDeepLearnAt > 0
       ? `広域再学習は継続中。`
