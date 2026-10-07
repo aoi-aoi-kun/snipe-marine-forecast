@@ -326,49 +326,45 @@ function WindowCard({ window, scale }: { window: WindowForecast; scale: number }
         {window.noDeparture ? <p className="text-sm font-medium text-warn">出艇不可能</p> : null}
       </div>
       <p className="text-xs text-muted">{partial ?? "\u00a0"}</p>
-      {window.available ? (
-        <div className="mt-3 flex flex-1 flex-col gap-4">
-          <div className="flex items-center gap-3">
-            <WeatherIcon weather={window.weather} className="size-9 shrink-0" />
-            <div>
-              <p className="font-serif text-xl leading-none text-ink">{window.weather}</p>
-              <p className={cn("mt-1 text-xs tabular-nums", (window.precipMm ?? 0) >= 1 ? "text-ink" : "text-muted")}>
-                {window.precipMm?.toFixed(1)} mm
-              </p>
-              <p className="text-sm tabular-nums text-ink">
-                {formatTemp(window.tempMinC ?? 0, window.tempMaxC ?? 0)}
-              </p>
-            </div>
-          </div>
+      <div className="mt-3 flex flex-1 flex-col gap-4">
+        <div className="flex items-center gap-3">
+          <WeatherIcon weather={window.weather} className="size-9 shrink-0" />
           <div>
-            <div className="flex items-center gap-2">
-              {window.windFromDeg !== null ? (
-                <WindCompass degrees={window.windFromDeg} />
-              ) : (
-                <span className="size-11 shrink-0" />
-              )}
-              <p className="font-serif text-lg leading-none text-ink">{window.windFromLabel}</p>
-            </div>
-            <div className="mt-2">
-              <WindTrack
-                mean={window.windMeanMs ?? 0}
-                gust={window.windGustMs ?? 0}
-                scale={scale}
-                blocked={window.noDeparture}
-              />
-            </div>
-            <p className="mt-1 text-sm tabular-nums text-ink">
-              {formatMs(window.windMeanMs ?? 0)} m/s
-              <span className="text-muted"> 瞬間 {formatMs(window.windGustMs ?? 0)}</span>
+            <p className="font-serif text-xl leading-none text-ink">{window.weather}</p>
+            <p className={cn("mt-1 text-xs tabular-nums", (window.precipMm ?? 0) >= 1 ? "text-ink" : "text-muted")}>
+              {window.precipMm?.toFixed(1)} mm
             </p>
-            <p className="text-xs tabular-nums text-muted">
-              {formatKt(window.windMeanMs ?? 0)} kt / 瞬間 {formatKt(window.windGustMs ?? 0)} kt
+            <p className="text-sm tabular-nums text-ink">
+              {formatTemp(window.tempMinC ?? 0, window.tempMaxC ?? 0)}
             </p>
           </div>
         </div>
-      ) : (
-        <p className="mt-6 text-sm text-muted">欠測</p>
-      )}
+        <div>
+          <div className="flex items-center gap-2">
+            {window.windFromDeg !== null ? (
+              <WindCompass degrees={window.windFromDeg} />
+            ) : (
+              <span className="size-11 shrink-0" />
+            )}
+            <p className="font-serif text-lg leading-none text-ink">{window.windFromLabel}</p>
+          </div>
+          <div className="mt-2">
+            <WindTrack
+              mean={window.windMeanMs ?? 0}
+              gust={window.windGustMs ?? 0}
+              scale={scale}
+              blocked={window.noDeparture}
+            />
+          </div>
+          <p className="mt-1 text-sm tabular-nums text-ink">
+            {formatMs(window.windMeanMs ?? 0)} m/s
+            <span className="text-muted"> 瞬間 {formatMs(window.windGustMs ?? 0)}</span>
+          </p>
+          <p className="text-xs tabular-nums text-muted">
+            {formatKt(window.windMeanMs ?? 0)} kt / 瞬間 {formatKt(window.windGustMs ?? 0)} kt
+          </p>
+        </div>
+      </div>
     </article>
   );
 }

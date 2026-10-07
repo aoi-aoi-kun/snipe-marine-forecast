@@ -47,7 +47,7 @@ test("aggregates the single 3-hour sample in each window", () => {
   }
 
   const windows = buildWindows(hours, now);
-  assert.equal(windows.length, 49);
+  assert.equal(windows.length, 2);
   assert.equal(windows[0].available, true);
   assert.equal(windows[0].weather, "くもり");
   assert.equal(windows[0].windFromLabel, "北東");
@@ -56,8 +56,6 @@ test("aggregates the single 3-hour sample in each window", () => {
   assert.ok((windows[0].precipMm ?? 0) < 1);
   assert.equal(windows[0].windGustMs, 4);
   assert.equal(windows[0].noDeparture, false);
-  assert.equal(windows[2].available, false);
-  assert.equal(windows[2].noDeparture, false);
 
   const atNine = hours.find((hour) => hour.validMs === start + 3 * HOUR_MS);
   const atSix = hours.find((hour) => hour.validMs === start);

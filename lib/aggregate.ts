@@ -66,7 +66,8 @@ export function buildWindows(hours: HourSample[], nowMs: number): WindowForecast
   const precip = stepPrecip(hours);
   const firstStep = stepFloor(nowMs);
 
-  return forecastWindows(nowMs).map(({ start, end }) => {
+  const windows: WindowForecast[] = [];
+  for (const { start, end } of forecastWindows(nowMs)) {
     const instantFrom = Math.max(start, firstStep);
     const instants: HourSample[] = [];
     for (let time = instantFrom; time < end; time += SAMPLE_MS) {
@@ -85,25 +86,7 @@ export function buildWindows(hours: HourSample[], nowMs: number): WindowForecast
       instants.length === expectedInstants &&
       precipValues.every((value) => value !== undefined) &&
       gustValues.every((value) => value !== undefined);
-
-    if (!complete) {
-      return {
-        start: new Date(start).toISOString(),
-        end: new Date(end).toISOString(),
-        partialFrom: instantFrom > start ? new Date(instantFrom).toISOString() : null,
-        available: false,
-        weather: null,
-        precipMm: null,
-        tempMinC: null,
-        tempMaxC: null,
-        windFromDeg: null,
-        windFromLabel: null,
-        windMeanMs: null,
-        windMaxMs: null,
-        windGustMs: null,
-        noDeparture: false,
-      };
-    }
+    if (!complete) continue;
 
     const temps = instants.map((hour) => hour.tempC);
     const clouds = instants.map((hour) => hour.cloudPct);
@@ -118,7 +101,7 @@ export function buildWindows(hours: HourSample[], nowMs: number): WindowForecast
     const windMaxMs = Math.max(...speeds);
     const windGustMs = Math.max(...gustValues.map((value) => value ?? 0));
 
-    return {
+    windows.push({
       start: new Date(start).toISOString(),
       end: new Date(end).toISOString(),
       partialFrom: instantFrom > start ? new Date(instantFrom).toISOString() : null,
@@ -133,6 +116,7 @@ export function buildWindows(hours: HourSample[], nowMs: number): WindowForecast
       windMaxMs,
       windGustMs,
       noDeparture: departureBlocked(windMeanMs, windGustMs),
-    };
-  });
+    });
+  }
+  return windows;
 }
