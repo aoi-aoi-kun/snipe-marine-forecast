@@ -126,11 +126,32 @@ body {
   animation: pulse-soft 1.4s ease-in-out infinite;
 }
 
+@keyframes day-flash {
+  0% {
+    background-color: transparent;
+  }
+  25% {
+    background-color: color-mix(in srgb, var(--color-sea) 12%, transparent);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
+.day-flash {
+  animation: day-flash 1.1s ease-out;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .site-hero::before,
   .anim-rise,
   .wind-bar,
-  .skeleton-pulse {
+  .skeleton-pulse,
+  .day-flash {
     animation: none;
+  }
+
+  .day-flash {
+    background-color: color-mix(in srgb, var(--color-sea) 10%, transparent);
   }
 }

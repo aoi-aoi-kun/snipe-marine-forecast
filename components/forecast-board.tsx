@@ -67,7 +67,7 @@ function groupWindows(windows: WindowForecast[]): DayGroup[] {
       groups.push({
         key,
         label: `${start.month}月${start.day}日（${WEEKDAYS[start.weekday]}）`,
-        shortLabel: `${start.day}日`,
+        shortLabel: `${start.day}日（${WEEKDAYS[start.weekday]}）`,
         windows: [window],
       });
     } else {
@@ -254,6 +254,18 @@ function ChartWindArrow({
   );
 }
 
+function daySectionId(key: string): string {
+  return `day-${key}`;
+}
+
+function scrollToDay(key: string) {
+  const target = document.getElementById(daySectionId(key));
+  if (!target) return;
+  target.scrollIntoView({ behavior: "smooth", block: "start" });
+  target.classList.add("day-flash");
+  window.setTimeout(() => target.classList.remove("day-flash"), 1200);
+}
+
 function WindOverview({
   groups,
   scale,
@@ -298,6 +310,7 @@ function WindOverview({
           </svg>
           矢印は向かう向き
         </li>
+        <li>棒を押すとその日へ</li>
       </ul>
       <div className="mt-4 flex gap-2">
         <div className="flex w-7 shrink-0 flex-col" aria-hidden="true">
@@ -308,21 +321,24 @@ function WindOverview({
             <span>0</span>
           </div>
         </div>
-        <div className="min-w-0 flex-1">
-          <div className="flex h-1.5 gap-px overflow-hidden rounded-sm" aria-hidden="true">
-            {groups.map((group) => (
-              <div key={group.key} className="flex min-w-0" style={{ flex: groupHours(group) }}>
+        <div className="flex min-w-0 flex-1 gap-px">
+          {groups.map((group, groupIndex) => (
+            <button
+              key={group.key}
+              type="button"
+              onClick={() => scrollToDay(group.key)}
+              className="group/day min-w-0 rounded-md px-px py-0.5 text-left transition-colors hover:bg-sea/8 focus-visible:bg-sea/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sea/40"
+              style={{ flex: groupHours(group) }}
+              aria-label={`${group.label}の詳細へ`}
+            >
+              <div className="flex h-1.5 gap-px overflow-hidden rounded-sm" aria-hidden="true">
                 {group.windows.map((window) => (
                   <div key={window.start} className="min-w-0 px-px" style={{ flex: durationHours(window) }}>
                     <div className={cn("h-1.5 rounded-[1px]", weatherBand(window.weather))} />
                   </div>
                 ))}
               </div>
-            ))}
-          </div>
-          <div className="mt-1.5 flex h-4 items-center gap-px">
-            {groups.map((group) => (
-              <div key={group.key} className="flex min-w-0 items-center" style={{ flex: groupHours(group) }}>
+              <div className="mt-1.5 flex h-4 items-center gap-px">
                 {group.windows.map((window) => (
                   <div
                     key={window.start}
@@ -341,11 +357,7 @@ function WindOverview({
                   </div>
                 ))}
               </div>
-            ))}
-          </div>
-          <div className="mt-1.5 flex h-28 items-end gap-px" aria-hidden="true">
-            {groups.map((group, groupIndex) => (
-              <div key={group.key} className="flex h-full min-w-0 items-end" style={{ flex: groupHours(group) }}>
+              <div className="mt-1.5 flex h-28 items-end gap-px" aria-hidden="true">
                 {group.windows.map((window, windowIndex) => {
                   const mean = window.windMeanMs ?? 0;
                   const gust = window.windGustMs ?? 0;
@@ -377,11 +389,7 @@ function WindOverview({
                   );
                 })}
               </div>
-            ))}
-          </div>
-          <div className="mt-2 hidden gap-px sm:flex" aria-hidden="true">
-            {groups.map((group) => (
-              <div key={group.key} className="flex min-w-0" style={{ flex: groupHours(group) }}>
+              <div className="mt-2 hidden gap-px sm:flex" aria-hidden="true">
                 {group.windows.map((window) => (
                   <p
                     key={window.start}
@@ -392,19 +400,11 @@ function WindOverview({
                   </p>
                 ))}
               </div>
-            ))}
-          </div>
-          <div className="mt-1 flex gap-px border-t border-line/80 pt-1.5" aria-hidden="true">
-            {groups.map((group) => (
-              <p
-                key={group.key}
-                className="min-w-0 truncate text-center text-[11px] font-medium text-ink/65"
-                style={{ flex: groupHours(group) }}
-              >
+              <p className="mt-1 truncate border-t border-line/80 pt-1.5 text-center text-[10px] font-medium leading-tight text-ink/70 transition-colors group-hover/day:text-sea sm:text-[11px]">
                 {group.shortLabel}
               </p>
-            ))}
-          </div>
+            </button>
+          ))}
         </div>
       </div>
     </div>
@@ -560,7 +560,7 @@ export function ForecastBoard() {
           <div>
             <h2 className="font-serif text-3xl tracking-tight text-ink">風と天気</h2>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">
-              144時間先まで、3時間ごと。棒の高さは地上10mの風速、うすい部分は最大瞬間風速まで。上端は {scale} m/s。棒の上の矢印は風の向かう向きで、上は北。平均 10 m/s 以上、または最大瞬間風速 13 m/s 以上は出艇不可能。瞬間は初期値から90時間先までは枠の終わり直前1時間、それより先は直前3時間。下の言葉は吹いてくる向き。
+              144時間先まで、3時間ごと。棒の高さは地上10mの風速、うすい部分は最大瞬間風速まで。上端は {scale} m/s。棒の上の矢印は風の向かう向きで、上は北。ある日の棒を押すと、その日の詳細へ移ります。平均 10 m/s 以上、または最大瞬間風速 13 m/s 以上は出艇不可能。瞬間は初期値から90時間先までは枠の終わり直前1時間、それより先は直前3時間。下の言葉は吹いてくる向き。
             </p>
           </div>
         </div>
@@ -596,7 +596,8 @@ export function ForecastBoard() {
           {groups.map((group, groupIndex) => (
             <section
               key={group.key}
-              className="anim-rise"
+              id={daySectionId(group.key)}
+              className="anim-rise scroll-mt-6 rounded-lg"
               style={{ animationDelay: `${0.08 + groupIndex * 0.04}s` }}
             >
               <div className="flex items-baseline justify-between gap-3 border-b border-line/70 pb-2">
