@@ -17,19 +17,19 @@ export function ForecastGuide() {
         </div>
       </summary>
 
-      <div className="mt-4 space-y-4 text-sm leading-6 text-muted">
+      <div className="mt-4 space-y-3 text-sm leading-6 text-muted">
         <p>
-          沖の見通しは ECMWF IFS 0.25°（約25km升）の3時間値、いまの風は江の島ヨットハーバー（格子点から約{" "}
-          {HARBOR_TO_OFFSHORE_KM.toFixed(1)} km）の5分実況です。地点が違うため、ハーバーを沖の真値とはみなしません。
+          沖の見通しは ECMWF（約25km升・3時間）、直近は江の島ハーバーの5分実況（格子点から約{" "}
+          {HARBOR_TO_OFFSHORE_KM.toFixed(1)} km）です。地点が違うので、数値をそのまま同一視しません。
         </p>
-        <ul className="space-y-2">
+        <ul className="space-y-1.5">
           <li>
-            <span className="font-medium text-ink/80">粒度</span>
-            {" — "}見通しは3時間、直近は5分実況とナウキャスト。
+            <span className="font-medium text-ink/80">役割分担</span>
+            {" — "}数時間〜数日は沖予報、いま〜1時間はナウキャスト。
           </li>
           <li>
             <span className="font-medium text-ink/80">補正</span>
-            {" — "}MOS局地補正と急上昇パターンは統計的な倍率で、置き換えではありません。
+            {" — "}過去の「予報と実況のずれ」で沖の値を倍率調整。置き換えではありません。
           </li>
           <li>
             <span className="font-medium text-ink/80">出艇不可能</span>
@@ -37,7 +37,7 @@ export function ForecastGuide() {
           </li>
           <li>
             <span className="font-medium text-ink/80">限界</span>
-            {" — "}前兆のない突発的な吹き上がりは予言できません。
+            {" — "}前兆のない突風は予測できません。
           </li>
         </ul>
       </div>

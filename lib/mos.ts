@@ -331,7 +331,7 @@ export function summarizeMos(store: MosStore): MosSummary {
     activeBins,
     note:
       store.pairs.length === 0
-        ? "まだ学習ペアがありません。過去実況とECMWFの突合を進めています。"
-        : `3時間枠の学習ペア ${store.pairs.length} 件（約 ${Math.max(1, Math.round(spanHours / 24))} 日分）。時間帯×風向帯で効くビン ${activeBins} 個。`,
+        ? "まだ突合データがありません。実況とECMWFが揃い次第、学習を始めます。"
+        : `突合 ${store.pairs.length} 枠（約 ${Math.max(1, Math.round(spanHours / 24))} 日分）。補正に使える時間帯・風向の型は ${activeBins} 個。`,
   };
 }

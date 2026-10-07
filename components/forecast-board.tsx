@@ -480,7 +480,7 @@ function HarborPanel({ harbor }: { harbor: HarborBundle }) {
         <div
           className={cn(
             "rounded-xl border px-4 py-4 sm:px-5 sm:py-5",
-            rising
+            harbor.nowcast.some((point) => point.meanMs > 10) || rising
               ? "border-warn/35 bg-warn-bg/50"
               : "border-sea/30 bg-[linear-gradient(165deg,#e7f3f4_0%,#edf3f4_55%,#e8eef0_100%)]",
           )}
@@ -496,27 +496,46 @@ function HarborPanel({ harbor }: { harbor: HarborBundle }) {
               直近の傾きが続く場合の平均風速
             </p>
           </div>
+          {harbor.nowcast.some((point) => point.meanMs > 10) ? (
+            <div className="mt-3 border-l-2 border-warn bg-warn-bg/90 px-3 py-2 text-sm leading-6 text-warn">
+              <p className="font-medium tracking-wide">警告 · 10 m/s 超え</p>
+              <p className="mt-0.5">
+                ナウキャストの平均風速が 10 m/s を超えます。出艇の目安を上回る見込みです。
+              </p>
+            </div>
+          ) : null}
           <ol className="mt-4 grid grid-cols-3 gap-2 sm:gap-3">
             {harbor.nowcast.map((point, index) => {
               const delta =
                 latest === null ? null : point.meanMs - latest.meanMs;
+              const over10 = point.meanMs > 10;
               return (
                 <li
                   key={point.minutesAhead}
                   className={cn(
-                    "rounded-lg bg-paper/80 px-2 py-3 text-center sm:px-3 sm:py-4",
-                    index === harbor.nowcast.length - 1 && "ring-1 ring-sea/25",
+                    "rounded-lg px-2 py-3 text-center sm:px-3 sm:py-4",
+                    over10
+                      ? "bg-warn-bg ring-1 ring-warn/40"
+                      : "bg-paper/80",
+                    !over10 && index === harbor.nowcast.length - 1 && "ring-1 ring-sea/25",
                   )}
                   style={{ animationDelay: `${0.05 + index * 0.06}s` }}
                 >
                   <p className="text-xs font-medium text-muted sm:text-sm">
                     {point.minutesAhead}分後
                   </p>
-                  <p className="mt-2 font-serif text-3xl tabular-nums leading-none text-ink sm:text-4xl">
+                  <p
+                    className={cn(
+                      "mt-2 font-serif text-3xl tabular-nums leading-none sm:text-4xl",
+                      over10 ? "text-warn" : "text-ink",
+                    )}
+                  >
                     {point.meanMs.toFixed(1)}
                   </p>
                   <p className="mt-1 text-xs text-muted">m/s</p>
-                  {delta !== null ? (
+                  {over10 ? (
+                    <p className="mt-2 text-xs font-medium text-warn">10超え</p>
+                  ) : delta !== null ? (
                     <p
                       className={cn(
                         "mt-2 text-xs tabular-nums font-medium",
@@ -570,23 +589,22 @@ function HarborPanel({ harbor }: { harbor: HarborBundle }) {
           </span>
         </summary>
         <div className="mt-2 space-y-2 text-xs leading-5 text-muted">
-          <p>急上昇パターン {harbor.pattern.storedEvents} 件</p>
+          <p>
+            沖予報とハーバー実況を3時間枠で突合し、時間帯・風向ごとのずれを学習しています。サーバ起動中は約{" "}
+            {harbor.mos?.continuous.intervalMinutes ?? 15} 分ごとに更新します。
+          </p>
           {harbor.mos ? (
-            <>
-              <p>{harbor.mos.note}</p>
-              <p className="tabular-nums">
-                ペア {harbor.mos.pairCount} · ビン {harbor.mos.binCount} · 適用可能{" "}
-                {harbor.mos.activeBins}
-              </p>
-              <p>
-                約 {harbor.mos.continuous.intervalMinutes} 分ごとに自動学習
-                {harbor.mos.continuous.lastTickAt
-                  ? `（前回 ${formatStamp(harbor.mos.continuous.lastTickAt)}）`
-                  : ""}
-                。
-              </p>
-            </>
+            <p>
+              {harbor.mos.note}
+              {harbor.mos.continuous.lastTickAt
+                ? ` 前回の更新は ${formatStamp(harbor.mos.continuous.lastTickAt)}。`
+                : ""}
+            </p>
           ) : null}
+          <p>
+            急上昇の型は {harbor.pattern.storedEvents}{" "}
+            件。似た前兆のときだけ、直近の沖予報を短く上振れします。
+          </p>
         </div>
       </details>
 

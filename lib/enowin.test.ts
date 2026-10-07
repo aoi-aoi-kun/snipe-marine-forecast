@@ -61,6 +61,24 @@ describe("nowcast and ramps", () => {
     assert.ok(result.alerts.some((alert) => alert.kind === "ramp"));
   });
 
+  it("warns when nowcast mean exceeds 10 m/s", () => {
+    const base = Date.parse("2026-10-07T01:00:00Z");
+    const samples = Array.from({ length: 7 }, (_, index) => ({
+      atMs: base + index * 5 * 60_000,
+      meanMs: 8 + index * 0.7,
+      maxMs: 10 + index * 0.7,
+      fromLabel: "南",
+      fromDeg: 180,
+    }));
+    const result = buildNowcast(samples, base + 30 * 60_000);
+    assert.ok(result.nowcast.some((point) => point.meanMs > 10));
+    assert.ok(
+      result.alerts.some(
+        (alert) => alert.level === "watch" && alert.message.includes("ナウキャストが 10 m/s"),
+      ),
+    );
+  });
+
   it("detects ramp events of 2.5 m/s in 30 minutes", () => {
     const base = Date.parse("2026-10-07T01:00:00Z");
     const samples = [

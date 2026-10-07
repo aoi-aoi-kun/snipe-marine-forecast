@@ -107,6 +107,18 @@ export function buildNowcast(samples: HarborSample[], nowMs = Date.now()): Nowca
   }
 
   const alerts: HarborAlert[] = [];
+  const nowcastOver10 = nowcast.filter((point) => point.meanMs > 10);
+  if (nowcastOver10.length > 0) {
+    const parts = nowcastOver10
+      .map((point) => `${point.minutesAhead}分後 ${point.meanMs.toFixed(1)}`)
+      .join("、");
+    alerts.push({
+      kind: "threshold",
+      level: "watch",
+      message: `ナウキャストが 10 m/s を超えます（${parts}）。出艇の目安を上回る見込みです。`,
+    });
+  }
+
   const rise15 = riseOver(samples, latest.atMs, 15 * 60 * 1000);
   const rise30 = riseOver(samples, latest.atMs, 30 * 60 * 1000);
 
