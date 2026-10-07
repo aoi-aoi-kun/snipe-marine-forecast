@@ -13,6 +13,50 @@ export type WindowForecast = {
   windMaxMs: number | null;
   windGustMs: number | null;
   noDeparture: boolean;
+  harborAdjusted?: boolean;
+  harborAdjustNote?: string | null;
+};
+
+export type HarborObservation = {
+  at: string;
+  meanMs: number;
+  maxMs: number;
+  fromLabel: string | null;
+  fromDeg: number | null;
+};
+
+export type HarborNowcastPoint = {
+  minutesAhead: number;
+  meanMs: number;
+};
+
+export type HarborAlert = {
+  kind: "ramp" | "threshold" | "rising";
+  level: "info" | "watch";
+  message: string;
+};
+
+export type HarborBundle = {
+  source: string;
+  pointName: string;
+  note: string;
+  fetchedAt: string;
+  degraded: boolean;
+  latest: HarborObservation | null;
+  recent: HarborObservation[];
+  riseRateMsPerHour: number | null;
+  directionChangeDeg: number | null;
+  nowcast: HarborNowcastPoint[];
+  alerts: HarborAlert[];
+  pattern: {
+    storedEvents: number;
+    match: {
+      score: number;
+      boostFactor: number;
+      sampleAt: string;
+      note: string;
+    } | null;
+  };
 };
 
 export type ActiveWarning = {
@@ -38,5 +82,6 @@ export type ForecastResponse = {
     degraded: boolean;
     warnings: ActiveWarning[];
   } | null;
+  harbor: HarborBundle | null;
   errors: string[];
 };

@@ -8,6 +8,7 @@ import {
   POINT,
   probeCycle,
 } from "./ecmwf";
+import { resolveHarbor } from "./harbor";
 import { getBytes } from "./http";
 import { parseWarnings } from "./jma";
 import { HOUR_MS } from "./time";
@@ -212,6 +213,12 @@ async function buildForecast(refresh: boolean): Promise<ForecastResponse> {
   if (model.error) errors.push(model.error);
   if (warnings.error) errors.push(warnings.error);
 
+  const baseWindows = model.resolved
+    ? buildWindows(model.resolved.cache.hours, nowMs)
+    : [];
+  const harborResolved = await resolveHarbor(nowMs, baseWindows, refresh);
+  if (harborResolved.error) errors.push(harborResolved.error);
+
   return {
     point: POINT,
     generatedAt: new Date(nowMs).toISOString(),
@@ -221,10 +228,11 @@ async function buildForecast(refresh: boolean): Promise<ForecastResponse> {
           ageHours: (nowMs - model.resolved.cache.initMs) / HOUR_MS,
           fetchedAt: new Date(model.resolved.cache.fetchedAt).toISOString(),
           degraded: model.resolved.degraded,
-          windows: buildWindows(model.resolved.cache.hours, nowMs),
+          windows: harborResolved.windows,
         }
       : null,
     jma: warnings.jma,
+    harbor: harborResolved.harbor,
     errors,
   };
 }

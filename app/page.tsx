@@ -42,6 +42,16 @@ export default function Page() {
           で利用しています。気象庁の予報ではなく、ECMWF による承認や提携を示すものでもありません。
         </p>
         <p>
+          江の島ヨットハーバーの実況（
+          <a
+            className="underline decoration-line underline-offset-2 transition-colors hover:text-ink"
+            href="http://enowin.japaneast.cloudapp.azure.com/"
+          >
+            enowin
+          </a>
+          ）を、直近のナウキャスト・吹き上がり検知・パターン補正に使っています。ハーバーと沖の予報格子は地点が異なります。
+        </p>
+        <p>
           平均 10 m/s 以上、または最大瞬間風速 13 m/s 以上の枠は出艇不可能です。それ以外は、現場の状況と気象庁の警報・注意報によります。
         </p>
       </footer>

@@ -26,6 +26,8 @@ export type WindowForecast = {
   windMaxMs: number | null;
   windGustMs: number | null;
   noDeparture: boolean;
+  harborAdjusted?: boolean;
+  harborAdjustNote?: string | null;
 };
 
 const CALM_MS = 0.3;

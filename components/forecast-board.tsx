@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import type { ForecastResponse, WindowForecast } from "@/lib/types";
+import type { ForecastResponse, HarborBundle, WindowForecast } from "@/lib/types";
 import { jstParts } from "@/lib/time";
 import { cn } from "@/lib/utils";
 
@@ -416,6 +416,106 @@ function WindOverview({
   );
 }
 
+function HarborPanel({ harbor }: { harbor: HarborBundle }) {
+  const latest = harbor.latest;
+  return (
+    <section className="anim-rise rounded-xl border border-line/70 bg-paper/55 p-4 backdrop-blur-sm sm:p-5">
+      <div className="flex flex-wrap items-end justify-between gap-2">
+        <div>
+          <h2 className="font-serif text-xl tracking-tight text-ink sm:text-2xl">江の島ハーバー実況</h2>
+          <p className="mt-1 max-w-2xl text-xs leading-5 text-muted sm:text-sm sm:leading-6">
+            {harbor.note}
+          </p>
+        </div>
+        <p className="text-xs text-muted">出典：{harbor.source}</p>
+      </div>
+
+      {latest ? (
+        <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div>
+            <p className="text-xs text-muted">いま（ハーバー）</p>
+            <p className="mt-1 font-serif text-2xl tabular-nums text-ink">
+              {latest.meanMs.toFixed(1)}
+              <span className="ml-1 text-sm font-sans text-muted">m/s</span>
+            </p>
+            <p className="text-xs tabular-nums text-muted">最大 {latest.maxMs.toFixed(1)} m/s</p>
+          </div>
+          <div>
+            <p className="text-xs text-muted">風向（吹いてくる向き）</p>
+            <p className="mt-1 font-serif text-2xl text-ink">{latest.fromLabel ?? "—"}</p>
+            <p className="text-xs text-muted">{formatStamp(latest.at)}</p>
+          </div>
+          <div>
+            <p className="text-xs text-muted">風速の変化</p>
+            <p className="mt-1 font-serif text-2xl tabular-nums text-ink">
+              {harbor.riseRateMsPerHour === null
+                ? "—"
+                : `${harbor.riseRateMsPerHour >= 0 ? "+" : ""}${harbor.riseRateMsPerHour.toFixed(1)}`}
+              <span className="ml-1 text-sm font-sans text-muted">m/s毎時</span>
+            </p>
+            <p className="text-xs text-muted">
+              風向変化{" "}
+              {harbor.directionChangeDeg === null
+                ? "—"
+                : `${harbor.directionChangeDeg >= 0 ? "+" : ""}${Math.round(harbor.directionChangeDeg)}°`}
+            </p>
+          </div>
+          <div>
+            <p className="text-xs text-muted">学習済み急上昇</p>
+            <p className="mt-1 font-serif text-2xl tabular-nums text-ink">{harbor.pattern.storedEvents}</p>
+            <p className="text-xs text-muted">件（過去の立ち上がり）</p>
+          </div>
+        </div>
+      ) : (
+        <p className="mt-4 text-sm text-muted">実況はまだありません。</p>
+      )}
+
+      {harbor.nowcast.length > 0 ? (
+        <div className="mt-4 border-t border-line/70 pt-3">
+          <p className="text-sm font-medium text-ink/80">ナウキャスト（この傾向が続く場合）</p>
+          <ul className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-sm tabular-nums text-ink">
+            {harbor.nowcast.map((point) => (
+              <li key={point.minutesAhead}>
+                {point.minutesAhead}分後{" "}
+                <span className="font-medium">{point.meanMs.toFixed(1)} m/s</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
+      {harbor.alerts.length > 0 ? (
+        <div className="mt-4 space-y-2">
+          {harbor.alerts.map((alert) => (
+            <div
+              key={`${alert.kind}-${alert.message}`}
+              className={cn(
+                "border-l-2 px-3 py-2 text-sm leading-6",
+                alert.level === "watch"
+                  ? "border-warn bg-warn-bg/80 text-warn"
+                  : "border-sea/50 bg-sand/60 text-ink/80",
+              )}
+            >
+              {alert.message}
+            </div>
+          ))}
+        </div>
+      ) : null}
+
+      {harbor.pattern.match ? (
+        <div className="mt-4 border-l-2 border-sea bg-sand/70 px-3 py-2 text-sm leading-6 text-ink/85">
+          <p className="font-medium tracking-wide text-sea">パターン補正</p>
+          <p className="mt-1">{harbor.pattern.match.note}</p>
+        </div>
+      ) : null}
+
+      {harbor.degraded ? (
+        <p className="mt-3 text-xs text-muted">取得に失敗したため、保存した実況を表示しています。</p>
+      ) : null}
+    </section>
+  );
+}
+
 function WindowCard({ window, scale }: { window: WindowForecast; scale: number }) {
   const { hours, partial } = formatHours(window);
   return (
@@ -429,7 +529,12 @@ function WindowCard({ window, scale }: { window: WindowForecast; scale: number }
     >
       <div className="flex items-baseline justify-between gap-2">
         <h3 className="text-sm font-medium tabular-nums text-ink">{hours}</h3>
-        {window.noDeparture ? <p className="text-xs font-medium tracking-wide text-warn">出艇不可能</p> : null}
+        <div className="flex flex-col items-end gap-0.5">
+          {window.noDeparture ? <p className="text-xs font-medium tracking-wide text-warn">出艇不可能</p> : null}
+          {window.harborAdjusted ? (
+            <p className="text-[10px] font-medium tracking-wide text-sea">ハーバー補正</p>
+          ) : null}
+        </div>
       </div>
       <p className="text-xs text-muted">{partial ?? "\u00a0"}</p>
       <div className="mt-3 flex flex-1 flex-col gap-4">
@@ -486,12 +591,13 @@ export function ForecastBoard() {
     try {
       const response = await fetch(refresh ? "/api/forecast?refresh=1" : "/api/forecast");
       const body = (await response.json()) as ForecastResponse;
-      if (!body.ifs) {
-        setData(body.jma ? body : null);
-        setError(body.errors[0] ?? "数値予報を取得できませんでした。");
+      if (!body.ifs && !body.harbor && !body.jma) {
+        setData(null);
+        setError(body.errors[0] ?? "予報を取得できませんでした。");
         return;
       }
       setData(body);
+      if (!body.ifs && body.errors[0]) setError(body.errors[0]);
     } catch {
       setError("予報を取得できませんでした。");
     } finally {
@@ -560,6 +666,8 @@ export function ForecastBoard() {
           </ul>
         </div>
       ) : null}
+
+      {data?.harbor ? <HarborPanel harbor={data.harbor} /> : null}
 
       <div>
         <div className="flex flex-wrap items-end justify-between gap-3">
