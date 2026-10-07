@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import type { ForecastResponse, HarborBundle, WindowForecast } from "@/lib/types";
-import { jstParts } from "@/lib/time";
+import { JST_OFFSET_MS, jstParts } from "@/lib/time";
 import { cn } from "@/lib/utils";
 
 const WEEKDAYS = ["日", "月", "火", "水", "木", "金", "土"];
@@ -19,6 +19,15 @@ type DayGroup = {
 function formatStamp(iso: string): string {
   const parts = jstParts(Date.parse(iso));
   return `${parts.month}月${parts.day}日 ${parts.hour}時`;
+}
+
+function formatHarborObsTime(iso: string): string {
+  const shifted = new Date(Date.parse(iso) + JST_OFFSET_MS);
+  const month = shifted.getUTCMonth() + 1;
+  const day = shifted.getUTCDate();
+  const hour = shifted.getUTCHours();
+  const minute = shifted.getUTCMinutes();
+  return `${month}月${day}日 ${hour}時${minute.toString().padStart(2, "0")}分`;
 }
 
 function durationHours(window: WindowForecast): number {
@@ -209,9 +218,13 @@ function startHour(window: WindowForecast): number {
 function ChartWindArrow({
   degrees,
   blocked,
+  label,
+  sizeClass = "size-5 sm:size-6",
 }: {
   degrees: number | null;
   blocked: boolean;
+  label?: string | null;
+  sizeClass?: string;
 }) {
   if (degrees === null) {
     return (
@@ -224,8 +237,10 @@ function ChartWindArrow({
   return (
     <svg
       viewBox="0 0 12 12"
-      aria-hidden="true"
-      className={cn("mx-auto block size-3", blocked ? "text-warn" : "text-sea")}
+      aria-hidden={label ? undefined : true}
+      aria-label={label ?? undefined}
+      role={label ? "img" : undefined}
+      className={cn("mx-auto block", sizeClass, blocked ? "text-warn" : "text-sea")}
     >
       <g
         style={{
@@ -416,12 +431,22 @@ function WindOverview({
   );
 }
 
+function harborWindCardClass(active: boolean, over10: boolean): string {
+  return cn(
+    "rounded-lg px-2 py-3 text-center sm:px-3 sm:py-4",
+    over10 ? "bg-warn-bg ring-1 ring-warn/40" : "bg-paper/80",
+    !over10 && active && "ring-1 ring-sea/25",
+  );
+}
+
 function HarborPanel({ harbor }: { harbor: HarborBundle }) {
   const latest = harbor.latest;
   const rising =
     harbor.riseRateMsPerHour !== null && harbor.riseRateMsPerHour >= 1.5;
   const falling =
     harbor.riseRateMsPerHour !== null && harbor.riseRateMsPerHour <= -1.5;
+  const nowcastOver10 = harbor.nowcast.some((point) => point.meanMs > 10);
+  const panelWarn = nowcastOver10 || rising;
 
   return (
     <section className="anim-rise space-y-4">
@@ -437,113 +462,80 @@ function HarborPanel({ harbor }: { harbor: HarborBundle }) {
         <p className="text-xs text-muted">出典：{harbor.source}</p>
       </div>
 
-      {latest ? (
-        <div className="flex flex-wrap items-end gap-x-6 gap-y-2">
-          <div>
-            <p className="text-xs text-muted">いま</p>
-            <p className="mt-0.5 font-serif text-3xl tabular-nums leading-none text-ink sm:text-4xl">
-              {latest.meanMs.toFixed(1)}
-              <span className="ml-1 text-base font-sans text-muted">m/s</span>
-            </p>
-          </div>
-          <div className="flex items-center gap-2 pb-0.5">
-            {latest.fromDeg !== null ? (
-              <WindCompass degrees={latest.fromDeg} />
-            ) : (
-              <span className="size-11 shrink-0" />
-            )}
-            <div>
-              <p className="font-serif text-xl leading-none text-ink">
-                {latest.fromLabel ?? "—"}
-              </p>
-              <p className="mt-1 text-xs tabular-nums text-muted">
-                最大 {latest.maxMs.toFixed(1)} · {formatStamp(latest.at)}
-              </p>
-            </div>
-          </div>
-          <div className="pb-0.5">
-            <p
-              className={cn(
-                "font-serif text-xl tabular-nums",
-                rising ? "text-warn" : falling ? "text-sea" : "text-ink",
-              )}
-            >
-              {harbor.riseRateMsPerHour === null
-                ? "—"
-                : `${harbor.riseRateMsPerHour >= 0 ? "+" : ""}${harbor.riseRateMsPerHour.toFixed(1)}`}
-              <span className="ml-1 text-xs font-sans text-muted">m/s毎時</span>
-            </p>
-            <p className="text-xs text-muted">
-              風向変化{" "}
-              {harbor.directionChangeDeg === null
-                ? "—"
-                : `${harbor.directionChangeDeg >= 0 ? "+" : ""}${Math.round(harbor.directionChangeDeg)}°`}
-            </p>
-          </div>
-        </div>
-      ) : (
-        <p className="text-sm text-muted">実況はまだありません。</p>
-      )}
-
-      {harbor.nowcast.length > 0 ? (
+      {latest || harbor.nowcast.length > 0 ? (
         <div
           className={cn(
             "rounded-xl border px-4 py-4 sm:px-5 sm:py-5",
-            harbor.nowcast.some((point) => point.meanMs > 10) || rising
+            panelWarn
               ? "border-warn/35 bg-warn-bg/50"
               : "border-sea/30 bg-[linear-gradient(165deg,#e7f3f4_0%,#edf3f4_55%,#e8eef0_100%)]",
           )}
         >
-          <div className="flex flex-wrap items-baseline justify-between gap-2">
-            <div>
-              <p className="text-xs font-medium tracking-[0.16em] text-sea">NOWCAST</p>
-              <h3 className="mt-1 font-serif text-2xl tracking-tight text-ink sm:text-3xl">
-                ナウキャスト
-              </h3>
-            </div>
-            <p className="max-w-xs text-right text-xs leading-5 text-muted sm:text-sm">
-              {harbor.nowcastSkill.calibrated
-                ? "過去実況で校正した風速・風向"
-                : "直近の傾きが続く場合の風速・風向"}
-            </p>
-          </div>
-          <p className="mt-2 text-xs leading-5 text-muted sm:text-sm">
-            {harbor.nowcastSkill.note}
-          </p>
-          {harbor.nowcast.some((point) => point.meanMs > 10) ? (
-            <div className="mt-3 border-l-2 border-warn bg-warn-bg/90 px-3 py-2 text-sm leading-6 text-warn">
+          {nowcastOver10 ? (
+            <div className="mb-4 border-l-2 border-warn bg-warn-bg/90 px-3 py-2 text-sm leading-6 text-warn">
               <p className="font-medium tracking-wide">警告 · 10 m/s 超え</p>
               <p className="mt-0.5">
                 ナウキャストの平均風速が 10 m/s を超えます。出艇の目安を上回る見込みです。
               </p>
             </div>
           ) : null}
-          <ol className="mt-4 grid grid-cols-3 gap-2 sm:gap-3">
+
+          <ol
+            className={cn(
+              "grid gap-2 sm:gap-3",
+              latest && harbor.nowcast.length > 0
+                ? "grid-cols-2 sm:grid-cols-4"
+                : latest || harbor.nowcast.length === 1
+                  ? "grid-cols-1 sm:max-w-xs"
+                  : "grid-cols-3",
+            )}
+          >
+            {latest ? (
+              <li className={harborWindCardClass(true, false)}>
+                <p className="text-xs font-medium text-muted sm:text-sm">いま</p>
+                <p className="mt-0.5 text-[10px] leading-4 text-muted sm:text-xs">
+                  {formatHarborObsTime(latest.at)}の観測
+                </p>
+                <div className="mt-2 flex justify-center">
+                  <ChartWindArrow
+                    degrees={latest.fromDeg}
+                    blocked={false}
+                    label={latest.fromLabel}
+                  />
+                </div>
+                <p className="mt-2 font-serif text-3xl tabular-nums leading-none text-ink sm:text-4xl">
+                  {latest.meanMs.toFixed(1)}
+                </p>
+                <p className="mt-1 text-xs text-muted">m/s</p>
+                <p className="mt-2 text-xs tabular-nums text-muted">
+                  最大 {latest.maxMs.toFixed(1)} m/s
+                </p>
+              </li>
+            ) : null}
+
             {harbor.nowcast.map((point, index) => {
-              const delta =
-                latest === null ? null : point.meanMs - latest.meanMs;
+              const delta = latest === null ? null : point.meanMs - latest.meanMs;
               const over10 = point.meanMs > 10;
               return (
                 <li
                   key={point.minutesAhead}
-                  className={cn(
-                    "rounded-lg px-2 py-3 text-center sm:px-3 sm:py-4",
-                    over10
-                      ? "bg-warn-bg ring-1 ring-warn/40"
-                      : "bg-paper/80",
-                    !over10 && index === harbor.nowcast.length - 1 && "ring-1 ring-sea/25",
+                  className={harborWindCardClass(
+                    !over10 && index === harbor.nowcast.length - 1,
+                    over10,
                   )}
                   style={{ animationDelay: `${0.05 + index * 0.06}s` }}
                 >
                   <p className="text-xs font-medium text-muted sm:text-sm">
                     {point.minutesAhead}分後
                   </p>
+                  <p className="mt-0.5 min-h-4 text-[10px] sm:min-h-5 sm:text-xs" aria-hidden="true" />
                   <div className="mt-2 flex justify-center">
-                    <ChartWindArrow degrees={point.fromDeg} blocked={over10} />
+                    <ChartWindArrow
+                      degrees={point.fromDeg}
+                      blocked={over10}
+                      label={point.fromLabel}
+                    />
                   </div>
-                  <p className="mt-1 text-sm font-medium text-ink">
-                    {point.fromLabel ?? "—"}
-                  </p>
                   <p
                     className={cn(
                       "mt-2 font-serif text-3xl tabular-nums leading-none sm:text-4xl",
@@ -570,12 +562,54 @@ function HarborPanel({ harbor }: { harbor: HarborBundle }) {
               );
             })}
           </ol>
+
+          {latest && (harbor.riseRateMsPerHour !== null || harbor.directionChangeDeg !== null) ? (
+            <div className="mt-4 flex flex-wrap gap-x-6 gap-y-1 border-t border-line/50 pt-3 text-sm">
+              <p
+                className={cn(
+                  "font-serif tabular-nums",
+                  rising ? "text-warn" : falling ? "text-sea" : "text-ink",
+                )}
+              >
+                風速の変化{" "}
+                {harbor.riseRateMsPerHour === null
+                  ? "—"
+                  : `${harbor.riseRateMsPerHour >= 0 ? "+" : ""}${harbor.riseRateMsPerHour.toFixed(1)} m/s毎時`}
+              </p>
+              <p className="text-muted">
+                風向変化{" "}
+                {harbor.directionChangeDeg === null
+                  ? "—"
+                  : `${harbor.directionChangeDeg >= 0 ? "+" : ""}${Math.round(harbor.directionChangeDeg)}°`}
+              </p>
+            </div>
+          ) : null}
+
+          {harbor.nowcast.length > 0 ? (
+            <details className="group mt-3 border-t border-line/50 pt-3">
+              <summary className="cursor-pointer list-none text-xs text-sea marker:content-none">
+                <span className="underline decoration-line underline-offset-2 group-open:text-ink">
+                  ナウキャストの説明
+                </span>
+              </summary>
+              <div className="mt-2 space-y-1.5 text-xs leading-5 text-muted sm:text-sm sm:leading-6">
+                <p>
+                  {harbor.nowcastSkill.calibrated
+                    ? "過去実況で校正した風速・風向の短時間予測です。"
+                    : "直近の傾きが続く場合の風速・風向の短時間予測です。"}
+                </p>
+                <p>{harbor.nowcastSkill.note}</p>
+              </div>
+            </details>
+          ) : latest ? (
+            <p className="mt-3 border-t border-line/50 pt-3 text-sm text-muted">
+              ナウキャストに必要な直近の傾きがまだ足りません。
+            </p>
+          ) : null}
         </div>
-      ) : latest ? (
-        <div className="rounded-xl border border-line/70 bg-sand/40 px-4 py-3 text-sm text-muted">
-          ナウキャストに必要な直近の傾きがまだ足りません。
-        </div>
-      ) : null}
+      ) : (
+        <p className="text-sm text-muted">実況はまだありません。</p>
+      )}
 
       {harbor.alerts.length > 0 ? (
         <div className="space-y-2">
