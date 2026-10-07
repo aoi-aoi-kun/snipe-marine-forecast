@@ -2,6 +2,8 @@
 
 相模湾・七里ヶ浜沖向けの参考画面です。ECMWF IFS 0.25° の3時間予報（144時間先）と、江の島ヨットハーバーの5分実況を並べます。読み方の補足は画面下部に折りたたんであります。
 
+目的・データ源・補正の考え方など、第三者向けの設計説明は [docs/DESIGN.md](docs/DESIGN.md) にあります。
+
 数値は ECMWF が公開している IFS（0.25°）の3時間値そのものです。3時間刻みの公開は144時間先までです。00 UTC と 12 UTC の初期値を使います。鎌倉市の警報・注意報は気象庁ホームページの公開データです。申請や API キーは使いません。出典は [ECMWF open data](https://www.ecmwf.int/en/forecasts/datasets/open-data)（[CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)）です。
 
 ## 自分のパソコンで見る
