@@ -54,10 +54,6 @@ function formatMs(value: number): string {
   return value.toFixed(1);
 }
 
-function formatKt(ms: number): string {
-  return String(Math.round(ms * 1.943844));
-}
-
 function windScale(windows: WindowForecast[]): number {
   const peak = Math.max(
     0,
@@ -685,9 +681,6 @@ function WindowCard({ window, scale }: { window: WindowForecast; scale: number }
               blocked={window.noDeparture}
             />
           </div>
-          <p className="mt-1.5 text-[10px] tabular-nums text-muted">
-            {formatKt(window.windMeanMs ?? 0)} kt / 瞬間 {formatKt(window.windGustMs ?? 0)} kt
-          </p>
         </div>
       </div>
     </article>

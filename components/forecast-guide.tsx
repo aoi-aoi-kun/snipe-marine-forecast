@@ -14,17 +14,18 @@ export function ForecastGuide() {
 
       <div className="mt-3 space-y-2.5 text-[12px] leading-5 text-muted">
         <p>
-          沖は ECMWF（約25km升・3時間ごと）、直近は江の島ハーバーの5分実況です。格子点まで約{" "}
-          {HARBOR_TO_OFFSHORE_KM.toFixed(1)} km あり、数値は同一視しません。
+          沖の見通しは ECMWF（約25km升・3時間ごと）、直近は江の島ハーバーの5分実況です。格子点まで約{" "}
+          {HARBOR_TO_OFFSHORE_KM.toFixed(1)}{" "}
+          km。地点が異なるため、数値はそのまま比べません。
         </p>
         <ul className="space-y-1.5">
           <li>
-            <span className="font-medium text-ink/75">役割</span>
-            {" — "}数時間〜数日は沖予報、いま〜1時間はナウキャスト（実況で校正）。
+            <span className="font-medium text-ink/75">使い分け</span>
+            {" — "}数時間〜数日は沖予報、いま〜1時間はナウキャスト。
           </li>
           <li>
             <span className="font-medium text-ink/75">補正</span>
-            {" — "}ナウキャストは傾きの過大を抑え、沖予報は時間帯・風向のMOSで倍率調整。
+            {" — "}ナウキャストは傾きの過大を抑え、沖予報は時間帯・風向の型で倍率調整。
           </li>
           <li>
             <span className="font-medium text-ink/75">出艇不可能</span>
@@ -32,7 +33,7 @@ export function ForecastGuide() {
           </li>
           <li>
             <span className="font-medium text-ink/75">限界</span>
-            {" — "}前兆のない突風は捉えられません。
+            {" — "}前兆のない突風は見えません。
           </li>
         </ul>
       </div>
