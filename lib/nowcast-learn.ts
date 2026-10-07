@@ -4,6 +4,8 @@ import type { HarborSample } from "./enowin";
 import {
   HORIZONS,
   TREND_MS,
+  circularDeltaDeg,
+  estimateDirectionAt,
   estimateTrendAt,
   sampleNear,
   type NowcastHorizon,
@@ -23,6 +25,9 @@ export type NowcastCase = {
   trendDeltaMs: number;
   actualMs: number;
   riseRateMsPerHour: number;
+  currentFromDeg: number | null;
+  trendDeltaDeg: number | null;
+  actualFromDeg: number | null;
 };
 
 export type NowcastHorizonCalib = {
@@ -33,6 +38,9 @@ export type NowcastHorizonCalib = {
   maeRaw: number;
   maeCalibrated: number;
   skillVsPersistence: number;
+  dirDampen: number;
+  dirMaeRaw: number;
+  dirMaeCalibrated: number;
 };
 
 export type NowcastCalibStore = {
@@ -95,6 +103,9 @@ export function collectNowcastCases(samples: HarborSample[]): NowcastCase[] {
       const actual = sampleNear(samples, atMs + minutes * 60_000, ACTUAL_TOLERANCE_MS);
       if (!actual) continue;
       const trendDeltaMs = (trend.riseRateMsPerHour * minutes) / 60;
+      const direction = estimateDirectionAt(samples, atMs);
+      const trendDeltaDeg =
+        direction === null ? null : (direction.rateDegPerHour * minutes) / 60;
       cases.push({
         atMs,
         minutesAhead: minutes,
@@ -102,6 +113,9 @@ export function collectNowcastCases(samples: HarborSample[]): NowcastCase[] {
         trendDeltaMs,
         actualMs: actual.meanMs,
         riseRateMsPerHour: trend.riseRateMsPerHour,
+        currentFromDeg: direction?.currentDeg ?? null,
+        trendDeltaDeg,
+        actualFromDeg: actual.fromDeg,
       });
     }
   }
@@ -169,6 +183,57 @@ export function fitHorizon(cases: NowcastCase[]): NowcastHorizonCalib | null {
   const skillVsPersistence =
     maePersist <= 1e-6 ? 0 : clamp(1 - maeCalibrated / maePersist, -1, 1);
 
+  const dirCases = cases.filter(
+    (item) =>
+      item.currentFromDeg !== null &&
+      item.trendDeltaDeg !== null &&
+      item.actualFromDeg !== null,
+  );
+  let dirDampen = 0.45;
+  let dirMaeRaw = 0;
+  let dirMaeCalibrated = 0;
+  if (dirCases.length >= MIN_CASES) {
+    let bestDir = 0.45;
+    let bestDirMae = Infinity;
+    for (let step = 0; step <= 20; step++) {
+      const dampen = step * 0.05;
+      const errors = dirCases.map((item) =>
+        Math.abs(
+          circularDeltaDeg(
+            (item.currentFromDeg as number) + dampen * (item.trendDeltaDeg as number),
+            item.actualFromDeg as number,
+          ),
+        ),
+      );
+      const score = mae(errors);
+      if (score < bestDirMae) {
+        bestDirMae = score;
+        bestDir = dampen;
+      }
+    }
+    dirDampen = bestDir;
+    dirMaeRaw = mae(
+      dirCases.map((item) =>
+        Math.abs(
+          circularDeltaDeg(
+            (item.currentFromDeg as number) + (item.trendDeltaDeg as number),
+            item.actualFromDeg as number,
+          ),
+        ),
+      ),
+    );
+    dirMaeCalibrated = mae(
+      dirCases.map((item) =>
+        Math.abs(
+          circularDeltaDeg(
+            (item.currentFromDeg as number) + dirDampen * (item.trendDeltaDeg as number),
+            item.actualFromDeg as number,
+          ),
+        ),
+      ),
+    );
+  }
+
   return {
     minutesAhead,
     count: cases.length,
@@ -177,6 +242,9 @@ export function fitHorizon(cases: NowcastCase[]): NowcastHorizonCalib | null {
     maeRaw,
     maeCalibrated,
     skillVsPersistence,
+    dirDampen,
+    dirMaeRaw,
+    dirMaeCalibrated,
   };
 }
 
@@ -222,7 +290,7 @@ export function summarizeNowcastCalib(store: NowcastCalibStore): {
   }
   const parts = store.horizons.map(
     (item) =>
-      `${item.minutesAhead}分 MAE ${item.maeCalibrated.toFixed(2)}（減衰 ${item.dampen.toFixed(2)}）`,
+      `${item.minutesAhead}分 風速MAE ${item.maeCalibrated.toFixed(2)} / 風向MAE ${item.dirMaeCalibrated.toFixed(0)}°`,
   );
   const deepAgo =
     store.lastDeepLearnAt > 0

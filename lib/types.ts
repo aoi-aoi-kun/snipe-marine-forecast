@@ -31,6 +31,9 @@ export type HarborNowcastPoint = {
   minutesAhead: number;
   meanMs: number;
   rawMeanMs?: number;
+  fromDeg: number | null;
+  fromLabel: string | null;
+  rawFromDeg?: number | null;
 };
 
 export type NowcastSkill = {

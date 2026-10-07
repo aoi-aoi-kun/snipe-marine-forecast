@@ -503,8 +503,8 @@ function HarborPanel({ harbor }: { harbor: HarborBundle }) {
             </div>
             <p className="max-w-xs text-right text-xs leading-5 text-muted sm:text-sm">
               {harbor.nowcastSkill.calibrated
-                ? "過去実況で校正した短時間予測"
-                : "直近の傾きが続く場合の平均風速"}
+                ? "過去実況で校正した風速・風向"
+                : "直近の傾きが続く場合の風速・風向"}
             </p>
           </div>
           <p className="mt-2 text-xs leading-5 text-muted sm:text-sm">
@@ -537,6 +537,12 @@ function HarborPanel({ harbor }: { harbor: HarborBundle }) {
                 >
                   <p className="text-xs font-medium text-muted sm:text-sm">
                     {point.minutesAhead}分後
+                  </p>
+                  <div className="mt-2 flex justify-center">
+                    <ChartWindArrow degrees={point.fromDeg} blocked={over10} />
+                  </div>
+                  <p className="mt-1 text-sm font-medium text-ink">
+                    {point.fromLabel ?? "—"}
                   </p>
                   <p
                     className={cn(

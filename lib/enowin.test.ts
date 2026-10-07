@@ -79,6 +79,21 @@ describe("nowcast and ramps", () => {
     );
   });
 
+  it("includes projected wind direction in nowcast points", () => {
+    const base = Date.parse("2026-10-07T01:00:00Z");
+    const samples = Array.from({ length: 7 }, (_, index) => ({
+      atMs: base + index * 5 * 60_000,
+      meanMs: 4 + index * 0.2,
+      maxMs: 5 + index * 0.2,
+      fromLabel: index < 3 ? "南" : "南西",
+      fromDeg: index < 3 ? 180 : 225,
+    }));
+    const result = buildNowcast(samples, base + 30 * 60_000);
+    assert.ok(result.nowcast.length >= 1);
+    assert.ok(result.nowcast.every((point) => point.fromDeg !== null));
+    assert.ok(result.nowcast.every((point) => point.fromLabel));
+  });
+
   it("detects ramp events of 2.5 m/s in 30 minutes", () => {
     const base = Date.parse("2026-10-07T01:00:00Z");
     const samples = [

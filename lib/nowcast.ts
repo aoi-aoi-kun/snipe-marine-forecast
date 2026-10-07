@@ -1,4 +1,5 @@
 import type { HarborSample } from "./enowin";
+import { windFromLabel } from "./wind";
 
 export type NowcastHorizon = 15 | 30 | 60;
 
@@ -9,6 +10,7 @@ export type NowcastCalibView = {
     count: number;
     dampen: number;
     biasMs: number;
+    dirDampen?: number;
   }[];
 };
 
@@ -16,6 +18,9 @@ export type NowcastPoint = {
   minutesAhead: NowcastHorizon;
   meanMs: number;
   rawMeanMs?: number;
+  fromDeg: number | null;
+  fromLabel: string | null;
+  rawFromDeg?: number | null;
 };
 
 export type HarborAlert = {
@@ -65,11 +70,15 @@ function linearSlope(samples: HarborSample[]): number | null {
   return num / den;
 }
 
-function circularDeltaDeg(from: number, to: number): number {
+export function circularDeltaDeg(from: number, to: number): number {
   let delta = to - from;
   while (delta > 180) delta -= 360;
   while (delta < -180) delta += 360;
   return delta;
+}
+
+export function normalizeDeg(degrees: number): number {
+  return ((degrees % 360) + 360) % 360;
 }
 
 function meanDirectionDeg(samples: HarborSample[]): number | null {
@@ -125,6 +134,48 @@ export function estimateTrendAt(
     riseRateMsPerHour: slopePerMs * 60 * 60 * 1000,
     atMs: anchor.atMs,
   };
+}
+
+/** Direction trend: circular turn rate (deg/hour, from-direction) over the lookback window. */
+export function estimateDirectionAt(
+  samples: HarborSample[],
+  atMs: number,
+): { currentDeg: number; rateDegPerHour: number; atMs: number } | null {
+  const anchor = sampleNear(samples, atMs, 3 * 60 * 1000);
+  if (!anchor || anchor.fromDeg === null) return null;
+  const trend = samplesInWindow(samples, anchor.atMs, TREND_MS).filter(
+    (sample) => sample.fromDeg !== null,
+  );
+  if (trend.length < 2) {
+    return { currentDeg: anchor.fromDeg, rateDegPerHour: 0, atMs: anchor.atMs };
+  }
+  const first = trend[0];
+  const last = trend[trend.length - 1];
+  const dtHours = (last.atMs - first.atMs) / (60 * 60 * 1000);
+  if (dtHours < 5 / 60) {
+    return { currentDeg: anchor.fromDeg, rateDegPerHour: 0, atMs: anchor.atMs };
+  }
+  const delta = circularDeltaDeg(first.fromDeg as number, last.fromDeg as number);
+  return {
+    currentDeg: last.fromDeg as number,
+    rateDegPerHour: delta / dtHours,
+    atMs: last.atMs,
+  };
+}
+
+function projectDirection(
+  currentDeg: number,
+  rateDegPerHour: number,
+  minutesAhead: NowcastHorizon,
+  calib: NowcastCalibView | null,
+): { fromDeg: number; rawFromDeg: number } {
+  const rawFromDeg = normalizeDeg(currentDeg + (rateDegPerHour * minutesAhead) / 60);
+  const row = calib?.horizons.find(
+    (item) => item.minutesAhead === minutesAhead && item.count >= 24,
+  );
+  const dampen = row?.dirDampen ?? 0.45;
+  const fromDeg = normalizeDeg(currentDeg + dampen * ((rateDegPerHour * minutesAhead) / 60));
+  return { fromDeg, rawFromDeg };
 }
 
 /** Build short-range nowcast and ramp alerts from harbor samples. */
@@ -185,6 +236,8 @@ export function buildNowcast(
       calib.horizons.some((item) => item.minutesAhead === minutes && item.count >= 24),
     );
 
+  const direction = estimateDirectionAt(samples, latest.atMs);
+
   const nowcast: NowcastPoint[] = [];
   if (riseRateMsPerHour !== null) {
     for (const minutes of HORIZONS) {
@@ -194,10 +247,22 @@ export function buildNowcast(
         minutes,
         calib,
       );
+      const dir =
+        direction === null
+          ? { fromDeg: latest.fromDeg, rawFromDeg: latest.fromDeg }
+          : projectDirection(
+              direction.currentDeg,
+              direction.rateDegPerHour,
+              minutes,
+              calib,
+            );
       nowcast.push({
         minutesAhead: minutes,
         meanMs: projected.meanMs,
         rawMeanMs: projected.rawMeanMs,
+        fromDeg: dir.fromDeg,
+        fromLabel: dir.fromDeg === null ? null : windFromLabel(dir.fromDeg),
+        rawFromDeg: dir.rawFromDeg,
       });
     }
   }
