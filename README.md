@@ -1,8 +1,8 @@
 # 七里ヶ浜沖の予報
 
-相模湾、北緯 35.25°・東経 139.50° の天気、気温、風向、風速を、96時間先まで3時間ごとに表示します。地点は ECMWF IFS の 0.25° 格子で、七里ヶ浜の海岸を含む升です。
+相模湾、北緯 35.25°・東経 139.50° の天気、気温、風向、風速を、144時間先まで3時間ごとに表示します。地点は ECMWF IFS の 0.25° 格子で、七里ヶ浜の海岸を含む升です。
 
-数値は ECMWF が公開している IFS（0.25°）の3時間ごとの値そのものです。00 UTC と 12 UTC の初期値を使います。鎌倉市の警報・注意報は、気象庁ホームページの公開データです。申請や API キーは使いません。出典は [ECMWF open data](https://www.ecmwf.int/en/forecasts/datasets/open-data)（[CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)）です。
+数値は ECMWF が公開している IFS（0.25°）の3時間ごとの値そのものです。3時間刻みの公開は144時間先までです。00 UTC と 12 UTC の初期値を使います。鎌倉市の警報・注意報は、気象庁ホームページの公開データです。申請や API キーは使いません。出典は [ECMWF open data](https://www.ecmwf.int/en/forecasts/datasets/open-data)（[CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)）です。
 
 ## 起動
 

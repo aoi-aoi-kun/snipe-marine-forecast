@@ -14,16 +14,16 @@ test("wind direction is the direction the wind comes from", () => {
   assert.equal(windFromLabel(windFromDegrees(-1, -1)), "北東");
 });
 
-test("uses 3-hour steps through 96 hours", () => {
+test("uses 3-hour steps through 144 hours", () => {
   const windows = forecastWindows(now);
-  assert.equal(windows.length, 33);
+  assert.equal(windows.length, 49);
   assert.ok(windows.every((window) => window.end - window.start === 3 * HOUR_MS));
   assert.equal(windows[0].start, Date.parse("2026-10-06T06:00:00.000Z"));
   assert.equal(windows[0].end, Date.parse("2026-10-06T09:00:00.000Z"));
-  assert.equal(windows.at(-1)!.start, Date.parse("2026-10-10T06:00:00.000Z"));
-  assert.equal(windows.at(-1)!.end, Date.parse("2026-10-10T09:00:00.000Z"));
-  assert.ok(windows.at(-1)!.start < now + 96 * HOUR_MS);
-  assert.ok(windows.at(-1)!.end >= now + 96 * HOUR_MS);
+  assert.equal(windows.at(-1)!.start, Date.parse("2026-10-12T06:00:00.000Z"));
+  assert.equal(windows.at(-1)!.end, Date.parse("2026-10-12T09:00:00.000Z"));
+  assert.ok(windows.at(-1)!.start < now + 144 * HOUR_MS);
+  assert.ok(windows.at(-1)!.end >= now + 144 * HOUR_MS);
   for (let index = 1; index < windows.length; index += 1) {
     assert.equal(windows[index].start, windows[index - 1].end);
   }
@@ -47,7 +47,7 @@ test("aggregates the single 3-hour sample in each window", () => {
   }
 
   const windows = buildWindows(hours, now);
-  assert.equal(windows.length, 33);
+  assert.equal(windows.length, 49);
   assert.equal(windows[0].available, true);
   assert.equal(windows[0].weather, "くもり");
   assert.equal(windows[0].windFromLabel, "北東");

@@ -9,7 +9,7 @@ export default function Page() {
           七里ヶ浜沖
         </h1>
         <p className="mt-3 max-w-xl text-sm leading-6 text-muted">
-          北緯 35.25°、東経 139.50°。ECMWF の 0.25° の升で、海岸を含みます。3時間ごとで、96時間先まで。
+          北緯 35.25°、東経 139.50°。ECMWF の 0.25° の升で、海岸を含みます。3時間ごとで、144時間先まで。
         </p>
       </header>
       <ForecastBoard />

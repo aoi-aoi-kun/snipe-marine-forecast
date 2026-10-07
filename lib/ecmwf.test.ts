@@ -37,15 +37,14 @@ test("uses 00 and 12 UTC cycles", () => {
   ]);
 });
 
-test("needed steps stay on 3-hour marks through the horizon", () => {
+test("needed steps stay on 3-hour marks through the open-data range", () => {
   const init = Date.parse("2026-10-06T00:00:00.000Z");
   const now = Date.parse("2026-10-06T06:20:00.000Z");
   const steps = neededSteps(init, now);
-  const horizonEnd = forecastWindows(now).at(-1)!.end;
   assert.equal(steps[0], 3);
   assert.ok(steps.every((step, index) => index === 0 || step - steps[index - 1] === 3));
-  assert.ok(steps.at(-1)! <= 144);
-  assert.ok(init + steps.at(-1)! * HOUR_MS >= horizonEnd);
+  assert.equal(steps.at(-1), 144);
+  assert.ok(forecastWindows(now).at(-1)!.end > init + 144 * HOUR_MS);
 });
 
 test("selects the surface fields for one step", () => {

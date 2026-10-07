@@ -1,7 +1,7 @@
 export const JST_OFFSET_MS = 9 * 60 * 60 * 1000;
 export const HOUR_MS = 60 * 60 * 1000;
 export const WINDOW_MS = 3 * HOUR_MS;
-export const HORIZON_MS = 96 * HOUR_MS;
+export const HORIZON_MS = 144 * HOUR_MS;
 
 export type TimeWindow = {
   start: number;
@@ -34,7 +34,7 @@ export function floorBlockStart(utcMs: number, stepHours: number): number {
   return Date.UTC(parts.year, parts.month - 1, parts.day, hour) - JST_OFFSET_MS;
 }
 
-/** 3-hour Japan-time blocks from the block containing now through 96 hours ahead. */
+/** 3-hour Japan-time blocks from the block containing now through 144 hours ahead. */
 export function forecastWindows(nowMs: number): TimeWindow[] {
   const horizon = nowMs + HORIZON_MS;
   const windows: TimeWindow[] = [];

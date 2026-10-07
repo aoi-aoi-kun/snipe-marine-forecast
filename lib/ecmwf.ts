@@ -45,8 +45,8 @@ type GribPointJson = {
 };
 
 /**
- * 00 and 12 UTC runs. The 06 and 18 UTC open-data runs stop at 90 hours,
- * which does not cover the 96-hour horizon at 3-hour steps.
+ * 00 and 12 UTC runs. Open-data 3-hour steps reach 144 hours on every cycle;
+ * these two cycles are published first and stay available longer.
  */
 export function ifsCycleCandidates(nowMs: number): number[] {
   const step = 12 * HOUR_MS;
@@ -59,8 +59,11 @@ export function neededSteps(initMs: number, nowMs: number): number[] {
   if (horizonEnd <= initMs) return [];
   const elapsedHours = Math.floor((nowMs - initMs) / HOUR_MS);
   const from = Math.max(0, Math.floor(elapsedHours / STEP_HOURS) * STEP_HOURS - STEP_HOURS);
-  const to = Math.ceil((horizonEnd - initMs) / STEP_MS) * STEP_HOURS;
-  if (to > MAX_STEP_HOURS || to < from) return [];
+  const to = Math.min(
+    MAX_STEP_HOURS,
+    Math.ceil((horizonEnd - initMs) / STEP_MS) * STEP_HOURS,
+  );
+  if (to < from) return [];
   const steps: number[] = [];
   for (let step = from; step <= to; step += STEP_HOURS) steps.push(step);
   return steps;

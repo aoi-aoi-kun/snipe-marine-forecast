@@ -458,7 +458,7 @@ export function ForecastBoard() {
       <div className="mt-8">
         <h2 className="font-serif text-2xl text-ink">風と天気</h2>
         <p className="mt-1 max-w-2xl text-sm leading-6 text-muted">
-          96時間先まで、3時間ごとです。高さは地上10mの風速、うすい部分は最大瞬間風速まで。上端は {scale} m/s です。平均 10 m/s 以上、または最大瞬間風速 13 m/s 以上の枠は出艇不可能です。最大瞬間風速は、初期時刻から90時間先までは枠の終わり直前1時間、それより先は直前3時間の値です。矢印は風の向かう向き、言葉は吹いてくる向き。方位の上は北です。
+          144時間先まで、3時間ごとです。高さは地上10mの風速、うすい部分は最大瞬間風速まで。上端は {scale} m/s です。平均 10 m/s 以上、または最大瞬間風速 13 m/s 以上の枠は出艇不可能です。最大瞬間風速は、初期時刻から90時間先までは枠の終わり直前1時間、それより先は直前3時間の値です。矢印は風の向かう向き、言葉は吹いてくる向き。方位の上は北です。
         </p>
         {windows.some((window) => window.noDeparture) ? (
           <div className="mt-4 border border-warn/30 bg-warn-bg px-4 py-3 text-sm leading-6 text-warn">
