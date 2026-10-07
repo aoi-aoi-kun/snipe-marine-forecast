@@ -128,24 +128,23 @@ export async function resolveHarbor(
   let calibStore = await loadNowcastCalib();
   // Always absorb the latest harbor window into the rolling verification set.
   calibStore = await learnNowcastCalibration(resolved.samples);
+  let learningHarbor = resolved.samples;
   if (refresh || needsDeepNowcastLearn(calibStore, nowMs)) {
     const deepHarbor = await fetchHarborSamples(nowMs, 30);
-    calibStore = await learnNowcastCalibration(
-      deepHarbor.length > resolved.samples.length ? deepHarbor : resolved.samples,
-      { deep: true },
-    );
+    if (deepHarbor.length > resolved.samples.length) learningHarbor = deepHarbor;
+    calibStore = await learnNowcastCalibration(learningHarbor, { deep: true });
   }
   const nowcastSkill = summarizeNowcastCalib(calibStore);
   const nowcast = buildNowcast(resolved.samples, nowMs, calibStore);
 
   const mosStore = await learnMos({
     nowMs,
-    harbor: resolved.samples,
+    harbor: learningHarbor.length >= resolved.samples.length ? learningHarbor : resolved.samples,
     ifsHours,
     refresh,
   });
   const mosSummary = summarizeMos(mosStore);
-  const patternStore = await learnFromSamples(resolved.samples, windows);
+  const patternStore = await learnFromSamples(learningHarbor, windows);
   const match: PatternMatch | null = matchPattern(
     resolved.samples,
     patternStore,

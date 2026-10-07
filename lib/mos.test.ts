@@ -142,4 +142,47 @@ describe("MOS pairing", () => {
     assert.ok(correction.factor > 1.3 && correction.factor < 1.7);
     assert.match(correction.note, /近傍時間帯/);
   });
+
+  it("falls back to the global mean ratio when no hour bin is usable", () => {
+    const start = Date.parse("2026-10-06T12:00:00+09:00");
+    // Five pairs in one far hour bucket; query a different hour with a mismatched sector.
+    const pairs = Array.from({ length: 5 }, (_, index) => ({
+      windowStart: Date.parse("2026-10-01T06:00:00+09:00") + index * 24 * 3600_000,
+      harborMeanMs: 5,
+      harborMaxMs: 7,
+      harborFromDeg: 0,
+      offshoreMeanMs: 4,
+      offshoreGustMs: 5,
+      offshoreFromDeg: 0,
+      ratio: 1.25,
+      biasMs: 1,
+    }));
+    const store: MosStore = ingestMosPairs(
+      { updatedAt: 0, lastBackfillAt: 0, pairs: [], bins: [] },
+      pairs,
+    );
+    const window: WindowForecast = {
+      start: new Date(start).toISOString(),
+      end: new Date(start + 3 * 3600_000).toISOString(),
+      partialFrom: null,
+      available: true,
+      weather: "晴れ",
+      precipMm: 0,
+      tempMinC: 20,
+      tempMaxC: 21,
+      windFromDeg: 90,
+      windFromLabel: "東",
+      windMeanMs: 4,
+      windMaxMs: 4,
+      windGustMs: 5,
+      noDeparture: false,
+    };
+    // hourBucket(12 JST)=4; pairs are at 06 JST (bucket 2). Neighbors of 4 are 3,4,5 — empty.
+    // Global fallback should apply.
+    const correction = correctionForWindow(store, window);
+    assert.ok(correction);
+    assert.equal(correction.binKey, "h*:g");
+    assert.ok(Math.abs(correction.factor - 1.25) < 0.01);
+    assert.match(correction.note, /全体平均/);
+  });
 });

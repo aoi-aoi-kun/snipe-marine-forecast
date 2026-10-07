@@ -256,14 +256,15 @@ async function downloadStep(initMs: number, step: number): Promise<HourSample | 
 }
 
 export async function probeCycle(initMs: number, steps: number[]): Promise<boolean> {
-  const last = steps.at(-1);
-  if (last == null) return false;
+  // Probe a short lead so longer archive steps (e.g. 36h) do not hide an otherwise usable cycle.
+  if (steps.length === 0) return false;
+  const probeStep = steps.includes(STEP_HOURS) ? STEP_HOURS : steps[0];
   try {
-    const fields = selectFields(await fetchIndex(initMs, last), last);
+    const fields = selectFields(await fetchIndex(initMs, probeStep), probeStep);
     return fields.length === REQUIRED.length + 1;
   } catch (error) {
     if (error instanceof HttpStatusError && error.status === 404) return false;
-    console.warn("IFS probe failed", new Date(initMs).toISOString(), last, error);
+    console.warn("IFS probe failed", new Date(initMs).toISOString(), probeStep, error);
     return false;
   }
 }

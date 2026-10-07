@@ -279,7 +279,25 @@ function neighborHourBlend(
   };
 }
 
+/** Last-resort factor from all pairs — useful while ECMWF open-data history is short. */
+function globalRatioBin(pairs: MosPair[]): MosBin | null {
+  if (pairs.length < MIN_NEIGHBOR_PAIRS) return null;
+  const meanRatio =
+    pairs.reduce((sum, pair) => sum + pair.ratio, 0) / pairs.length;
+  const meanBiasMs =
+    pairs.reduce((sum, pair) => sum + pair.biasMs, 0) / pairs.length;
+  return {
+    key: "h*:g",
+    hourBucket: -1,
+    dirSector: null,
+    count: pairs.length,
+    meanRatio: clamp(meanRatio, MIN_FACTOR, MAX_FACTOR),
+    meanBiasMs,
+  };
+}
+
 function binLabel(bin: MosBin, targetHour: number): string {
+  if (bin.key === "h*:g") return "全体平均";
   if (bin.key.endsWith(":~")) {
     return `${targetHour * 3}–${targetHour * 3 + 3}時台（近傍時間帯）`;
   }
@@ -307,7 +325,8 @@ export function correctionForWindow(
   const chosen =
     exact ??
     (hourBin && hourBin.count >= MIN_HOUR_PAIRS ? hourBin : null) ??
-    neighborHourBlend(hourBins, hour);
+    neighborHourBlend(hourBins, hour) ??
+    globalRatioBin(store.pairs);
   if (!chosen) return null;
   if (Math.abs(chosen.meanRatio - 1) < NEUTRAL_BAND) return null;
 
