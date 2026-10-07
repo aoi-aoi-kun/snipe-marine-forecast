@@ -5,19 +5,24 @@ export default function Page() {
   return (
     <main className="mx-auto w-full max-w-5xl px-4 pb-[max(3.5rem,env(safe-area-inset-bottom))] pt-[env(safe-area-inset-top)] sm:px-8 sm:pb-20">
       <header className="site-hero -mx-4 px-4 pb-8 pt-8 text-paper sm:-mx-8 sm:px-8 sm:pb-14 sm:pt-14">
-        <p className="anim-rise text-xs font-medium tracking-[0.18em] text-mist sm:text-sm">相模湾 · スナイプ出艇向け</p>
+        <p className="anim-rise text-xs font-medium tracking-[0.18em] text-mist sm:text-sm">
+          相模湾 · スナイプ出艇向け
+        </p>
         <h1 className="anim-rise anim-rise-delay-1 mt-2 font-serif text-[2.5rem] leading-[1.05] tracking-tight sm:mt-3 sm:text-6xl md:text-7xl">
           七里ヶ浜沖
         </h1>
-        <p className="anim-rise anim-rise-delay-2 mt-3 max-w-xl text-sm leading-7 text-mist/95 sm:mt-4 sm:text-base">
-          ECMWF の沖予報（3時間・144時間）と、江の島ヨットハーバーの5分実況を並べた参考画面です。升の範囲と実況地点の違いを前提に読んでください。
+        <p className="anim-rise anim-rise-delay-2 mt-3 max-w-md text-sm leading-6 text-mist/95 sm:mt-4 sm:text-base">
+          沖の3時間予報と、江の島ハーバーの5分実況。
         </p>
       </header>
-      <div className="space-y-8 sm:space-y-10">
+
+      <ForecastBoard />
+
+      <div className="mt-12 sm:mt-16">
         <ForecastGuide />
-        <ForecastBoard />
       </div>
-      <footer className="anim-rise mt-14 space-y-3 border-t border-line/80 pt-7 text-xs leading-5 text-muted">
+
+      <footer className="anim-rise mt-12 space-y-3 border-t border-line/80 pt-7 text-xs leading-5 text-muted">
         <p>
           出典：気象庁ホームページ（
           <a
@@ -53,7 +58,7 @@ export default function Page() {
           >
             enowin
           </a>
-          （運営・ハーバー確認済み）。設計の説明はページ上部の「このアプリについて」を参照してください。
+          （運営・ハーバー確認済み）。読み方は上の「補足」を参照。
         </p>
       </footer>
     </main>
