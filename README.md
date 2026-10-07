@@ -4,49 +4,66 @@
 
 数値は ECMWF が公開している IFS（0.25°）の3時間ごとの値そのものです。3時間刻みの公開は144時間先までです。00 UTC と 12 UTC の初期値を使います。鎌倉市の警報・注意報は、気象庁ホームページの公開データです。申請や API キーは使いません。出典は [ECMWF open data](https://www.ecmwf.int/en/forecasts/datasets/open-data)（[CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)）です。
 
-## 起動（自分のパソコン）
+## 自分のパソコンで見る
 
-Node.js と、eccodes の `grib_ls` が必要です。
+必要なもの: Node.js と、eccodes の `grib_ls`
 
-```bash
-npm install
-npm run dev
-```
+1. このフォルダで `npm install` を実行する
+2. `npm run dev` を実行する
+3. パソコンのブラウザで http://127.0.0.1:3847 を開く
 
-ブラウザまたはスマホで http://127.0.0.1:3847 を開きます。同じ Wi-Fi 上のスマホから見るときは、パソコンの IP アドレス（例: `http://192.168.x.x:3847`）を使います。
+## 自分のスマホで見る（同じ Wi‑Fi）
 
-```bash
-npm test
-npm run lint
-```
+1. 上の「自分のパソコンで見る」まで済ませる（パソコン側を起動したままにする）
+2. パソコンの IP アドレスを調べる（例: `192.168.1.23`）
+3. スマホを同じ Wi‑Fi につなぐ
+4. スマホのブラウザで `http://（パソコンのIP）:3847` を開く  
+   例: `http://192.168.1.23:3847`
 
-## ほかの人にも公開する（Docker）
+これではインターネット上の他人には届きません。家の外や別の Wi‑Fi の人に見せるときは、次の「ほかの人にも公開する」へ進みます。
 
-予報の読み取りに `grib_ls` が必要なので、Vercel のような短いサーバレスではなく、Docker で常時起動する形にしています。発行された HTTPS の URL を送れば、自分以外の人のスマホやパソコンからも同じ画面を開けます。ログインは不要です。
+## ほかの人にも公開する（おすすめ: Render）
 
-自宅や同じ Wi‑Fi 内だけなら:
+予報の読み取りに `grib_ls` が必要なので、Vercel ではなく Docker で常時起動します。ログインは不要です。発行された HTTPS の URL を送れば、相手のスマホやパソコンから同じ画面を開けます。
 
-```bash
-docker compose up --build -d
-```
+### A. リポジトリを用意する
 
-http://localhost:3847 で確認できます。同じ Wi‑Fi のスマホからは、ホストの LAN IP（例: `http://192.168.x.x:3847`）を開きます。
+1. このプロジェクトを GitHub の公開リポジトリにする（まだなら作成して push する）
+2. リポジトリの URL を控える（例: `https://github.com/あなた/リポジトリ名`）
 
-インターネットに出す（おすすめ）:
+### B. Render に載せる
 
-1. このリポジトリを GitHub などに置く
-2. [Render](https://render.com/) で New → Web Service → リポジトリを接続
-3. Runtime は Docker、ポートは `3847`
-4. 発行された `https://….onrender.com` のリンクを共有する
+1. [https://render.com/](https://render.com/) を開き、アカウントを作る（またはログインする）
+2. ダッシュボードで **New +** → **Web Service** を選ぶ
+3. GitHub を接続し、このリポジトリを選ぶ
+4. 次のように設定する
+   - **Language / Runtime**: `Docker`
+   - **Branch**: `main`
+   - **Region**: 近いところ（例: Singapore）
+   - **Instance type**: Free でよい
+5. **Create Web Service** を押してデプロイを待つ（初回はビルドに数分かかることがあります）
+6. 完了したら、画面上部に出る URL（例: `https://xxxx.onrender.com`）をコピーする
 
-`render.yaml` があるので、Blueprint から作っても同じ構成になります。無料枠では初回アクセスで起動に時間がかかることがあります。
+`render.yaml` がある場合は、**New +** → **Blueprint** から同じリポジトリを選んでも同じ構成になります。ポートは `3847` です。
 
-Fly.io の例:
+### C. リンクを共有する
 
-```bash
-fly launch --no-deploy
-fly deploy
-```
+1. コピーした `https://….onrender.com` を、見てもらいたい人に送る
+2. 相手はブラウザでその URL を開くだけ（アカウント不要）
+3. スマホでもそのまま読めます
+
+補足（無料枠）: しばらくアクセスがないとスリープします。次に開くとき、起動まで数十秒かかることがあります。
+
+## 自宅の Docker だけで見る（任意）
+
+同じ Wi‑Fi 内だけ、または自分でサーバを持つ場合:
+
+1. Docker を入れる
+2. このフォルダで `docker compose up --build -d` を実行する
+3. http://localhost:3847 で確認する
+4. 同じ Wi‑Fi のスマホからは `http://（ホストのIP）:3847` を開く
+
+インターネット全体に出すには、別途ドメインや公開ホスト（Render など）が必要です。
 
 ## 画面の見方
 
