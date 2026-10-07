@@ -456,8 +456,7 @@ function HarborPanel({ harbor }: { harbor: HarborBundle }) {
               <p className="font-serif text-xl leading-none text-ink">
                 {latest.fromLabel ?? "—"}
               </p>
-              <p className="mt-1 text-xs text-muted">吹いてくる向き · 矢印は向かう向き</p>
-              <p className="text-xs tabular-nums text-muted">
+              <p className="mt-1 text-xs tabular-nums text-muted">
                 最大 {latest.maxMs.toFixed(1)} · {formatStamp(latest.at)}
               </p>
             </div>
