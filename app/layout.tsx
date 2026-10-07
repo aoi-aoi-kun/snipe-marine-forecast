@@ -21,7 +21,7 @@ const mincho = Shippori_Mincho({
 export const metadata: Metadata = {
   title: "七里ヶ浜沖の予報",
   description:
-    "七里ヶ浜沖のECMWF 3時間予報と江の島ヨットハーバー実況。升の範囲と設計思想を明示した、スナイプ出艇向けの参考画面。",
+    "七里ヶ浜沖のECMWF 3時間予報と江の島ヨットハーバー実況。スナイプ出艇向けの参考画面。",
   appleWebApp: {
     capable: true,
     title: "七里ヶ浜沖",
