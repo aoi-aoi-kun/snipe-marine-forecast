@@ -3,7 +3,7 @@ import { ForecastGuide } from "@/components/forecast-guide";
 
 export default function Page() {
   return (
-    <main className="mx-auto w-full max-w-5xl px-4 pb-[max(3.75rem,env(safe-area-inset-bottom))] pt-[max(0.75rem,env(safe-area-inset-top))] sm:px-8 sm:pb-24 sm:pt-4">
+    <main className="mx-auto w-full max-w-6xl px-4 pb-[max(3.75rem,env(safe-area-inset-bottom))] pt-[max(0.75rem,env(safe-area-inset-top))] sm:px-8 sm:pb-24 sm:pt-4">
       <ForecastBoard />
 
       <div className="mt-8 sm:mt-10">
