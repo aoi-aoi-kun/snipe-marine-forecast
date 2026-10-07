@@ -17,7 +17,7 @@ const ARCHIVE_HOURS = path.join(CACHE_DIR, "mos-offshore-hours.json");
 const BACKFILL_COOLDOWN_MS = 12 * 60 * 60 * 1000;
 const MIN_PAIRS_BEFORE_SKIP_BACKFILL = 48;
 const HARBOR_LOOKBACK_DAYS = 14;
-const ARCHIVE_CYCLES = 8;
+const ARCHIVE_CYCLES = 14;
 
 type ArchiveCache = {
   fetchedAt: number;

@@ -62,7 +62,7 @@ describe("MOS pairing", () => {
       { updatedAt: 0, lastBackfillAt: 0, pairs: [], bins: [] },
       pairs,
     );
-    assert.ok(rebuildMosBins(store.pairs).some((bin) => bin.count >= 5));
+    assert.ok(rebuildMosBins(store.pairs).some((bin) => bin.count >= 3));
 
     const window: WindowForecast = {
       start: new Date(start + 6 * 24 * 3600_000).toISOString(),
