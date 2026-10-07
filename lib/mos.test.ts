@@ -1,0 +1,90 @@
+import assert from "node:assert/strict";
+import { describe, it } from "node:test";
+import type { HourSample, WindowForecast } from "./aggregate";
+import {
+  applyMosCorrection,
+  buildMosPairs,
+  correctionForWindow,
+  ingestMosPairs,
+  rebuildMosBins,
+  type MosStore,
+} from "./mos";
+import type { HarborSample } from "./enowin";
+
+function hour(validMs: number, speed: number, fromDeg = 180): HourSample {
+  const rad = ((270 - fromDeg) * Math.PI) / 180;
+  return {
+    validMs,
+    tempC: 20,
+    u: speed * Math.cos(rad),
+    v: speed * Math.sin(rad),
+    cloudPct: 10,
+    precipRunMm: 0,
+    gustMs: speed + 2,
+  };
+}
+
+describe("MOS pairing", () => {
+  it("pairs completed 3-hour windows of harbor vs offshore", () => {
+    const start = Date.parse("2026-10-06T00:00:00+09:00");
+    const harbor: HarborSample[] = [];
+    for (let i = 0; i < 12; i++) {
+      harbor.push({
+        atMs: start + i * 5 * 60_000,
+        meanMs: 6,
+        maxMs: 8,
+        fromLabel: "南",
+        fromDeg: 180,
+      });
+    }
+    const hours = [hour(start, 4, 180)];
+    const nowMs = start + 3 * 3600_000;
+    const pairs = buildMosPairs(harbor, hours, nowMs);
+    assert.equal(pairs.length, 1);
+    assert.ok(Math.abs(pairs[0].ratio - 1.5) < 0.01);
+    assert.ok(Math.abs(pairs[0].biasMs - 2) < 0.01);
+  });
+
+  it("applies bin factor when enough pairs exist", () => {
+    const start = Date.parse("2026-10-06T00:00:00+09:00");
+    const pairs = Array.from({ length: 6 }, (_, index) => ({
+      windowStart: start + index * 24 * 3600_000,
+      harborMeanMs: 6,
+      harborMaxMs: 8,
+      harborFromDeg: 180,
+      offshoreMeanMs: 4,
+      offshoreGustMs: 6,
+      offshoreFromDeg: 180,
+      ratio: 1.5,
+      biasMs: 2,
+    }));
+    const store: MosStore = ingestMosPairs(
+      { updatedAt: 0, lastBackfillAt: 0, pairs: [], bins: [] },
+      pairs,
+    );
+    assert.ok(rebuildMosBins(store.pairs).some((bin) => bin.count >= 5));
+
+    const window: WindowForecast = {
+      start: new Date(start + 6 * 24 * 3600_000).toISOString(),
+      end: new Date(start + 6 * 24 * 3600_000 + 3 * 3600_000).toISOString(),
+      partialFrom: null,
+      available: true,
+      weather: "晴れ",
+      precipMm: 0,
+      tempMinC: 20,
+      tempMaxC: 21,
+      windFromDeg: 180,
+      windFromLabel: "南",
+      windMeanMs: 4,
+      windMaxMs: 4,
+      windGustMs: 6,
+      noDeparture: false,
+    };
+    const correction = correctionForWindow(store, window);
+    assert.ok(correction);
+    assert.ok(correction.factor > 1.2);
+    const adjusted = applyMosCorrection([window], store);
+    assert.equal(adjusted[0].mosAdjusted, true);
+    assert.ok((adjusted[0].windMeanMs ?? 0) > 4);
+  });
+});

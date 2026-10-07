@@ -28,6 +28,8 @@ export type WindowForecast = {
   noDeparture: boolean;
   harborAdjusted?: boolean;
   harborAdjustNote?: string | null;
+  mosAdjusted?: boolean;
+  mosAdjustNote?: string | null;
 };
 
 const CALM_MS = 0.3;

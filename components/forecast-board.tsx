@@ -470,6 +470,17 @@ function HarborPanel({ harbor }: { harbor: HarborBundle }) {
         <p className="mt-4 text-sm text-muted">実況はまだありません。</p>
       )}
 
+      {harbor.mos ? (
+        <div className="mt-4 border-t border-line/70 pt-3">
+          <p className="text-sm font-medium text-ink/80">局地補正（MOS）</p>
+          <p className="mt-1 text-sm leading-6 text-muted">{harbor.mos.note}</p>
+          <p className="mt-1 text-xs tabular-nums text-muted">
+            ペア {harbor.mos.pairCount} · ビン {harbor.mos.binCount} · 適用可能{" "}
+            {harbor.mos.activeBins}
+          </p>
+        </div>
+      ) : null}
+
       {harbor.nowcast.length > 0 ? (
         <div className="mt-4 border-t border-line/70 pt-3">
           <p className="text-sm font-medium text-ink/80">ナウキャスト（この傾向が続く場合）</p>
@@ -531,8 +542,11 @@ function WindowCard({ window, scale }: { window: WindowForecast; scale: number }
         <h3 className="text-sm font-medium tabular-nums text-ink">{hours}</h3>
         <div className="flex flex-col items-end gap-0.5">
           {window.noDeparture ? <p className="text-xs font-medium tracking-wide text-warn">出艇不可能</p> : null}
+          {window.mosAdjusted ? (
+            <p className="text-[10px] font-medium tracking-wide text-sea">局地補正</p>
+          ) : null}
           {window.harborAdjusted ? (
-            <p className="text-[10px] font-medium tracking-wide text-sea">ハーバー補正</p>
+            <p className="text-[10px] font-medium tracking-wide text-sea">急上昇補正</p>
           ) : null}
         </div>
       </div>

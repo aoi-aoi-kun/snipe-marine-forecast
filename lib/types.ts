@@ -15,6 +15,8 @@ export type WindowForecast = {
   noDeparture: boolean;
   harborAdjusted?: boolean;
   harborAdjustNote?: string | null;
+  mosAdjusted?: boolean;
+  mosAdjustNote?: string | null;
 };
 
 export type HarborObservation = {
@@ -56,6 +58,13 @@ export type HarborBundle = {
       sampleAt: string;
       note: string;
     } | null;
+  };
+  mos: {
+    pairCount: number;
+    binCount: number;
+    activeBins: number;
+    lastBackfillAt: string | null;
+    note: string;
   };
 };
 

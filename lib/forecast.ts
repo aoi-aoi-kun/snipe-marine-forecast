@@ -213,10 +213,9 @@ async function buildForecast(refresh: boolean): Promise<ForecastResponse> {
   if (model.error) errors.push(model.error);
   if (warnings.error) errors.push(warnings.error);
 
-  const baseWindows = model.resolved
-    ? buildWindows(model.resolved.cache.hours, nowMs)
-    : [];
-  const harborResolved = await resolveHarbor(nowMs, baseWindows, refresh);
+  const ifsHours = model.resolved?.cache.hours ?? [];
+  const baseWindows = model.resolved ? buildWindows(ifsHours, nowMs) : [];
+  const harborResolved = await resolveHarbor(nowMs, baseWindows, refresh, ifsHours);
   if (harborResolved.error) errors.push(harborResolved.error);
 
   return {

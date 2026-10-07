@@ -223,6 +223,7 @@ export function applyHarborBoost(
     const gust =
       window.windGustMs === null ? null : window.windGustMs * match.boostFactor;
     const noDeparture = mean >= 10 || (gust !== null && gust >= 13);
+    const mosNote = window.mosAdjustNote;
     return {
       ...window,
       windMeanMs: mean,
@@ -230,7 +231,7 @@ export function applyHarborBoost(
       windGustMs: gust,
       noDeparture,
       harborAdjusted: true,
-      harborAdjustNote: match.note,
+      harborAdjustNote: mosNote ? `${match.note} ${mosNote}` : match.note,
     };
   });
 }

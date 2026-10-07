@@ -284,3 +284,35 @@ export async function fetchCycleSamples(
   }
   return merged;
 }
+
+/**
+ * Fetch short-range ECMWF point hours for MOS backfill.
+ * Uses the last `cycleCount` 00/12 UTC cycles with steps 3..36h.
+ * When several cycles cover the same valid time, keep the shortest lead.
+ */
+export async function fetchArchiveHoursForMos(
+  nowMs: number,
+  cycleCount = 10,
+): Promise<HourSample[]> {
+  const cycleStep = 12 * HOUR_MS;
+  const latest = Math.floor(nowMs / cycleStep) * cycleStep;
+  const inits = Array.from({ length: cycleCount }, (_, index) => latest - index * cycleStep);
+  const steps = Array.from({ length: 8 }, (_, index) => (index + 1) * STEP_HOURS); // 3..24h
+  const byValid = new Map<number, HourSample>();
+  const leadByValid = new Map<number, number>();
+
+  for (const initMs of inits) {
+    const available = await probeCycle(initMs, steps);
+    if (!available) continue;
+    const samples = await fetchCycleSamples(initMs, steps, new Map());
+    for (const sample of samples.values()) {
+      const lead = sample.validMs - initMs;
+      const previousLead = leadByValid.get(sample.validMs);
+      if (previousLead !== undefined && lead >= previousLead) continue;
+      byValid.set(sample.validMs, sample);
+      leadByValid.set(sample.validMs, lead);
+    }
+  }
+
+  return [...byValid.values()].sort((a, b) => a.validMs - b.validMs);
+}

@@ -1,11 +1,13 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
-import type { WindowForecast } from "./aggregate";
+import type { HourSample, WindowForecast } from "./aggregate";
 import {
   ENOWIN_SOURCE,
   fetchHarborSamples,
   type HarborSample,
 } from "./enowin";
+import { learnMos } from "./mos-learn";
+import { applyMosCorrection, summarizeMos } from "./mos";
 import { buildNowcast } from "./nowcast";
 import {
   applyHarborBoost,
@@ -105,6 +107,7 @@ export async function resolveHarbor(
   nowMs: number,
   windows: WindowForecast[],
   refresh: boolean,
+  ifsHours: HourSample[] = [],
 ): Promise<{
   harbor: HarborBundle | null;
   windows: WindowForecast[];
@@ -116,21 +119,30 @@ export async function resolveHarbor(
   }
 
   const nowcast = buildNowcast(resolved.samples, nowMs);
-  const store = await learnFromSamples(resolved.samples, windows);
+  const mosStore = await learnMos({
+    nowMs,
+    harbor: resolved.samples,
+    ifsHours,
+    refresh,
+  });
+  const mosSummary = summarizeMos(mosStore);
+  const patternStore = await learnFromSamples(resolved.samples, windows);
   const match: PatternMatch | null = matchPattern(
     resolved.samples,
-    store,
+    patternStore,
     nowMs,
     nowcast.riseRateMsPerHour,
   );
-  const adjusted = applyHarborBoost(windows, match);
+  let adjusted = applyMosCorrection(windows, mosStore);
+  adjusted = applyHarborBoost(adjusted, match);
+
   const latest = resolved.samples[resolved.samples.length - 1];
   const recent = resolved.samples.filter((sample) => nowMs - sample.atMs <= 2 * 60 * 60 * 1000);
 
   const harbor: HarborBundle = {
     source: ENOWIN_SOURCE,
     pointName: "江の島ヨットハーバー",
-    note: "岸の5分実況です。沖の3時間予報と地点が異なります（地図参照）。",
+    note: "岸の5分実況です。沖の3時間予報と地点が異なります。MOS局地補正と吹き上がり検知に使います。",
     fetchedAt: new Date(resolved.fetchedAt).toISOString(),
     degraded: resolved.degraded,
     latest: toObservation(latest),
@@ -140,7 +152,7 @@ export async function resolveHarbor(
     nowcast: nowcast.nowcast,
     alerts: nowcast.alerts,
     pattern: {
-      storedEvents: store.events.length,
+      storedEvents: patternStore.events.length,
       match: match
         ? {
             score: match.score,
@@ -150,6 +162,7 @@ export async function resolveHarbor(
           }
         : null,
     },
+    mos: mosSummary,
   };
 
   return { harbor, windows: adjusted, error: resolved.error };
