@@ -418,11 +418,18 @@ function WindOverview({
 
 function HarborPanel({ harbor }: { harbor: HarborBundle }) {
   const latest = harbor.latest;
+  const rising =
+    harbor.riseRateMsPerHour !== null && harbor.riseRateMsPerHour >= 1.5;
+  const falling =
+    harbor.riseRateMsPerHour !== null && harbor.riseRateMsPerHour <= -1.5;
+
   return (
-    <section className="anim-rise rounded-xl border border-line/70 bg-paper/55 p-4 backdrop-blur-sm sm:p-5">
+    <section className="anim-rise space-y-4">
       <div className="flex flex-wrap items-end justify-between gap-2">
         <div>
-          <h2 className="font-serif text-xl tracking-tight text-ink sm:text-2xl">江の島ハーバー実況</h2>
+          <h2 className="font-serif text-xl tracking-tight text-ink sm:text-2xl">
+            江の島ハーバー実況
+          </h2>
           <p className="mt-1 max-w-2xl text-xs leading-5 text-muted sm:text-sm sm:leading-6">
             {harbor.note}
           </p>
@@ -431,27 +438,31 @@ function HarborPanel({ harbor }: { harbor: HarborBundle }) {
       </div>
 
       {latest ? (
-        <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <div className="flex flex-wrap items-end gap-x-6 gap-y-2">
           <div>
-            <p className="text-xs text-muted">いま（ハーバー）</p>
-            <p className="mt-1 font-serif text-2xl tabular-nums text-ink">
+            <p className="text-xs text-muted">いま</p>
+            <p className="mt-0.5 font-serif text-3xl tabular-nums leading-none text-ink sm:text-4xl">
               {latest.meanMs.toFixed(1)}
-              <span className="ml-1 text-sm font-sans text-muted">m/s</span>
+              <span className="ml-1 text-base font-sans text-muted">m/s</span>
             </p>
-            <p className="text-xs tabular-nums text-muted">最大 {latest.maxMs.toFixed(1)} m/s</p>
           </div>
-          <div>
-            <p className="text-xs text-muted">風向（吹いてくる向き）</p>
-            <p className="mt-1 font-serif text-2xl text-ink">{latest.fromLabel ?? "—"}</p>
-            <p className="text-xs text-muted">{formatStamp(latest.at)}</p>
+          <div className="pb-0.5">
+            <p className="font-serif text-xl text-ink">{latest.fromLabel ?? "—"}</p>
+            <p className="text-xs tabular-nums text-muted">
+              最大 {latest.maxMs.toFixed(1)} · {formatStamp(latest.at)}
+            </p>
           </div>
-          <div>
-            <p className="text-xs text-muted">風速の変化</p>
-            <p className="mt-1 font-serif text-2xl tabular-nums text-ink">
+          <div className="pb-0.5">
+            <p
+              className={cn(
+                "font-serif text-xl tabular-nums",
+                rising ? "text-warn" : falling ? "text-sea" : "text-ink",
+              )}
+            >
               {harbor.riseRateMsPerHour === null
                 ? "—"
                 : `${harbor.riseRateMsPerHour >= 0 ? "+" : ""}${harbor.riseRateMsPerHour.toFixed(1)}`}
-              <span className="ml-1 text-sm font-sans text-muted">m/s毎時</span>
+              <span className="ml-1 text-xs font-sans text-muted">m/s毎時</span>
             </p>
             <p className="text-xs text-muted">
               風向変化{" "}
@@ -460,51 +471,75 @@ function HarborPanel({ harbor }: { harbor: HarborBundle }) {
                 : `${harbor.directionChangeDeg >= 0 ? "+" : ""}${Math.round(harbor.directionChangeDeg)}°`}
             </p>
           </div>
-          <div>
-            <p className="text-xs text-muted">学習済み急上昇</p>
-            <p className="mt-1 font-serif text-2xl tabular-nums text-ink">{harbor.pattern.storedEvents}</p>
-            <p className="text-xs text-muted">件（過去の立ち上がり）</p>
-          </div>
         </div>
       ) : (
-        <p className="mt-4 text-sm text-muted">実況はまだありません。</p>
+        <p className="text-sm text-muted">実況はまだありません。</p>
       )}
 
-      {harbor.mos ? (
-        <div className="mt-4 border-t border-line/70 pt-3">
-          <p className="text-sm font-medium text-ink/80">局地補正（MOS）</p>
-          <p className="mt-1 text-sm leading-6 text-muted">{harbor.mos.note}</p>
-          <p className="mt-1 text-xs tabular-nums text-muted">
-            ペア {harbor.mos.pairCount} · ビン {harbor.mos.binCount} · 適用可能{" "}
-            {harbor.mos.activeBins}
-          </p>
-          <p className="mt-1 text-xs leading-5 text-muted">
-            学習はサーバ起動中、約 {harbor.mos.continuous.intervalMinutes}{" "}
-            分ごとに自動継続します
-            {harbor.mos.continuous.lastTickAt
-              ? `（前回 ${formatStamp(harbor.mos.continuous.lastTickAt)}）`
-              : "（初回は起動直後）"}
-            。
-          </p>
-        </div>
-      ) : null}
-
       {harbor.nowcast.length > 0 ? (
-        <div className="mt-4 border-t border-line/70 pt-3">
-          <p className="text-sm font-medium text-ink/80">ナウキャスト（この傾向が続く場合）</p>
-          <ul className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-sm tabular-nums text-ink">
-            {harbor.nowcast.map((point) => (
-              <li key={point.minutesAhead}>
-                {point.minutesAhead}分後{" "}
-                <span className="font-medium">{point.meanMs.toFixed(1)} m/s</span>
-              </li>
-            ))}
-          </ul>
+        <div
+          className={cn(
+            "rounded-xl border px-4 py-4 sm:px-5 sm:py-5",
+            rising
+              ? "border-warn/35 bg-warn-bg/50"
+              : "border-sea/30 bg-[linear-gradient(165deg,#e7f3f4_0%,#edf3f4_55%,#e8eef0_100%)]",
+          )}
+        >
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <div>
+              <p className="text-xs font-medium tracking-[0.16em] text-sea">NOWCAST</p>
+              <h3 className="mt-1 font-serif text-2xl tracking-tight text-ink sm:text-3xl">
+                ナウキャスト
+              </h3>
+            </div>
+            <p className="max-w-xs text-right text-xs leading-5 text-muted sm:text-sm">
+              直近の傾きが続く場合の平均風速
+            </p>
+          </div>
+          <ol className="mt-4 grid grid-cols-3 gap-2 sm:gap-3">
+            {harbor.nowcast.map((point, index) => {
+              const delta =
+                latest === null ? null : point.meanMs - latest.meanMs;
+              return (
+                <li
+                  key={point.minutesAhead}
+                  className={cn(
+                    "rounded-lg bg-paper/80 px-2 py-3 text-center sm:px-3 sm:py-4",
+                    index === harbor.nowcast.length - 1 && "ring-1 ring-sea/25",
+                  )}
+                  style={{ animationDelay: `${0.05 + index * 0.06}s` }}
+                >
+                  <p className="text-xs font-medium text-muted sm:text-sm">
+                    {point.minutesAhead}分後
+                  </p>
+                  <p className="mt-2 font-serif text-3xl tabular-nums leading-none text-ink sm:text-4xl">
+                    {point.meanMs.toFixed(1)}
+                  </p>
+                  <p className="mt-1 text-xs text-muted">m/s</p>
+                  {delta !== null ? (
+                    <p
+                      className={cn(
+                        "mt-2 text-xs tabular-nums font-medium",
+                        delta > 0.15 ? "text-warn" : delta < -0.15 ? "text-sea" : "text-muted",
+                      )}
+                    >
+                      {delta > 0 ? "+" : ""}
+                      {delta.toFixed(1)} いま比
+                    </p>
+                  ) : null}
+                </li>
+              );
+            })}
+          </ol>
+        </div>
+      ) : latest ? (
+        <div className="rounded-xl border border-line/70 bg-sand/40 px-4 py-3 text-sm text-muted">
+          ナウキャストに必要な直近の傾きがまだ足りません。
         </div>
       ) : null}
 
       {harbor.alerts.length > 0 ? (
-        <div className="mt-4 space-y-2">
+        <div className="space-y-2">
           {harbor.alerts.map((alert) => (
             <div
               key={`${alert.kind}-${alert.message}`}
@@ -522,14 +557,41 @@ function HarborPanel({ harbor }: { harbor: HarborBundle }) {
       ) : null}
 
       {harbor.pattern.match ? (
-        <div className="mt-4 border-l-2 border-sea bg-sand/70 px-3 py-2 text-sm leading-6 text-ink/85">
-          <p className="font-medium tracking-wide text-sea">パターン補正</p>
+        <div className="border-l-2 border-sea bg-sand/70 px-3 py-2 text-sm leading-6 text-ink/85">
+          <p className="font-medium tracking-wide text-sea">急上昇補正</p>
           <p className="mt-1">{harbor.pattern.match.note}</p>
         </div>
       ) : null}
 
+      <details className="group border-t border-line/60 pt-3">
+        <summary className="cursor-pointer list-none text-xs text-muted marker:content-none">
+          <span className="underline decoration-line underline-offset-2 group-open:text-ink">
+            学習の状態
+          </span>
+        </summary>
+        <div className="mt-2 space-y-2 text-xs leading-5 text-muted">
+          <p>急上昇パターン {harbor.pattern.storedEvents} 件</p>
+          {harbor.mos ? (
+            <>
+              <p>{harbor.mos.note}</p>
+              <p className="tabular-nums">
+                ペア {harbor.mos.pairCount} · ビン {harbor.mos.binCount} · 適用可能{" "}
+                {harbor.mos.activeBins}
+              </p>
+              <p>
+                約 {harbor.mos.continuous.intervalMinutes} 分ごとに自動学習
+                {harbor.mos.continuous.lastTickAt
+                  ? `（前回 ${formatStamp(harbor.mos.continuous.lastTickAt)}）`
+                  : ""}
+                。
+              </p>
+            </>
+          ) : null}
+        </div>
+      </details>
+
       {harbor.degraded ? (
-        <p className="mt-3 text-xs text-muted">取得に失敗したため、保存した実況を表示しています。</p>
+        <p className="text-xs text-muted">取得に失敗したため、保存した実況を表示しています。</p>
       ) : null}
     </section>
   );
