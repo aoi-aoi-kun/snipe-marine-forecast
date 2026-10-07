@@ -67,6 +67,17 @@ test("selects the surface fields for one step", () => {
     ["10u", "10v", "2t", "tcc", "tp", "10fg"],
   );
   assert.equal(selectFields(entries, 6).length, 0);
+  const later = parseIndex(
+    [
+      '{"param":"10u","step":"96","levtype":"sfc","_offset":1,"_length":2}',
+      '{"param":"10v","step":"96","levtype":"sfc","_offset":3,"_length":2}',
+      '{"param":"2t","step":"96","levtype":"sfc","_offset":5,"_length":2}',
+      '{"param":"tcc","step":"96","levtype":"sfc","_offset":7,"_length":2}',
+      '{"param":"tp","step":"96","levtype":"sfc","_offset":9,"_length":2}',
+      '{"param":"10fg3","step":"96","levtype":"sfc","_offset":11,"_length":2}',
+    ].join("\n"),
+  );
+  assert.equal(selectFields(later, 96).at(-1)?.param, "10fg3");
 });
 
 test("converts ECMWF units at the grid point", () => {

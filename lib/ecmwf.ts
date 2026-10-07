@@ -14,7 +14,8 @@ const USER_AGENT = "shichirigahama-forecast/1.0 (local coastal forecast)";
 const STEP_HOURS = 3;
 const STEP_MS = STEP_HOURS * HOUR_MS;
 const MAX_STEP_HOURS = 144;
-const FIELDS = ["10u", "10v", "2t", "tcc", "tp", "10fg"] as const;
+const REQUIRED = ["10u", "10v", "2t", "tcc", "tp"] as const;
+const GUST_PARAMS = ["10fg3", "10fg"] as const;
 
 export type IndexEntry = {
   param: string;
@@ -101,10 +102,16 @@ export function selectFields(entries: IndexEntry[], step: number): IndexEntry[] 
   const found = new Map<string, IndexEntry>();
   for (const entry of entries) {
     if (entry.step !== step || entry.levtype !== "sfc" || entry.length <= 0) continue;
-    if ((FIELDS as readonly string[]).includes(entry.param)) found.set(entry.param, entry);
+    if (
+      (REQUIRED as readonly string[]).includes(entry.param) ||
+      (GUST_PARAMS as readonly string[]).includes(entry.param)
+    ) {
+      found.set(entry.param, entry);
+    }
   }
-  if (FIELDS.some((param) => !found.has(param))) return [];
-  return FIELDS.map((param) => found.get(param)!);
+  const gust = GUST_PARAMS.map((param) => found.get(param)).find((entry) => entry);
+  if (REQUIRED.some((param) => !found.has(param)) || !gust) return [];
+  return [...REQUIRED.map((param) => found.get(param)!), gust];
 }
 
 export function parsePointValues(json: string): PointValue[] {
@@ -143,7 +150,7 @@ export function samplesFromValues(initMs: number, values: PointValue[]): HourSam
       bag["2t"] == null ||
       bag.tcc == null ||
       bag.tp == null ||
-      bag["10fg"] == null
+      (bag["10fg"] == null && bag["10fg3"] == null)
     ) {
       continue;
     }
@@ -154,7 +161,7 @@ export function samplesFromValues(initMs: number, values: PointValue[]): HourSam
       v: bag["10v"],
       cloudPct: Math.min(100, Math.max(0, bag.tcc * 100)),
       precipRunMm: Math.max(0, bag.tp * 1000),
-      gustMs: Math.max(0, bag["10fg"]),
+      gustMs: Math.max(0, bag["10fg"] ?? bag["10fg3"] ?? 0),
     });
   }
   samples.sort((a, b) => a.validMs - b.validMs);
@@ -222,7 +229,7 @@ async function fetchIndex(initMs: number, step: number): Promise<IndexEntry[]> {
 async function downloadStep(initMs: number, step: number): Promise<HourSample | null> {
   try {
     const fields = selectFields(await fetchIndex(initMs, step), step);
-    if (fields.length !== FIELDS.length) return null;
+    if (fields.length !== REQUIRED.length + 1) return null;
     const parts = await Promise.all(
       fields.map(async (field) => {
         const response = await getBytes(gribUrl(initMs, step), {
@@ -250,7 +257,7 @@ export async function probeCycle(initMs: number, steps: number[]): Promise<boole
   if (last == null) return false;
   try {
     const fields = selectFields(await fetchIndex(initMs, last), last);
-    return fields.length === FIELDS.length;
+    return fields.length === REQUIRED.length + 1;
   } catch (error) {
     if (error instanceof HttpStatusError && error.status === 404) return false;
     console.warn("IFS probe failed", new Date(initMs).toISOString(), last, error);
