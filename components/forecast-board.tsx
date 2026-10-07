@@ -206,6 +206,54 @@ function startHour(window: WindowForecast): number {
   return jstParts(Date.parse(window.start)).hour;
 }
 
+function ChartWindArrow({
+  degrees,
+  blocked,
+}: {
+  degrees: number | null;
+  blocked: boolean;
+}) {
+  if (degrees === null) {
+    return (
+      <span
+        className="mx-auto block size-1 rounded-full bg-muted/45"
+        title="風向なし"
+      />
+    );
+  }
+  return (
+    <svg
+      viewBox="0 0 12 12"
+      aria-hidden="true"
+      className={cn("mx-auto block size-3", blocked ? "text-warn" : "text-sea")}
+    >
+      <g
+        style={{
+          transform: `rotate(${degrees + 180}deg)`,
+          transformOrigin: "6px 6px",
+          transition: "transform 0.45s cubic-bezier(0.22, 1, 0.36, 1)",
+        }}
+      >
+        <path
+          d="M6 1.6v7.2"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.4"
+          strokeLinecap="round"
+        />
+        <path
+          d="M6 1.5 3.6 4M6 1.5 8.4 4"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.4"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </g>
+    </svg>
+  );
+}
+
 function WindOverview({
   groups,
   scale,
@@ -238,17 +286,30 @@ function WindOverview({
           <span className="size-2.5 rounded-sm bg-warn" />
           出艇不可能
         </li>
+        <li className="flex items-center gap-1.5">
+          <svg viewBox="0 0 12 12" aria-hidden="true" className="size-3 text-sea">
+            <path
+              d="M6 1.6v7.2M6 1.5 3.6 4M6 1.5 8.4 4"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.4"
+              strokeLinecap="round"
+            />
+          </svg>
+          矢印は向かう向き
+        </li>
       </ul>
-      <div className="mt-4 flex gap-2" aria-hidden="true">
-        <div className="flex w-7 shrink-0 flex-col">
+      <div className="mt-4 flex gap-2">
+        <div className="flex w-7 shrink-0 flex-col" aria-hidden="true">
           <div className="h-1.5" />
-          <div className="mt-2 flex h-28 flex-col justify-between text-[10px] tabular-nums leading-none text-muted">
+          <div className="mt-1.5 h-4" />
+          <div className="mt-1.5 flex h-28 flex-col justify-between text-[10px] tabular-nums leading-none text-muted">
             <span>{scale}</span>
             <span>0</span>
           </div>
         </div>
         <div className="min-w-0 flex-1">
-          <div className="flex h-1.5 gap-px overflow-hidden rounded-sm">
+          <div className="flex h-1.5 gap-px overflow-hidden rounded-sm" aria-hidden="true">
             {groups.map((group) => (
               <div key={group.key} className="flex min-w-0" style={{ flex: groupHours(group) }}>
                 {group.windows.map((window) => (
@@ -259,7 +320,30 @@ function WindOverview({
               </div>
             ))}
           </div>
-          <div className="mt-2 flex h-28 items-end gap-px">
+          <div className="mt-1.5 flex h-4 items-center gap-px">
+            {groups.map((group) => (
+              <div key={group.key} className="flex min-w-0 items-center" style={{ flex: groupHours(group) }}>
+                {group.windows.map((window) => (
+                  <div
+                    key={window.start}
+                    className="flex min-w-0 justify-center px-px"
+                    style={{ flex: durationHours(window) }}
+                    title={
+                      window.windFromLabel
+                        ? `${window.windFromLabel}（向かう向きの矢印）`
+                        : "風向なし"
+                    }
+                  >
+                    <ChartWindArrow
+                      degrees={window.windFromDeg}
+                      blocked={window.noDeparture}
+                    />
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
+          <div className="mt-1.5 flex h-28 items-end gap-px" aria-hidden="true">
             {groups.map((group, groupIndex) => (
               <div key={group.key} className="flex h-full min-w-0 items-end" style={{ flex: groupHours(group) }}>
                 {group.windows.map((window, windowIndex) => {
@@ -295,7 +379,7 @@ function WindOverview({
               </div>
             ))}
           </div>
-          <div className="mt-2 hidden gap-px sm:flex">
+          <div className="mt-2 hidden gap-px sm:flex" aria-hidden="true">
             {groups.map((group) => (
               <div key={group.key} className="flex min-w-0" style={{ flex: groupHours(group) }}>
                 {group.windows.map((window) => (
@@ -310,7 +394,7 @@ function WindOverview({
               </div>
             ))}
           </div>
-          <div className="mt-1 flex gap-px border-t border-line/80 pt-1.5">
+          <div className="mt-1 flex gap-px border-t border-line/80 pt-1.5" aria-hidden="true">
             {groups.map((group) => (
               <p
                 key={group.key}
@@ -476,7 +560,7 @@ export function ForecastBoard() {
           <div>
             <h2 className="font-serif text-3xl tracking-tight text-ink">風と天気</h2>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">
-              144時間先まで、3時間ごと。棒の高さは地上10mの風速、うすい部分は最大瞬間風速まで。上端は {scale} m/s。平均 10 m/s 以上、または最大瞬間風速 13 m/s 以上は出艇不可能。瞬間は初期値から90時間先までは枠の終わり直前1時間、それより先は直前3時間。矢印は向かう向き、言葉は吹いてくる向き。上は北。
+              144時間先まで、3時間ごと。棒の高さは地上10mの風速、うすい部分は最大瞬間風速まで。上端は {scale} m/s。棒の上の矢印は風の向かう向きで、上は北。平均 10 m/s 以上、または最大瞬間風速 13 m/s 以上は出艇不可能。瞬間は初期値から90時間先までは枠の終わり直前1時間、それより先は直前3時間。下の言葉は吹いてくる向き。
             </p>
           </div>
         </div>
