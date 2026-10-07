@@ -11,10 +11,13 @@ const MOS_CACHE = path.join(CACHE_DIR, "mos.json");
 const MAX_PAIRS = 800;
 const MIN_HARBOR_SAMPLES = 4;
 const MIN_BIN_PAIRS = 3;
-const MIN_HOUR_PAIRS = 5;
+const MIN_HOUR_PAIRS = 4;
+/** Combined count across neighboring hour buckets for fallback blend. */
+const MIN_NEIGHBOR_PAIRS = 5;
 const MIN_FACTOR = 0.65;
 const MAX_FACTOR = 1.75;
 const NEUTRAL_BAND = 0.04;
+const HOUR_BUCKETS = 8;
 
 export type MosPair = {
   windowStart: number;
@@ -249,6 +252,43 @@ function hourOnlyBins(pairs: MosPair[]): Map<number, MosBin> {
   return map;
 }
 
+/** Count-weighted blend of hour-only bins in hour±1 (wraps 0–7). */
+function neighborHourBlend(
+  hourBins: Map<number, MosBin>,
+  hour: number,
+): MosBin | null {
+  let total = 0;
+  let ratioSum = 0;
+  let biasSum = 0;
+  for (const delta of [-1, 0, 1]) {
+    const bucket = (hour + delta + HOUR_BUCKETS) % HOUR_BUCKETS;
+    const bin = hourBins.get(bucket);
+    if (!bin || bin.count < MIN_BIN_PAIRS) continue;
+    total += bin.count;
+    ratioSum += bin.meanRatio * bin.count;
+    biasSum += bin.meanBiasMs * bin.count;
+  }
+  if (total < MIN_NEIGHBOR_PAIRS) return null;
+  return {
+    key: `h${hour}:~`,
+    hourBucket: hour,
+    dirSector: null,
+    count: total,
+    meanRatio: clamp(ratioSum / total, MIN_FACTOR, MAX_FACTOR),
+    meanBiasMs: biasSum / total,
+  };
+}
+
+function binLabel(bin: MosBin, targetHour: number): string {
+  if (bin.key.endsWith(":~")) {
+    return `${targetHour * 3}–${targetHour * 3 + 3}時台（近傍時間帯）`;
+  }
+  if (bin.dirSector === null) {
+    return `${bin.hourBucket * 3}–${bin.hourBucket * 3 + 3}時台`;
+  }
+  return `${bin.hourBucket * 3}–${bin.hourBucket * 3 + 3}時台・方位帯${bin.dirSector}`;
+}
+
 /** Look up a MOS factor for a forecast window. */
 export function correctionForWindow(
   store: MosStore,
@@ -266,20 +306,17 @@ export function correctionForWindow(
   const hourBin = hourBins.get(hour);
   const chosen =
     exact ??
-    (hourBin && hourBin.count >= MIN_HOUR_PAIRS ? hourBin : null);
+    (hourBin && hourBin.count >= MIN_HOUR_PAIRS ? hourBin : null) ??
+    neighborHourBlend(hourBins, hour);
   if (!chosen) return null;
   if (Math.abs(chosen.meanRatio - 1) < NEUTRAL_BAND) return null;
 
-  const label =
-    chosen.dirSector === null
-      ? `${hour * 3}–${hour * 3 + 3}時台`
-      : `${hour * 3}–${hour * 3 + 3}時台・方位帯${chosen.dirSector}`;
   return {
     factor: chosen.meanRatio,
     binKey: chosen.key,
     count: chosen.count,
     meanBiasMs: chosen.meanBiasMs,
-    note: `局地補正（MOS）: 過去 ${chosen.count} 枠のハーバー÷沖予報 = ${chosen.meanRatio.toFixed(2)}（${label}、差 ${chosen.meanBiasMs >= 0 ? "+" : ""}${chosen.meanBiasMs.toFixed(1)} m/s）。`,
+    note: `局地補正（MOS）: 過去 ${chosen.count} 枠のハーバー÷沖予報 = ${chosen.meanRatio.toFixed(2)}（${binLabel(chosen, hour)}、差 ${chosen.meanBiasMs >= 0 ? "+" : ""}${chosen.meanBiasMs.toFixed(1)} m/s）。`,
   };
 }
 

@@ -129,7 +129,7 @@ export async function resolveHarbor(
   // Always absorb the latest harbor window into the rolling verification set.
   calibStore = await learnNowcastCalibration(resolved.samples);
   if (refresh || needsDeepNowcastLearn(calibStore, nowMs)) {
-    const deepHarbor = await fetchHarborSamples(nowMs, 14);
+    const deepHarbor = await fetchHarborSamples(nowMs, 30);
     calibStore = await learnNowcastCalibration(
       deepHarbor.length > resolved.samples.length ? deepHarbor : resolved.samples,
       { deep: true },

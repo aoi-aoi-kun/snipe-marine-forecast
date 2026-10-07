@@ -297,7 +297,7 @@ export async function fetchArchiveHoursForMos(
   const cycleStep = 12 * HOUR_MS;
   const latest = Math.floor(nowMs / cycleStep) * cycleStep;
   const inits = Array.from({ length: cycleCount }, (_, index) => latest - index * cycleStep);
-  const steps = Array.from({ length: 8 }, (_, index) => (index + 1) * STEP_HOURS); // 3..24h
+  const steps = Array.from({ length: 12 }, (_, index) => (index + 1) * STEP_HOURS); // 3..36h
   const byValid = new Map<number, HourSample>();
   const leadByValid = new Map<number, number>();
 

@@ -87,4 +87,59 @@ describe("MOS pairing", () => {
     assert.equal(adjusted[0].mosAdjusted, true);
     assert.ok((adjusted[0].windMeanMs ?? 0) > 4);
   });
+
+  it("falls back to neighboring hour bins when the exact hour is thin", () => {
+    // Pairs only in 21–24 JST (hourBucket 7) and 3–6 JST (hourBucket 1),
+    // none in 0–3 JST (hourBucket 0). A 0–3 window should blend neighbors.
+    const base = Date.parse("2026-10-01T00:00:00+09:00");
+    const pairs = [
+      ...Array.from({ length: 3 }, (_, index) => ({
+        windowStart: base + index * 24 * 3600_000 + 21 * 3600_000,
+        harborMeanMs: 6,
+        harborMaxMs: 8,
+        harborFromDeg: 180,
+        offshoreMeanMs: 4,
+        offshoreGustMs: 6,
+        offshoreFromDeg: 180,
+        ratio: 1.4,
+        biasMs: 2,
+      })),
+      ...Array.from({ length: 3 }, (_, index) => ({
+        windowStart: base + index * 24 * 3600_000 + 3 * 3600_000,
+        harborMeanMs: 6.4,
+        harborMaxMs: 8,
+        harborFromDeg: 180,
+        offshoreMeanMs: 4,
+        offshoreGustMs: 6,
+        offshoreFromDeg: 180,
+        ratio: 1.6,
+        biasMs: 2.4,
+      })),
+    ];
+    const store: MosStore = ingestMosPairs(
+      { updatedAt: 0, lastBackfillAt: 0, pairs: [], bins: [] },
+      pairs,
+    );
+    const window: WindowForecast = {
+      start: new Date(base + 6 * 24 * 3600_000).toISOString(),
+      end: new Date(base + 6 * 24 * 3600_000 + 3 * 3600_000).toISOString(),
+      partialFrom: null,
+      available: true,
+      weather: "晴れ",
+      precipMm: 0,
+      tempMinC: 20,
+      tempMaxC: 21,
+      windFromDeg: 90,
+      windFromLabel: "東",
+      windMeanMs: 4,
+      windMaxMs: 4,
+      windGustMs: 6,
+      noDeparture: false,
+    };
+    const correction = correctionForWindow(store, window);
+    assert.ok(correction);
+    assert.equal(correction.binKey, "h0:~");
+    assert.ok(correction.factor > 1.3 && correction.factor < 1.7);
+    assert.match(correction.note, /近傍時間帯/);
+  });
 });

@@ -9,7 +9,7 @@ import { windSector8 } from "./wind";
 const CACHE_DIR = path.join(process.cwd(), ".cache");
 const PATTERN_CACHE = path.join(CACHE_DIR, "harbor-patterns.json");
 const MAX_EVENTS = 120;
-const MATCH_SCORE_MIN = 0.55;
+const MATCH_SCORE_MIN = 0.5;
 
 export type PatternEvent = {
   atMs: number;
