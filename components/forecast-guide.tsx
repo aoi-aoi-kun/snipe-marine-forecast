@@ -14,7 +14,7 @@ export function ForecastGuide() {
 
       <div className="mt-3 space-y-2.5 text-[12px] leading-5 text-muted">
         <p>
-          沖の見通しは ECMWF（約25km升・3時間ごと）、直近は江の島ハーバーの5分実況です。格子点まで約{" "}
+          沖の見通しは ECMWF（約25km升・3時間ごと）、直近は江の島ヨットハーバーの5分実況です。格子点まで約{" "}
           {HARBOR_TO_OFFSHORE_KM.toFixed(1)}{" "}
           km。地点が異なるため、数値はそのまま比べません。
         </p>

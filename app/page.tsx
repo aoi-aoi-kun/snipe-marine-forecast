@@ -1,5 +1,6 @@
 import { ForecastBoard } from "@/components/forecast-board";
 import { ForecastGuide } from "@/components/forecast-guide";
+import { OFFSHORE_POINT } from "@/lib/geo";
 
 export default function Page() {
   return (
@@ -33,7 +34,8 @@ export default function Page() {
           <a className="soft-link" href="https://creativecommons.org/licenses/by/4.0/">
             CC BY 4.0
           </a>
-          ）。気象庁の予報ではなく、ECMWF の承認・提携を示すものでもありません。
+          ）。気象庁の予報ではなく、ECMWF の承認・提携を示すものでもありません。沖の格子点は{" "}
+          {OFFSHORE_POINT.lat.toFixed(2)}°N, {OFFSHORE_POINT.lon.toFixed(2)}°E。
         </p>
         <p>
           江の島ヨットハーバー実況：
