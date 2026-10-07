@@ -264,47 +264,47 @@ function WindOverview({
     return offsets;
   }, []);
   return (
-    <div className="anim-rise anim-rise-delay-2 surface h-full p-3 sm:p-4">
-      <ul className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[11px] text-muted">
+    <div className="anim-rise anim-rise-delay-2 surface flex h-full min-h-[18rem] flex-col p-3 sm:min-h-[20rem] sm:p-3.5">
+      <ul className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-muted">
         <li className="font-medium tracking-wide text-ink/65">天気</li>
         <li className="flex items-center gap-1.5">
-          <span className="size-2.5 rounded-sm bg-sun" />
+          <span className="size-2 rounded-sm bg-sun" />
           晴れ
         </li>
         <li className="flex items-center gap-1.5">
-          <span className="size-2.5 rounded-sm bg-muted" />
+          <span className="size-2 rounded-sm bg-muted" />
           くもり
         </li>
         <li className="flex items-center gap-1.5">
-          <span className="size-2.5 rounded-sm bg-sea" />
+          <span className="size-2 rounded-sm bg-sea" />
           雨
         </li>
-        <li className="flex items-center gap-1.5 sm:ml-2">
-          <span className="size-2.5 rounded-sm bg-warn" />
+        <li className="flex items-center gap-1.5 sm:ml-1">
+          <span className="size-2 rounded-sm bg-warn" />
           出艇不可能
         </li>
       </ul>
-      <div className="mt-4 flex gap-2">
-        <div className="flex w-7 shrink-0 flex-col" aria-hidden="true">
+      <div className="mt-3 flex min-h-0 flex-1 gap-2">
+        <div className="flex w-6 shrink-0 flex-col" aria-hidden="true">
           <div className="h-1.5" />
-          <div className="mt-1.5 h-6" />
-          <div className="mt-1.5 flex h-28 flex-col justify-between text-[10px] tabular-nums leading-none text-muted">
+          <div className="mt-1 h-5" />
+          <div className="mt-1.5 flex min-h-0 flex-1 flex-col justify-between text-[10px] tabular-nums leading-none text-muted">
             <span>{scale}</span>
             <span>0</span>
           </div>
         </div>
-        <div className="-mx-1 min-w-0 flex-1 overflow-x-auto overscroll-x-contain px-1 pb-1 [-webkit-overflow-scrolling:touch]">
+        <div className="-mx-1 min-w-0 flex-1 overflow-x-auto overscroll-x-contain px-1 pb-0.5 [-webkit-overflow-scrolling:touch]">
           <div
-            className="flex gap-px"
-            style={{ minWidth: `max(100%, ${Math.max(groups.length, 1) * 4.5}rem)` }}
+            className="flex h-full min-h-[14.5rem] gap-px sm:min-h-[16rem]"
+            style={{ minWidth: `max(100%, ${Math.max(groups.length, 1) * 4.25}rem)` }}
           >
           {groups.map((group, groupIndex) => (
             <button
               key={group.key}
               type="button"
               onClick={() => scrollToDay(group.key)}
-              className="group/day min-w-0 rounded-lg px-px py-1.5 text-left transition-colors hover:bg-sea/8 focus-visible:bg-sea/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sea/35 active:bg-sea/12"
-              style={{ flex: groupHours(group), minWidth: `${Math.max(groupHours(group) * 0.7, 3.25)}rem` }}
+              className="group/day flex min-w-0 flex-col rounded-lg px-px py-1 text-left transition-colors hover:bg-sea/8 focus-visible:bg-sea/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sea/35 active:bg-sea/12"
+              style={{ flex: groupHours(group), minWidth: `${Math.max(groupHours(group) * 0.65, 3)}rem` }}
               aria-label={`${group.label}の詳細へ`}
             >
               <div className="flex h-1.5 gap-px overflow-hidden rounded-sm" aria-hidden="true">
@@ -314,7 +314,7 @@ function WindOverview({
                   </div>
                 ))}
               </div>
-              <div className="mt-1.5 flex h-6 items-center gap-px">
+              <div className="mt-1 flex h-5 items-center gap-px">
                 {group.windows.map((window) => (
                   <div
                     key={window.start}
@@ -331,7 +331,7 @@ function WindOverview({
                   </div>
                 ))}
               </div>
-              <div className="mt-1.5 flex h-28 items-end gap-px" aria-hidden="true">
+              <div className="mt-1 flex min-h-0 flex-1 items-end gap-px" aria-hidden="true">
                 {group.windows.map((window, windowIndex) => {
                   const mean = window.windMeanMs ?? 0;
                   const gust = window.windGustMs ?? 0;
@@ -363,7 +363,7 @@ function WindOverview({
                   );
                 })}
               </div>
-              <div className="mt-2 hidden gap-px sm:flex" aria-hidden="true">
+              <div className="mt-1.5 hidden gap-px sm:flex" aria-hidden="true">
                 {group.windows.map((window) => (
                   <p
                     key={window.start}
@@ -374,7 +374,7 @@ function WindOverview({
                   </p>
                 ))}
               </div>
-              <p className="mt-1.5 truncate border-t border-line/60 pt-1.5 text-center text-[10px] font-medium leading-tight text-ink/65 transition-colors group-hover/day:text-sea sm:text-[11px]">
+              <p className="mt-1 truncate border-t border-line/60 pt-1 text-center text-[10px] font-medium leading-tight text-ink/65 transition-colors group-hover/day:text-sea">
                 {group.shortLabel}
               </p>
             </button>
@@ -387,7 +387,7 @@ function WindOverview({
 }
 
 function harborWindCardClass(over10: boolean): string {
-  return cn("tile px-2.5 py-3.5 text-center sm:px-3 sm:py-4", over10 && "tile-warn");
+  return cn("tile px-2 py-2.5 text-center sm:px-2.5 sm:py-3", over10 && "tile-warn");
 }
 
 function HarborPanel({ harbor }: { harbor: HarborBundle }) {
@@ -403,8 +403,8 @@ function HarborPanel({ harbor }: { harbor: HarborBundle }) {
   const panelWarn = nowcastOver10 || rising;
 
   return (
-    <section className="anim-rise space-y-2.5">
-      <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+    <section className="anim-rise flex h-full min-h-0 flex-col gap-2">
+      <div className="flex min-h-7 flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
         <h2 className="section-title">江の島ハーバー実況</h2>
         <details className="group">
           <summary className="cursor-pointer list-none text-[11px] text-muted marker:content-none">
@@ -417,9 +417,14 @@ function HarborPanel({ harbor }: { harbor: HarborBundle }) {
       </div>
 
       {latest || harbor.nowcast.length > 0 ? (
-        <div className={cn("px-3 py-3 sm:px-4 sm:py-4", panelWarn ? "surface-warn" : "surface")}>
+        <div
+          className={cn(
+            "flex min-h-[18rem] flex-1 flex-col px-2.5 py-2.5 sm:min-h-[20rem] sm:px-3 sm:py-3",
+            panelWarn ? "surface-warn" : "surface",
+          )}
+        >
           {nowcastOver10 ? (
-            <div className="callout mb-3 py-2 text-xs leading-5">
+            <div className="callout mb-2 py-1.5 text-[11px] leading-4">
               <p className="font-medium tracking-wide">警告 · 10 m/s 超え</p>
               <p className="mt-0.5 text-warn/90">
                 ナウキャストの平均風速が 10 m/s を超えます。出艇の目安を上回る見込みです。
@@ -427,7 +432,7 @@ function HarborPanel({ harbor }: { harbor: HarborBundle }) {
             </div>
           ) : null}
           {sourceStale ? (
-            <div className="callout mb-3 py-2 text-xs leading-5">
+            <div className="callout mb-2 py-1.5 text-[11px] leading-4">
               <p className="font-medium tracking-wide">実況の公開が停止中</p>
               <p className="mt-0.5 text-warn/90">
                 enowin の最新行が約 {lagMinutes} 分前のままです。公開ファイルに新しい観測がまだありません。
@@ -437,7 +442,7 @@ function HarborPanel({ harbor }: { harbor: HarborBundle }) {
 
           <ol
             className={cn(
-              "grid gap-2",
+              "grid flex-1 gap-1.5 content-stretch",
               latest && harbor.nowcast.length > 0
                 ? "grid-cols-2"
                 : latest || harbor.nowcast.length === 1
@@ -446,30 +451,30 @@ function HarborPanel({ harbor }: { harbor: HarborBundle }) {
             )}
           >
             {latest ? (
-              <li className={harborWindCardClass(sourceStale)}>
-                <p className="text-xs font-medium text-muted sm:text-sm">いま</p>
+              <li className={cn(harborWindCardClass(sourceStale), "flex flex-col justify-center")}>
+                <p className="text-[11px] font-medium text-muted">いま</p>
                 <p
                   className={cn(
-                    "mt-0.5 text-[10px] leading-4 sm:text-xs",
+                    "mt-0.5 text-[10px] leading-3",
                     sourceStale ? "font-medium text-warn" : "text-muted",
                   )}
                 >
-                  {formatHarborObsTime(latest.at)}の観測
+                  {formatHarborObsTime(latest.at)}
                   {lagMinutes !== null ? `（${lagMinutes}分前）` : ""}
                 </p>
-                <div className="mt-2 flex justify-center">
+                <div className="mt-1.5 flex justify-center">
                   <WindArrow
                     degrees={latest.fromDeg}
                     label={latest.fromLabel}
-                    size="lg"
+                    size="md"
                   />
                 </div>
-                <p className="mt-2.5 font-serif text-3xl tabular-nums leading-none tracking-tight text-ink sm:text-4xl">
+                <p className="mt-1.5 font-serif text-2xl tabular-nums leading-none tracking-tight text-ink sm:text-[1.75rem]">
                   {latest.meanMs.toFixed(1)}
                 </p>
-                <p className="mt-1.5 text-xs text-muted">m/s</p>
-                <p className="mt-2.5 text-xs tabular-nums text-muted">
-                  最大 {latest.maxMs.toFixed(1)} m/s
+                <p className="mt-1 text-[10px] text-muted">m/s</p>
+                <p className="mt-1.5 text-[10px] tabular-nums text-muted">
+                  最大 {latest.maxMs.toFixed(1)}
                 </p>
               </li>
             ) : null}
@@ -480,36 +485,36 @@ function HarborPanel({ harbor }: { harbor: HarborBundle }) {
               return (
                 <li
                   key={point.minutesAhead}
-                  className={harborWindCardClass(over10)}
+                  className={cn(harborWindCardClass(over10), "flex flex-col justify-center")}
                   style={{ animationDelay: `${0.05 + index * 0.06}s` }}
                 >
-                  <p className="text-xs font-medium text-muted sm:text-sm">
+                  <p className="text-[11px] font-medium text-muted">
                     {point.minutesAhead}分後
                   </p>
-                  <p className="mt-0.5 min-h-4 text-[10px] sm:min-h-5 sm:text-xs" aria-hidden="true" />
-                  <div className="mt-2 flex justify-center">
+                  <p className="mt-0.5 min-h-3 text-[10px] leading-3" aria-hidden="true" />
+                  <div className="mt-1.5 flex justify-center">
                     <WindArrow
                       degrees={point.fromDeg}
                       blocked={over10}
                       label={point.fromLabel}
-                      size="lg"
+                      size="md"
                     />
                   </div>
                   <p
                     className={cn(
-                      "mt-2 font-serif text-3xl tabular-nums leading-none sm:text-4xl",
+                      "mt-1.5 font-serif text-2xl tabular-nums leading-none tracking-tight sm:text-[1.75rem]",
                       over10 ? "text-warn" : "text-ink",
                     )}
                   >
                     {point.meanMs.toFixed(1)}
                   </p>
-                  <p className="mt-1 text-xs text-muted">m/s</p>
+                  <p className="mt-1 text-[10px] text-muted">m/s</p>
                   {over10 ? (
-                    <p className="mt-2 text-xs font-medium text-warn">10超え</p>
+                    <p className="mt-1.5 text-[10px] font-medium text-warn">10超え</p>
                   ) : delta !== null ? (
                     <p
                       className={cn(
-                        "mt-2 text-xs tabular-nums font-medium",
+                        "mt-1.5 text-[10px] tabular-nums font-medium",
                         delta > 0.15 ? "text-warn" : delta < -0.15 ? "text-sea" : "text-muted",
                       )}
                     >
@@ -523,7 +528,7 @@ function HarborPanel({ harbor }: { harbor: HarborBundle }) {
           </ol>
 
           {harbor.nowcast.length > 0 ? (
-            <details className="group mt-3 border-t border-line/40 pt-2.5">
+            <details className="group mt-2 border-t border-line/40 pt-2">
               <summary className="cursor-pointer list-none text-[11px] marker:content-none">
                 <span className="soft-link group-open:text-ink">ナウキャストの説明</span>
               </summary>
@@ -537,7 +542,7 @@ function HarborPanel({ harbor }: { harbor: HarborBundle }) {
               </div>
             </details>
           ) : latest ? (
-            <p className="mt-3 border-t border-line/40 pt-2.5 text-[11px] text-muted">
+            <p className="mt-2 border-t border-line/40 pt-2 text-[11px] text-muted">
               ナウキャストに必要な直近の傾きがまだ足りません。
             </p>
           ) : null}
@@ -554,7 +559,7 @@ function HarborPanel({ harbor }: { harbor: HarborBundle }) {
               <div
                 key={`${alert.kind}-${alert.message}`}
                 className={cn(
-                  "py-2 text-xs leading-5",
+                  "py-1.5 text-[11px] leading-4",
                   alert.level === "watch" ? "callout" : "callout-sea",
                 )}
               >
@@ -565,7 +570,7 @@ function HarborPanel({ harbor }: { harbor: HarborBundle }) {
       ) : null}
 
       {harbor.pattern.match ? (
-        <div className="callout-sea py-2 text-xs leading-5">
+        <div className="callout-sea py-1.5 text-[11px] leading-4">
           <p className="font-medium tracking-wide text-sea">急上昇補正</p>
           <p className="mt-0.5">{harbor.pattern.match.note}</p>
         </div>
@@ -764,20 +769,20 @@ export function ForecastBoard() {
         </div>
       ) : null}
 
-      <div className="grid items-start gap-4 lg:grid-cols-2 lg:gap-5">
-        <div className="min-w-0">
+      <div className="grid items-stretch gap-4 lg:grid-cols-2 lg:gap-5">
+        <div className="flex min-w-0 flex-col">
           {data?.harbor ? (
             <HarborPanel harbor={data.harbor} />
           ) : (
-            <div className="space-y-2">
-              <h2 className="section-title">江の島ハーバー実況</h2>
-              <div className="skeleton-pulse h-44 bg-sand/70" />
+            <div className="flex h-full flex-col gap-2">
+              <h2 className="section-title min-h-7">江の島ハーバー実況</h2>
+              <div className="skeleton-pulse min-h-[18rem] flex-1 bg-sand/70 sm:min-h-[20rem]" />
             </div>
           )}
         </div>
 
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+        <div className="flex min-w-0 flex-col gap-2">
+          <div className="flex min-h-7 flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
             <h2 className="section-title">風と天気</h2>
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
               <details className="group">
@@ -839,13 +844,13 @@ export function ForecastBoard() {
           ) : null}
 
           {groups.length > 0 ? (
-            <div className="mt-2.5 h-full">
+            <div className="min-h-0 flex-1">
               <WindOverview groups={groups} scale={scale} />
             </div>
           ) : loading ? (
-            <div className="skeleton-pulse mt-2.5 h-44 bg-sand/75" />
+            <div className="skeleton-pulse min-h-[18rem] flex-1 bg-sand/75 sm:min-h-[20rem]" />
           ) : (
-            <p className="mt-2.5 text-[11px] text-muted">数値予報はまだありません。</p>
+            <p className="text-[11px] text-muted">数値予報はまだありません。</p>
           )}
         </div>
       </div>
