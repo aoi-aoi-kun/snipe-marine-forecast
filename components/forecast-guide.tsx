@@ -12,32 +12,30 @@ export function ForecastGuide() {
         </div>
       </summary>
 
-      <div className="mt-3 space-y-3 text-[12px] leading-5 text-muted">
-        <div>
-          <p className="font-medium text-ink/75">参照しているデータ</p>
-          <p className="mt-1">
-            沖の天気と風は欧州中期予報センター（ECMWF）の公開数値予報、いまの風は江の島ヨットハーバー（enowin）の5分実況、警報・注意報は気象庁（鎌倉市）の発表です。いずれも申請や API
-            キーなしで使える公開データです。
-          </p>
-        </div>
-        <div>
-          <p className="font-medium text-ink/75">予測の立て方</p>
-          <p className="mt-1">
-            数時間〜数日先は、七里ヶ浜沖の格子点における ECMWF の3時間ごとの値を使います。いま〜1時間は、ハーバー実況の直近の傾きを15・30・60分先へ延ばし、過去の当たり具合で校正したナウキャストです。格子点まで約{" "}
-            {HARBOR_TO_OFFSHORE_KM.toFixed(1)} km
-            あり、地点が異なるため数値はそのまま比べません。
-          </p>
-        </div>
-        <div>
-          <p className="font-medium text-ink/75">局地補正</p>
-          <p className="mt-1">
-            同じ時間帯・似た風向のとき「ハーバー平均 ÷ 沖予報」がどれくらいだったかを覚え、その倍率を沖の予報にかけます。ハーバーの値で沖を置き換えるのではなく、過去のずれを統計的に寄せる処理です。
-          </p>
-        </div>
+      <div className="mt-3 space-y-2.5 text-[12px] leading-5 text-muted">
         <p>
-          平均 10 m/s 以上、または瞬間 13 m/s
-          以上は出艇不可能とします。最終判断は現場と警報・注意報。前兆のない突風は見えません。
+          沖の見通しは ECMWF（約25km升・3時間ごと）、直近は江の島ヨットハーバーの5分実況です。格子点まで約{" "}
+          {HARBOR_TO_OFFSHORE_KM.toFixed(1)}{" "}
+          km。地点が異なるため、数値はそのまま比べません。
         </p>
+        <ul className="space-y-1.5">
+          <li>
+            <span className="font-medium text-ink/75">使い分け</span>
+            {" — "}数時間〜数日は沖予報、いま〜1時間はナウキャスト。
+          </li>
+          <li>
+            <span className="font-medium text-ink/75">補正</span>
+            {" — "}ナウキャストは傾きの過大を抑え、沖予報は時間帯・風向の型で倍率調整。
+          </li>
+          <li>
+            <span className="font-medium text-ink/75">出艇不可能</span>
+            {" — "}平均 10 m/s 以上、または瞬間 13 m/s 以上。最終判断は現場と警報・注意報。
+          </li>
+          <li>
+            <span className="font-medium text-ink/75">限界</span>
+            {" — "}前兆のない突風は見えません。
+          </li>
+        </ul>
       </div>
     </details>
   );
