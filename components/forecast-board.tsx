@@ -754,18 +754,22 @@ export function ForecastBoard() {
       {data?.harbor ? <HarborPanel harbor={data.harbor} /> : null}
 
       <div>
-        <div className="flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <h2 className="font-serif text-2xl tracking-tight text-ink sm:text-3xl">風と天気</h2>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">
-              <span className="sm:hidden">
-                144時間先まで、3時間ごと。棒は風速、うすい部分は瞬間風速。矢印は向かう向き。棒を押すとその日の詳細へ。平均 10 m/s 以上、または瞬間 13 m/s 以上は出艇不可能。
-              </span>
-              <span className="hidden sm:inline">
-                144時間先まで、3時間ごと。棒の高さは地上10mの風速、うすい部分は最大瞬間風速まで。上端は {scale} m/s。棒の上の矢印は風の向かう向きで、上は北。ある日の棒を押すと、その日の詳細へ移ります。平均 10 m/s 以上、または最大瞬間風速 13 m/s 以上は出艇不可能。瞬間は初期値から90時間先までは枠の終わり直前1時間、それより先は直前3時間。下の言葉は吹いてくる向き。
-              </span>
-            </p>
-          </div>
+        <div>
+          <h2 className="font-serif text-2xl tracking-tight text-ink sm:text-3xl">風と天気</h2>
+          <p className="mt-1 text-sm text-muted">ECMWF · 3時間ごと · 144時間先まで</p>
+          <details className="group mt-2 max-w-2xl">
+            <summary className="cursor-pointer list-none text-xs text-sea marker:content-none">
+              <span className="underline decoration-line underline-offset-2">図の見方</span>
+            </summary>
+            <ul className="mt-2 space-y-1.5 text-sm leading-6 text-muted">
+              <li>棒は地上10mの平均風速、うすい部分は最大瞬間風速（目盛の上端は {scale} m/s）。</li>
+              <li>矢印は風の向かう向き（上が北）。日付を押すとその日の詳細へ。</li>
+              <li>平均 10 m/s 以上、または瞬間 13 m/s 以上は出艇不可能。</li>
+              <li className="text-xs">
+                瞬間は初期値から90時間先までが枠末の1時間、それ以降は3時間の最大。下の方位は吹いてくる向き。
+              </li>
+            </ul>
+          </details>
         </div>
         {windows.some((window) => window.noDeparture) ? (
           <div className="mt-4 border-l-2 border-warn bg-warn-bg/80 px-4 py-3 text-sm leading-6 text-warn">
