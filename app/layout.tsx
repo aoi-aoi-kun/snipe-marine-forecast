@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { IBM_Plex_Sans_JP, Shippori_Mincho } from "next/font/google";
 import "./globals.css";
 
@@ -22,12 +22,27 @@ export const metadata: Metadata = {
   title: "七里ヶ浜沖の予報",
   description:
     "相模湾、北緯35.25度・東経139.50度の天気・気温・風。ECMWF の公開データから、3時間ごと、144時間先まで。",
+  appleWebApp: {
+    capable: true,
+    title: "七里ヶ浜沖",
+    statusBarStyle: "default",
+  },
+  formatDetection: {
+    telephone: false,
+  },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: "#0a3f48",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="ja" className={`${plex.variable} ${mincho.variable} h-full`}>
-      <body className="min-h-full antialiased">{children}</body>
+      <body className="min-h-full touch-manipulation antialiased">{children}</body>
     </html>
   );
 }

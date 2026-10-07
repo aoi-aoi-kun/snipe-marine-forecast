@@ -1,0 +1,11 @@
+node_modules
+.next
+.git
+.cache
+agent-tools
+*.md
+.env*
+.vercel
+coverage
+Dockerfile*
+docker-compose*

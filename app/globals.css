@@ -55,6 +55,10 @@
   }
 }
 
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
 body {
   color: var(--color-ink);
   font-family: var(--font-sans);
@@ -63,8 +67,14 @@ body {
     radial-gradient(120% 70% at 10% -10%, #d7ecef 0%, transparent 55%),
     radial-gradient(90% 50% at 90% 0%, #e8f2e8 0%, transparent 45%),
     linear-gradient(180deg, #f4f8f8 0%, var(--color-paper) 42%, #e4eef0 100%);
-  background-attachment: fixed;
   min-height: 100%;
+  overscroll-behavior-y: none;
+}
+
+@media (min-width: 640px) {
+  body {
+    background-attachment: fixed;
+  }
 }
 
 ::selection {

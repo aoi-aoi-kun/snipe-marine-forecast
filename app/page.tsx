@@ -2,13 +2,13 @@ import { ForecastBoard } from "@/components/forecast-board";
 
 export default function Page() {
   return (
-    <main className="mx-auto w-full max-w-5xl px-5 pb-14 sm:px-8 sm:pb-20">
-      <header className="site-hero -mx-5 px-5 pb-10 pt-10 text-paper sm:-mx-8 sm:px-8 sm:pb-14 sm:pt-14">
-        <p className="anim-rise text-sm font-medium tracking-[0.18em] text-mist">相模湾</p>
-        <h1 className="anim-rise anim-rise-delay-1 mt-3 font-serif text-5xl leading-[1.05] tracking-tight sm:text-6xl md:text-7xl">
+    <main className="mx-auto w-full max-w-5xl px-4 pb-[max(3.5rem,env(safe-area-inset-bottom))] pt-[env(safe-area-inset-top)] sm:px-8 sm:pb-20">
+      <header className="site-hero -mx-4 px-4 pb-8 pt-8 text-paper sm:-mx-8 sm:px-8 sm:pb-14 sm:pt-14">
+        <p className="anim-rise text-xs font-medium tracking-[0.18em] text-mist sm:text-sm">相模湾</p>
+        <h1 className="anim-rise anim-rise-delay-1 mt-2 font-serif text-[2.5rem] leading-[1.05] tracking-tight sm:mt-3 sm:text-6xl md:text-7xl">
           七里ヶ浜沖
         </h1>
-        <p className="anim-rise anim-rise-delay-2 mt-4 max-w-md text-sm leading-6 text-mist/95 sm:text-base">
+        <p className="anim-rise anim-rise-delay-2 mt-3 max-w-md text-sm leading-6 text-mist/95 sm:mt-4 sm:text-base">
           北緯 35.25°、東経 139.50°。海岸を含む約25kmの升を、3時間ごとに144時間先まで。
         </p>
       </header>

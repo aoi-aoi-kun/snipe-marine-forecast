@@ -182,7 +182,7 @@ function WindTrack({
   const meanPct = Math.min(100, (mean / scale) * 100);
   const gustPct = Math.min(100, (Math.max(mean, gust) / scale) * 100);
   return (
-    <div className="relative h-1.5 w-28 overflow-hidden rounded-sm bg-sand">
+    <div className="relative h-1.5 w-full max-w-[7.5rem] overflow-hidden rounded-sm bg-sand">
       <div
         className={cn("absolute inset-y-0 left-0 rounded-sm", blocked ? "bg-warn/35" : "bg-sea/25")}
         style={{ width: `${gustPct}%` }}
@@ -321,14 +321,18 @@ function WindOverview({
             <span>0</span>
           </div>
         </div>
-        <div className="flex min-w-0 flex-1 gap-px">
+        <div className="-mx-1 min-w-0 flex-1 overflow-x-auto overscroll-x-contain px-1 pb-1 [-webkit-overflow-scrolling:touch]">
+          <div
+            className="flex gap-px"
+            style={{ minWidth: `max(100%, ${Math.max(groups.length, 1) * 4.5}rem)` }}
+          >
           {groups.map((group, groupIndex) => (
             <button
               key={group.key}
               type="button"
               onClick={() => scrollToDay(group.key)}
-              className="group/day min-w-0 rounded-md px-px py-0.5 text-left transition-colors hover:bg-sea/8 focus-visible:bg-sea/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sea/40"
-              style={{ flex: groupHours(group) }}
+              className="group/day min-w-0 rounded-md px-px py-1 text-left transition-colors hover:bg-sea/8 focus-visible:bg-sea/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sea/40 active:bg-sea/12"
+              style={{ flex: groupHours(group), minWidth: `${Math.max(groupHours(group) * 0.7, 3.25)}rem` }}
               aria-label={`${group.label}の詳細へ`}
             >
               <div className="flex h-1.5 gap-px overflow-hidden rounded-sm" aria-hidden="true">
@@ -405,6 +409,7 @@ function WindOverview({
               </p>
             </button>
           ))}
+          </div>
         </div>
       </div>
     </div>
@@ -416,7 +421,7 @@ function WindowCard({ window, scale }: { window: WindowForecast; scale: number }
   return (
     <article
       className={cn(
-        "flex flex-col border-t-2 px-3 py-3.5 transition-colors",
+        "flex flex-col border-t-2 px-2.5 py-3 transition-colors sm:px-3 sm:py-3.5",
         window.noDeparture
           ? "border-warn bg-warn-bg/70"
           : "border-sea/25 bg-paper/40 hover:bg-paper/70",
@@ -506,9 +511,9 @@ export function ForecastBoard() {
   const scale = windScale(windows);
 
   return (
-    <section className="anim-rise anim-rise-delay-3 -mt-2 space-y-8" aria-live="polite">
-      <div className="flex items-start justify-between gap-4">
-        <div className="text-sm leading-6 text-muted">
+    <section className="anim-rise anim-rise-delay-3 -mt-2 space-y-6 sm:space-y-8" aria-live="polite">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+        <div className="min-w-0 text-sm leading-6 text-muted">
           {data?.ifs ? (
             <>
               <p className="font-medium text-ink/80">
@@ -532,6 +537,7 @@ export function ForecastBoard() {
         <Button
           variant="outline"
           size="sm"
+          className="w-full shrink-0 sm:w-auto"
           onClick={() => void load(true)}
           disabled={loading}
         >
@@ -558,9 +564,14 @@ export function ForecastBoard() {
       <div>
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <h2 className="font-serif text-3xl tracking-tight text-ink">風と天気</h2>
+            <h2 className="font-serif text-2xl tracking-tight text-ink sm:text-3xl">風と天気</h2>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">
-              144時間先まで、3時間ごと。棒の高さは地上10mの風速、うすい部分は最大瞬間風速まで。上端は {scale} m/s。棒の上の矢印は風の向かう向きで、上は北。ある日の棒を押すと、その日の詳細へ移ります。平均 10 m/s 以上、または最大瞬間風速 13 m/s 以上は出艇不可能。瞬間は初期値から90時間先までは枠の終わり直前1時間、それより先は直前3時間。下の言葉は吹いてくる向き。
+              <span className="sm:hidden">
+                144時間先まで、3時間ごと。棒は風速、うすい部分は瞬間風速。矢印は向かう向き。棒を押すとその日の詳細へ。平均 10 m/s 以上、または瞬間 13 m/s 以上は出艇不可能。
+              </span>
+              <span className="hidden sm:inline">
+                144時間先まで、3時間ごと。棒の高さは地上10mの風速、うすい部分は最大瞬間風速まで。上端は {scale} m/s。棒の上の矢印は風の向かう向きで、上は北。ある日の棒を押すと、その日の詳細へ移ります。平均 10 m/s 以上、または最大瞬間風速 13 m/s 以上は出艇不可能。瞬間は初期値から90時間先までは枠の終わり直前1時間、それより先は直前3時間。下の言葉は吹いてくる向き。
+              </span>
             </p>
           </div>
         </div>
@@ -597,7 +608,7 @@ export function ForecastBoard() {
             <section
               key={group.key}
               id={daySectionId(group.key)}
-              className="anim-rise scroll-mt-6 rounded-lg"
+              className="anim-rise scroll-mt-[max(1.5rem,env(safe-area-inset-top))] rounded-lg"
               style={{ animationDelay: `${0.08 + groupIndex * 0.04}s` }}
             >
               <div className="flex items-baseline justify-between gap-3 border-b border-line/70 pb-2">

@@ -1,12 +1,15 @@
 import https from "node:https";
+import type { IncomingHttpHeaders } from "node:http";
 import { lookup as systemLookup, type LookupOptions } from "node:dns";
 import { Resolver } from "node:dns/promises";
 
-type LookupCallback = (
-  error: NodeJS.ErrnoException | null,
-  address: string | { address: string; family: number }[],
-  family?: number,
-) => void;
+type LookupCallback = {
+  (error: NodeJS.ErrnoException | null, address: string, family: number): void;
+  (
+    error: NodeJS.ErrnoException | null,
+    addresses: { address: string; family: number }[],
+  ): void;
+};
 
 let systemDns: "unknown" | "ok" | "down" = "unknown";
 const publicResolver = new Resolver();
@@ -18,7 +21,7 @@ function publicLookup(hostname: string, options: LookupOptions, callback: Lookup
       if (addresses.length === 0) {
         const error = new Error(`DNS で ${hostname} を解決できません`) as NodeJS.ErrnoException;
         error.code = "ENOTFOUND";
-        callback(error);
+        callback(error, "", 0);
         return;
       }
       if (options.all) {
@@ -30,7 +33,7 @@ function publicLookup(hostname: string, options: LookupOptions, callback: Lookup
       }
       callback(null, addresses[0], 4);
     },
-    (error: NodeJS.ErrnoException) => callback(error),
+    (error: NodeJS.ErrnoException) => callback(error, "", 0),
   );
 }
 
@@ -94,7 +97,7 @@ function requestOnce(
   url: string,
   headers: Record<string, string>,
   timeoutMs: number,
-): Promise<{ status: number; headers: https.IncomingHttpHeaders; body: Uint8Array }> {
+): Promise<{ status: number; headers: IncomingHttpHeaders; body: Uint8Array }> {
   return new Promise((resolve, reject) => {
     const request = https.request(
       url,

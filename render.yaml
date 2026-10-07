@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: shichirigahama-forecast
+    runtime: docker
+    plan: free
+    healthCheckPath: /
+    envVars:
+      - key: PORT
+        value: "3847"
+      - key: HOSTNAME
+        value: "0.0.0.0"
+    disk:
+      name: forecast-cache
+      mountPath: /app/.cache
+      sizeGB: 1
