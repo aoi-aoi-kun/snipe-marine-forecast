@@ -135,16 +135,19 @@ function WeatherIcon({
 function WindCompass({ degrees }: { degrees: number }) {
   return (
     <svg viewBox="0 0 48 48" aria-hidden="true" className="size-11 shrink-0 text-sea">
-      <circle cx="24" cy="24" r="15" fill="none" stroke="currentColor" strokeOpacity="0.22" />
+      <circle cx="24" cy="24" r="15" fill="none" stroke="currentColor" strokeOpacity="0.18" />
       <path
         d="M24 5.5v4.2M24 38.3V43M5.5 24h4.2M38.3 24H43"
         fill="none"
         stroke="currentColor"
-        strokeOpacity="0.4"
+        strokeOpacity="0.35"
         strokeWidth="1.3"
         strokeLinecap="round"
       />
-      <g transform={`rotate(${degrees + 180} 24 24)`}>
+      <g
+        transform={`rotate(${degrees + 180} 24 24)`}
+        style={{ transition: "transform 0.5s cubic-bezier(0.22, 1, 0.36, 1)" }}
+      >
         <path
           d="M24 13.5v15.5"
           fill="none"
@@ -179,13 +182,13 @@ function WindTrack({
   const meanPct = Math.min(100, (mean / scale) * 100);
   const gustPct = Math.min(100, (Math.max(mean, gust) / scale) * 100);
   return (
-    <div className="relative h-1.5 w-28 rounded-full bg-paper">
+    <div className="relative h-1.5 w-28 overflow-hidden rounded-sm bg-sand">
       <div
-        className={cn("absolute inset-y-0 left-0 rounded-full", blocked ? "bg-warn/35" : "bg-sea/30")}
+        className={cn("absolute inset-y-0 left-0 rounded-sm", blocked ? "bg-warn/35" : "bg-sea/25")}
         style={{ width: `${gustPct}%` }}
       />
       <div
-        className={cn("absolute inset-y-0 left-0 rounded-full", blocked ? "bg-warn" : "bg-sea")}
+        className={cn("absolute inset-y-0 left-0 rounded-sm", blocked ? "bg-warn" : "bg-sea")}
         style={{ width: `${meanPct}%` }}
       />
     </div>
@@ -210,66 +213,75 @@ function WindOverview({
   groups: DayGroup[];
   scale: number;
 }) {
+  const barOffsets = groups.reduce<number[]>((offsets, group, index) => {
+    const previous = index === 0 ? 0 : offsets[index - 1] + groups[index - 1].windows.length;
+    offsets.push(previous);
+    return offsets;
+  }, []);
   return (
-    <div className="mt-4">
-      <ul className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted">
-        <li>帯は天気</li>
+    <div className="anim-rise anim-rise-delay-2 mt-5 rounded-xl border border-line/70 bg-paper/55 p-4 backdrop-blur-sm sm:p-5">
+      <ul className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-muted">
+        <li className="font-medium text-ink/70">天気</li>
         <li className="flex items-center gap-1.5">
-          <span className="size-2.5 bg-sun" />
+          <span className="size-2.5 rounded-sm bg-sun" />
           晴れ
         </li>
         <li className="flex items-center gap-1.5">
-          <span className="size-2.5 bg-muted" />
+          <span className="size-2.5 rounded-sm bg-muted" />
           くもり
         </li>
         <li className="flex items-center gap-1.5">
-          <span className="size-2.5 bg-sea" />
+          <span className="size-2.5 rounded-sm bg-sea" />
           雨
         </li>
+        <li className="flex items-center gap-1.5 sm:ml-2">
+          <span className="size-2.5 rounded-sm bg-warn" />
+          出艇不可能
+        </li>
       </ul>
-      <p className="mt-2 flex items-center gap-1.5 text-xs text-muted">
-        <span className="size-2.5 bg-warn" />
-        この色の棒は出艇不可能
-      </p>
-      <div className="mt-3 flex gap-2" aria-hidden="true">
-        <div className="flex w-6 shrink-0 flex-col">
-          <div className="h-2" />
-          <div className="mt-1 flex h-20 flex-col justify-between text-[10px] tabular-nums leading-none text-muted">
+      <div className="mt-4 flex gap-2" aria-hidden="true">
+        <div className="flex w-7 shrink-0 flex-col">
+          <div className="h-1.5" />
+          <div className="mt-2 flex h-28 flex-col justify-between text-[10px] tabular-nums leading-none text-muted">
             <span>{scale}</span>
             <span>0</span>
           </div>
         </div>
         <div className="min-w-0 flex-1">
-          <div className="flex h-2 gap-1">
+          <div className="flex h-1.5 gap-px overflow-hidden rounded-sm">
             {groups.map((group) => (
               <div key={group.key} className="flex min-w-0" style={{ flex: groupHours(group) }}>
                 {group.windows.map((window) => (
-                  <div key={window.start} className="px-px" style={{ flex: durationHours(window) }}>
-                    <div className={cn("h-2", weatherBand(window.weather))} />
+                  <div key={window.start} className="min-w-0 px-px" style={{ flex: durationHours(window) }}>
+                    <div className={cn("h-1.5 rounded-[1px]", weatherBand(window.weather))} />
                   </div>
                 ))}
               </div>
             ))}
           </div>
-          <div className="mt-1 flex h-20 items-end gap-1">
-            {groups.map((group) => (
+          <div className="mt-2 flex h-28 items-end gap-px">
+            {groups.map((group, groupIndex) => (
               <div key={group.key} className="flex h-full min-w-0 items-end" style={{ flex: groupHours(group) }}>
-                {group.windows.map((window) => {
+                {group.windows.map((window, windowIndex) => {
                   const mean = window.windMeanMs ?? 0;
                   const gust = window.windGustMs ?? 0;
                   const meanPct = window.available ? Math.min(100, (mean / scale) * 100) : 0;
                   const extraPct = window.available
                     ? Math.max(0, Math.min(100, (Math.max(mean, gust) / scale) * 100) - meanPct)
                     : 0;
+                  const delay = `${Math.min(barOffsets[groupIndex] + windowIndex, 40) * 18}ms`;
                   return (
                     <div
                       key={window.start}
                       className="flex h-full min-w-0 items-end px-px"
                       style={{ flex: durationHours(window) }}
                     >
-                      <div className="flex h-full w-full flex-col justify-end">
+                      <div
+                        className="wind-bar flex h-full w-full flex-col justify-end"
+                        style={{ animationDelay: delay }}
+                      >
                         <div
-                          className={cn("w-full", window.noDeparture ? "bg-warn/35" : "bg-sea/25")}
+                          className={cn("w-full rounded-t-[1px]", window.noDeparture ? "bg-warn/35" : "bg-sea/20")}
                           style={{ height: `${extraPct}%` }}
                         />
                         <div
@@ -283,11 +295,11 @@ function WindOverview({
               </div>
             ))}
           </div>
-          <div className="mt-1 hidden gap-1 sm:flex">
+          <div className="mt-2 hidden gap-px sm:flex">
             {groups.map((group) => (
               <div key={group.key} className="flex min-w-0" style={{ flex: groupHours(group) }}>
                 {group.windows.map((window) => (
-                    <p
+                  <p
                     key={window.start}
                     className="min-w-0 truncate text-center text-[10px] tabular-nums text-muted"
                     style={{ flex: durationHours(window) }}
@@ -298,11 +310,11 @@ function WindOverview({
               </div>
             ))}
           </div>
-          <div className="mt-0.5 flex gap-1 border-t border-line pt-1">
+          <div className="mt-1 flex gap-px border-t border-line/80 pt-1.5">
             {groups.map((group) => (
               <p
                 key={group.key}
-                className="min-w-0 truncate text-center text-[11px] text-muted"
+                className="min-w-0 truncate text-center text-[11px] font-medium text-ink/65"
                 style={{ flex: groupHours(group) }}
               >
                 {group.shortLabel}
@@ -319,11 +331,16 @@ function WindowCard({ window, scale }: { window: WindowForecast; scale: number }
   const { hours, partial } = formatHours(window);
   return (
     <article
-      className={cn("flex flex-col px-3 py-3", window.noDeparture ? "bg-warn-bg" : "bg-sand/80")}
+      className={cn(
+        "flex flex-col border-t-2 px-3 py-3.5 transition-colors",
+        window.noDeparture
+          ? "border-warn bg-warn-bg/70"
+          : "border-sea/25 bg-paper/40 hover:bg-paper/70",
+      )}
     >
       <div className="flex items-baseline justify-between gap-2">
-        <h3 className="text-sm text-ink">{hours}</h3>
-        {window.noDeparture ? <p className="text-sm font-medium text-warn">出艇不可能</p> : null}
+        <h3 className="text-sm font-medium tabular-nums text-ink">{hours}</h3>
+        {window.noDeparture ? <p className="text-xs font-medium tracking-wide text-warn">出艇不可能</p> : null}
       </div>
       <p className="text-xs text-muted">{partial ?? "\u00a0"}</p>
       <div className="mt-3 flex flex-1 flex-col gap-4">
@@ -356,7 +373,7 @@ function WindowCard({ window, scale }: { window: WindowForecast; scale: number }
               blocked={window.noDeparture}
             />
           </div>
-          <p className="mt-1 text-sm tabular-nums text-ink">
+          <p className="mt-1.5 text-sm tabular-nums text-ink">
             {formatMs(window.windMeanMs ?? 0)} m/s
             <span className="text-muted"> 瞬間 {formatMs(window.windGustMs ?? 0)}</span>
           </p>
@@ -405,24 +422,27 @@ export function ForecastBoard() {
   const scale = windScale(windows);
 
   return (
-    <section className="pt-6" aria-live="polite">
+    <section className="anim-rise anim-rise-delay-3 -mt-2 space-y-8" aria-live="polite">
       <div className="flex items-start justify-between gap-4">
         <div className="text-sm leading-6 text-muted">
           {data?.ifs ? (
             <>
-              <p>ECMWF 初期値 {formatStamp(data.ifs.initTime)}（日本時間）</p>
+              <p className="font-medium text-ink/80">
+                ECMWF 初期値 {formatStamp(data.ifs.initTime)}
+                <span className="font-normal text-muted">（日本時間）</span>
+              </p>
               {data.ifs.ageHours > 24 ? (
-                <p>この初期値は24時間より古いです。</p>
+                <p className="mt-1">この初期値は24時間より古いです。</p>
               ) : null}
               {data.ifs.degraded ? (
-                <p>新しい初期値を取りきれなかったため、保存した数値を含みます。</p>
+                <p className="mt-1">新しい初期値を取りきれなかったため、保存した数値を含みます。</p>
               ) : null}
             </>
           ) : (
             <p>{loading ? "ECMWF の数値予報を取得しています。" : "数値予報はまだありません。"}</p>
           )}
           {loading && !data?.ifs ? (
-            <p>最初の取得は数分かかることがあります。</p>
+            <p className="mt-1">最初の取得は数分かかることがあります。</p>
           ) : null}
         </div>
         <Button
@@ -435,12 +455,12 @@ export function ForecastBoard() {
         </Button>
       </div>
 
-      {error ? <p className="mt-4 text-sm text-warn">{error}</p> : null}
+      {error ? <p className="text-sm text-warn">{error}</p> : null}
 
       {data?.jma && data.jma.warnings.length > 0 ? (
-        <div className="mt-6 border border-warn/30 bg-warn-bg px-4 py-3 text-sm leading-6 text-warn">
-          <p className="font-medium">鎌倉市に発表中</p>
-          <ul className="mt-1">
+        <div className="border-l-2 border-warn bg-warn-bg/80 px-4 py-3 text-sm leading-6 text-warn">
+          <p className="font-medium tracking-wide">鎌倉市に発表中</p>
+          <ul className="mt-1.5 space-y-0.5">
             {data.jma.warnings.map((warning) => (
               <li key={warning.code} className={warning.severe ? "font-medium" : undefined}>
                 {warning.name}（{warning.status}
@@ -451,20 +471,24 @@ export function ForecastBoard() {
         </div>
       ) : null}
 
-      <div className="mt-8">
-        <h2 className="font-serif text-2xl text-ink">風と天気</h2>
-        <p className="mt-1 max-w-2xl text-sm leading-6 text-muted">
-          144時間先まで、3時間ごとです。高さは地上10mの風速、うすい部分は最大瞬間風速まで。上端は {scale} m/s です。平均 10 m/s 以上、または最大瞬間風速 13 m/s 以上の枠は出艇不可能です。最大瞬間風速は、初期時刻から90時間先までは枠の終わり直前1時間、それより先は直前3時間の値です。矢印は風の向かう向き、言葉は吹いてくる向き。方位の上は北です。
-        </p>
+      <div>
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h2 className="font-serif text-3xl tracking-tight text-ink">風と天気</h2>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">
+              144時間先まで、3時間ごと。棒の高さは地上10mの風速、うすい部分は最大瞬間風速まで。上端は {scale} m/s。平均 10 m/s 以上、または最大瞬間風速 13 m/s 以上は出艇不可能。瞬間は初期値から90時間先までは枠の終わり直前1時間、それより先は直前3時間。矢印は向かう向き、言葉は吹いてくる向き。上は北。
+            </p>
+          </div>
+        </div>
         {windows.some((window) => window.noDeparture) ? (
-          <div className="mt-4 border border-warn/30 bg-warn-bg px-4 py-3 text-sm leading-6 text-warn">
-            <p className="font-medium">出艇不可能</p>
-            <ul className="mt-1">
+          <div className="mt-4 border-l-2 border-warn bg-warn-bg/80 px-4 py-3 text-sm leading-6 text-warn">
+            <p className="font-medium tracking-wide">出艇不可能</p>
+            <ul className="mt-1.5 columns-1 gap-x-8 sm:columns-2">
               {windows.filter((window) => window.noDeparture).map((window) => {
                 const start = jstParts(Date.parse(window.start));
                 const { hours, partial } = formatHours(window);
                 return (
-                  <li key={window.start}>
+                  <li key={window.start} className="break-inside-avoid">
                     {start.month}月{start.day}日 {hours}
                     {partial ? `（${partial}）` : ""}
                   </li>
@@ -474,32 +498,34 @@ export function ForecastBoard() {
           </div>
         ) : null}
         {loading && !data?.ifs ? (
-          <div className="mt-4 space-y-3">
-            <div className="h-20 animate-pulse bg-sand/60" />
+          <div className="mt-5 space-y-3">
+            <div className="skeleton-pulse h-36 rounded-xl bg-sand/80" />
             <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
               {Array.from({ length: 4 }, (_, index) => (
-                <div key={index} className="h-40 animate-pulse bg-sand/60" />
+                <div key={index} className="skeleton-pulse h-44 bg-sand/70" />
               ))}
             </div>
           </div>
         ) : null}
         {groups.length > 0 ? <WindOverview groups={groups} scale={scale} /> : null}
-        <div className="mt-6 space-y-8">
-          {groups.map((group) => {
-            return (
-              <section key={group.key}>
-                <div className="flex items-baseline justify-between gap-3">
-                  <h3 className="font-serif text-xl text-ink">{group.label}</h3>
-                  <p className="text-xs text-muted">3時間ごと</p>
-                </div>
-                <div className="mt-3 grid grid-cols-2 gap-2 md:grid-cols-4">
-                  {group.windows.map((window) => (
-                    <WindowCard key={window.start} window={window} scale={scale} />
-                  ))}
-                </div>
-              </section>
-            );
-          })}
+        <div className="mt-8 space-y-10">
+          {groups.map((group, groupIndex) => (
+            <section
+              key={group.key}
+              className="anim-rise"
+              style={{ animationDelay: `${0.08 + groupIndex * 0.04}s` }}
+            >
+              <div className="flex items-baseline justify-between gap-3 border-b border-line/70 pb-2">
+                <h3 className="font-serif text-xl tracking-tight text-ink">{group.label}</h3>
+                <p className="text-xs tracking-wide text-muted">3時間ごと</p>
+              </div>
+              <div className="mt-3 grid grid-cols-2 gap-x-2 gap-y-2 md:grid-cols-4">
+                {group.windows.map((window) => (
+                  <WindowCard key={window.start} window={window} scale={scale} />
+                ))}
+              </div>
+            </section>
+          ))}
         </div>
       </div>
     </section>
