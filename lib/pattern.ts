@@ -197,7 +197,7 @@ export function matchPattern(
     score: best.score,
     boostFactor: best.event.boostFactor,
     sampleAt: new Date(best.event.atMs).toISOString(),
-    note: `${parts.month}/${parts.day} ${String(parts.hour).padStart(2, "0")}時台の急上昇（+${best.event.riseMs.toFixed(1)} m/s）に近い前兆のため、沖の予報風速を ${best.event.boostFactor.toFixed(2)} 倍に補正。`,
+    note: `${parts.month}/${parts.day} ${String(parts.hour).padStart(2, "0")}時台の急上昇（+${best.event.riseMs.toFixed(1)} m/s）に近い前兆のため、沖予報を ${best.event.boostFactor.toFixed(2)} 倍に補正。`,
   };
 }
 

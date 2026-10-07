@@ -279,7 +279,7 @@ export function correctionForWindow(
     binKey: chosen.key,
     count: chosen.count,
     meanBiasMs: chosen.meanBiasMs,
-    note: `局地補正（MOS）: 過去${chosen.count}枠の「ハーバー÷沖予報」平均 ${chosen.meanRatio.toFixed(2)}（${label}、平均差 ${chosen.meanBiasMs >= 0 ? "+" : ""}${chosen.meanBiasMs.toFixed(1)} m/s）。`,
+    note: `局地補正（MOS）: 過去 ${chosen.count} 枠のハーバー÷沖予報 = ${chosen.meanRatio.toFixed(2)}（${label}、差 ${chosen.meanBiasMs >= 0 ? "+" : ""}${chosen.meanBiasMs.toFixed(1)} m/s）。`,
   };
 }
 
@@ -331,7 +331,7 @@ export function summarizeMos(store: MosStore): MosSummary {
     activeBins,
     note:
       store.pairs.length === 0
-        ? "まだ突合データがありません。実況とECMWFが揃い次第、学習を始めます。"
-        : `突合 ${store.pairs.length} 枠（約 ${Math.max(1, Math.round(spanHours / 24))} 日分）。補正に使える時間帯・風向の型は ${activeBins} 個。`,
+        ? "突合データはまだありません。実況と ECMWF が揃い次第、学習を始めます。"
+        : `突合 ${store.pairs.length} 枠（約 ${Math.max(1, Math.round(spanHours / 24))} 日分）。使える時間帯・風向の型は ${activeBins} 個。`,
   };
 }

@@ -276,7 +276,7 @@ export function buildNowcast(
     alerts.push({
       kind: "threshold",
       level: "watch",
-      message: `ナウキャストが 10 m/s を超えます（${parts}）。出艇の目安を上回る見込みです。`,
+      message: `ナウキャストが 10 m/s 超（${parts}）。出艇の目安を上回ります。`,
     });
   }
 
@@ -287,13 +287,13 @@ export function buildNowcast(
     alerts.push({
       kind: "ramp",
       level: "watch",
-      message: `直近15分で平均風速が ${rise15.toFixed(1)} m/s 上がっています（吹き上がり）。`,
+      message: `直近15分で平均 +${rise15.toFixed(1)} m/s。`,
     });
   } else if (rise30 !== null && rise30 >= RAMP_30_MS) {
     alerts.push({
       kind: "ramp",
       level: "watch",
-      message: `直近30分で平均風速が ${rise30.toFixed(1)} m/s 上がっています（吹き上がり）。`,
+      message: `直近30分で平均 +${rise30.toFixed(1)} m/s。`,
     });
   }
 
@@ -305,7 +305,7 @@ export function buildNowcast(
     alerts.push({
       kind: "rising",
       level: "info",
-      message: `風が強まる傾向です（およそ ${riseRateMsPerHour.toFixed(1)} m/s 毎時）。`,
+      message: `風が強まる傾向（約 ${riseRateMsPerHour.toFixed(1)} m/s 毎時）。`,
     });
   }
 
@@ -313,13 +313,13 @@ export function buildNowcast(
     alerts.push({
       kind: "threshold",
       level: "watch",
-      message: `ハーバーの平均風速が ${latest.meanMs.toFixed(1)} m/s です（閾値 ${THRESHOLD_MEAN_MS} m/s）。`,
+      message: `ハーバー平均 ${latest.meanMs.toFixed(1)} m/s（目安 ${THRESHOLD_MEAN_MS}）。`,
     });
   } else if (latest.maxMs >= THRESHOLD_MAX_MS) {
     alerts.push({
       kind: "threshold",
       level: "info",
-      message: `ハーバーの最大風速が ${latest.maxMs.toFixed(1)} m/s です（閾値 ${THRESHOLD_MAX_MS} m/s）。`,
+      message: `ハーバー最大 ${latest.maxMs.toFixed(1)} m/s（目安 ${THRESHOLD_MAX_MS}）。`,
     });
   }
 
@@ -331,7 +331,7 @@ export function buildNowcast(
     alerts.push({
       kind: "rising",
       level: "info",
-      message: `風向が約 ${Math.round(directionChangeDeg)}° 変わりながら強まっています。`,
+      message: `風向が約 ${Math.round(directionChangeDeg)}° 変わり、強まっています。`,
     });
   }
 
@@ -340,9 +340,7 @@ export function buildNowcast(
     alerts.push({
       kind: "stale",
       level: "info",
-      message:
-        `enowin の公開データが約 ${lagMinutes} 分止まっています（最終観測から）。` +
-        `こちらは再取得していますが、新しい行がまだありません。`,
+      message: `公開データが約 ${lagMinutes} 分停止中です。再取得していますが、新しい観測はありません。`,
     });
   }
 

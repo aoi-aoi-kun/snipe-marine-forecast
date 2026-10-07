@@ -181,8 +181,8 @@ async function resolveJma(refresh: boolean): Promise<{
       jma: null,
       error:
         error instanceof Error
-          ? `気象庁の警報を取得できませんでした（${error.message}）`
-          : "気象庁の警報を取得できませんでした",
+          ? `気象庁の警報・注意報を取得できませんでした（${error.message}）`
+          : "気象庁の警報・注意報を取得できませんでした",
     };
   }
 }

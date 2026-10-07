@@ -442,7 +442,7 @@ function HarborPanel({ harbor }: { harbor: HarborBundle }) {
             <div className="callout mb-2 py-1.5 text-[11px] leading-4">
               <p className="font-medium tracking-wide">警告 · 10 m/s 超え</p>
               <p className="mt-0.5 text-warn/90">
-                ナウキャストの平均風速が 10 m/s を超えます。出艇の目安を上回る見込みです。
+                ナウキャストの平均が 10 m/s を超えます。出艇の目安を上回る見込みです。
               </p>
             </div>
           ) : null}
@@ -450,7 +450,7 @@ function HarborPanel({ harbor }: { harbor: HarborBundle }) {
             <div className="callout mb-2 py-1.5 text-[11px] leading-4">
               <p className="font-medium tracking-wide">実況の公開が停止中</p>
               <p className="mt-0.5 text-warn/90">
-                enowin の最新行が約 {lagMinutes} 分前のままです。公開ファイルに新しい観測がまだありません。
+                enowin の最新が約 {lagMinutes} 分前のままです。公開側に新しい観測がありません。
               </p>
             </div>
           ) : null}
@@ -551,14 +551,14 @@ function HarborPanel({ harbor }: { harbor: HarborBundle }) {
                 <div className="mt-1.5 space-y-1 text-[11px] leading-4 text-muted">
                   <p>
                     {harbor.nowcastSkill.calibrated
-                      ? "過去実況で校正した風速・風向の短時間予測です。"
-                      : "直近の傾きが続く場合の風速・風向の短時間予測です。"}
+                      ? "過去実況で校正した、風速・風向の短時間予測です。"
+                      : "直近の傾きが続くと仮定した、風速・風向の短時間予測です。"}
                   </p>
                   <p>{harbor.nowcastSkill.note}</p>
                 </div>
               </details>
             ) : latest ? (
-              <p className="text-[11px] text-muted">ナウキャストに必要な直近の傾きがまだ足りません。</p>
+              <p className="text-[11px] text-muted">直近の傾きが足りず、ナウキャストを出せません。</p>
             ) : null}
             <details className="group">
               <summary className="cursor-pointer list-none text-[11px] text-muted marker:content-none">
@@ -566,8 +566,8 @@ function HarborPanel({ harbor }: { harbor: HarborBundle }) {
               </summary>
               <div className="mt-1.5 space-y-1.5 text-[11px] leading-4 text-muted">
                 <p>
-                  学習はサーバ起動中、約 {harbor.mos?.continuous.intervalMinutes ?? 15}{" "}
-                  分ごとに自動継続します
+                  サーバ起動中は約 {harbor.mos?.continuous.intervalMinutes ?? 15}{" "}
+                  分ごとに学習を続けます
                   {harbor.mos?.continuous.started ? "（稼働中）" : "（次の取得で開始）"}
                   {harbor.mos?.continuous.lastTickAt
                     ? ` · 前回 ${formatStamp(harbor.mos.continuous.lastTickAt)}`
@@ -575,11 +575,11 @@ function HarborPanel({ harbor }: { harbor: HarborBundle }) {
                   。
                 </p>
                 <p>
-                  ナウキャスト
+                  ナウキャストは
                   {harbor.nowcastSkill.calibrated
                     ? `校正済み（検証 ${harbor.nowcastSkill.caseCount} 件）。`
                     : `検証 ${harbor.nowcastSkill.caseCount} 件を蓄積中。`}
-                  沖予報（MOS）と急上昇パターン（{harbor.pattern.storedEvents} 件）も更新します。
+                  沖予報のMOSと急上昇パターン（{harbor.pattern.storedEvents} 件）も更新中。
                   {harbor.mos ? ` ${harbor.mos.note}` : ""}
                 </p>
               </div>
@@ -616,7 +616,7 @@ function HarborPanel({ harbor }: { harbor: HarborBundle }) {
       ) : null}
 
       {harbor.degraded ? (
-        <p className="text-[11px] text-muted">取得に失敗したため、保存した実況を表示しています。</p>
+        <p className="text-[11px] text-muted">取得に失敗したため、保存済みの実況を表示しています。</p>
       ) : null}
     </section>
   );
@@ -798,21 +798,21 @@ export function ForecastBoard() {
                     : "ECMWF · 3時間ごと · 144時間先まで"}
                 </li>
                 {data?.ifs?.ageHours && data.ifs.ageHours > 24 ? (
-                  <li className="text-warn">この初期値は24時間より古いです。</li>
+                  <li className="text-warn">この初期値は 24 時間より古いです。</li>
                 ) : null}
                 {data?.ifs?.degraded ? (
-                  <li>新しい初期値を取りきれなかったため、保存した数値を含みます。</li>
+                  <li>新しい初期値を取れなかったため、保存済みの数値を含みます。</li>
                 ) : null}
                 {!data?.ifs ? (
                   <li>
                     {loading
-                      ? "ECMWF の数値予報を取得しています。最初の取得は数分かかることがあります。"
+                      ? "ECMWF を取得中です。初回は数分かかることがあります。"
                       : "数値予報はまだありません。"}
                   </li>
                 ) : null}
-                <li>棒は地上10mの平均風速、うすい部分は最大瞬間風速（目盛の上端は {scale} m/s）。</li>
+                <li>棒は地上10mの平均、うすい部分は最大瞬間（目盛の上端は {scale} m/s）。</li>
                 <li>平均 10 m/s 以上、または瞬間 13 m/s 以上は出艇不可能。</li>
-                <li>瞬間は初期値から90時間先までが枠末の1時間、それ以降は3時間の最大。</li>
+                <li>瞬間は初期値から90時間先までが枠末1時間、それ以降は3時間の最大。</li>
               </ul>
             </details>
             <Button

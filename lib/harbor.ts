@@ -93,8 +93,8 @@ async function resolveSamples(nowMs: number, refresh: boolean): Promise<{
       degraded: true,
       error:
         error instanceof Error
-          ? `江ノ島ハーバー実況を取得できませんでした（${error.message}）`
-          : "江ノ島ハーバー実況を取得できませんでした",
+          ? `江の島ヨットハーバー実況を取得できませんでした（${error.message}）`
+          : "江の島ヨットハーバー実況を取得できませんでした",
     };
   }
 }
@@ -161,7 +161,7 @@ export async function resolveHarbor(
   const harbor: HarborBundle = {
     source: ENOWIN_SOURCE,
     pointName: "江の島ヨットハーバー",
-    note: "岸の5分実況です。沖の3時間予報とは地点が異なります。",
+    note: "5分ごとの実況です。沖の予報とは地点が異なります。",
     fetchedAt: new Date(resolved.fetchedAt).toISOString(),
     degraded: resolved.degraded,
     latest: toObservation(latest),

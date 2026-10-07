@@ -19,7 +19,7 @@ export default function Page() {
           >
             鎌倉市の警報・注意報
           </a>
-          ）。公共データ利用規約（第1.0版）に基づき利用しています。
+          ）。公共データ利用規約（第1.0版）に基づく利用です。
         </p>
         <p>
           天気・気温・風・降水量は{" "}
@@ -29,18 +29,18 @@ export default function Page() {
           >
             ECMWF の公開データ
           </a>
-          （IFS 0.25°）の3時間ごとの値です。
+          （IFS 0.25°）の3時間値です（
           <a className="soft-link" href="https://creativecommons.org/licenses/by/4.0/">
             CC BY 4.0
           </a>
-          で利用しています。気象庁の予報ではなく、ECMWF による承認や提携を示すものでもありません。
+          ）。気象庁の予報ではなく、ECMWF の承認・提携を示すものでもありません。
         </p>
         <p>
           江の島ヨットハーバー実況：
           <a className="soft-link" href="http://enowin.japaneast.cloudapp.azure.com/">
             enowin
           </a>
-          。読み方は上の「補足」を参照。
+          。読み方は上の「補足」へ。
         </p>
       </footer>
     </main>

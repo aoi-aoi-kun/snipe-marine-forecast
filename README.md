@@ -1,8 +1,8 @@
 # 七里ヶ浜沖の予報
 
-相模湾・七里ヶ浜沖向けの参考画面です。ECMWF IFS 0.25° の3時間予報（144時間先）と、江の島ヨットハーバーの5分実況を並べます。設計の補足は予報の下に折りたたんであります。
+相模湾・七里ヶ浜沖向けの参考画面です。ECMWF IFS 0.25° の3時間予報（144時間先）と、江の島ヨットハーバーの5分実況を並べます。読み方の補足は画面下部に折りたたんであります。
 
-数値は ECMWF が公開している IFS（0.25°）の3時間ごとの値そのものです。3時間刻みの公開は144時間先までです。00 UTC と 12 UTC の初期値を使います。鎌倉市の警報・注意報は、気象庁ホームページの公開データです。申請や API キーは使いません。出典は [ECMWF open data](https://www.ecmwf.int/en/forecasts/datasets/open-data)（[CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)）です。
+数値は ECMWF が公開している IFS（0.25°）の3時間値そのものです。3時間刻みの公開は144時間先までです。00 UTC と 12 UTC の初期値を使います。鎌倉市の警報・注意報は気象庁ホームページの公開データです。申請や API キーは使いません。出典は [ECMWF open data](https://www.ecmwf.int/en/forecasts/datasets/open-data)（[CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)）です。
 
 ## 自分のパソコンで見る
 
@@ -75,7 +75,7 @@
 
 ## 江の島ハーバー実況（ナウキャスト）
 
-[enowin](http://enowin.japaneast.cloudapp.azure.com/) の江の島ヨットハーバー実況（運営・ハーバー確認済み）を使い、沖の 3時間予報とは別に次を出します。
+[enowin](http://enowin.japaneast.cloudapp.azure.com/) の江の島ヨットハーバー実況を使い、沖の 3時間予報とは別に次を出します。
 
 - **ナウキャスト**: 直近30分の傾きを15・30・60分先へ延長し、過去実況との突合で減衰・バイアスを校正（`.cache/nowcast-calib.json`）
 - **立ち上がり検知**: 急勾配や閾値超えをアラート

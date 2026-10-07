@@ -328,7 +328,7 @@ export function summarizeNowcastCalib(store: NowcastCalibStore): {
     return {
       caseCount: store.cases.length,
       horizons: [],
-      note: "ナウキャスト校正のデータがまだ足りません。実況が貯まると自動で精度を合わせます。",
+      note: "校正用の検証がまだ少ないです。実況が増えるほど精度が上がります。",
     };
   }
   const parts = store.horizons.map((item) => {
@@ -338,15 +338,11 @@ export function summarizeNowcastCalib(store: NowcastCalibStore): {
     const dir = Number.isFinite(item.dirMaeCalibrated)
       ? `${Math.round(item.dirMaeCalibrated)}°`
       : "学習中";
-    return `${item.minutesAhead}分 風速MAE ${speed} / 風向MAE ${dir}`;
+    return `${item.minutesAhead}分 風速±${speed} / 風向±${dir}`;
   });
-  const deepAgo =
-    store.lastDeepLearnAt > 0
-      ? `広域再学習は継続中。`
-      : `広域再学習は初回以降、約6時間ごとに自動実行。`;
   return {
     caseCount: store.cases.length,
     horizons: store.horizons,
-    note: `過去検証 ${store.cases.length} 件で校正（自動継続）。${parts.join(" · ")} ${deepAgo}`,
+    note: `検証 ${store.cases.length} 件で校正。${parts.join(" · ")}`,
   };
 }
