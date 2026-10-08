@@ -119,8 +119,8 @@ async function fetchJma(): Promise<JmaCache> {
 }
 
 let ifsFillPromise: Promise<void> | null = null;
-const IFS_WAIT_MS = 35_000;
-const IFS_NEAR_HOURS = 24;
+const IFS_WAIT_MS = 18_000;
+const IFS_NEAR_HOURS = 18;
 
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -327,7 +327,30 @@ async function buildForecast(options: Required<ForecastFetchOptions>): Promise<F
   );
   if (harborResolved.error) errors.push(harborResolved.error);
 
-  const learnStatus = await getLearnStatus();
+  // Keep the page path light: learn-status is nice-to-have, not required for forecast paint.
+  let learnOps: NonNullable<ForecastResponse["harbor"]>["learnOps"];
+  try {
+    const learnStatus = await Promise.race([
+      getLearnStatus(),
+      sleep(2_000).then(() => null),
+    ]);
+    if (learnStatus) {
+      learnOps = {
+        tip: learnStatus.tip,
+        cacheWritable: learnStatus.cache.writable,
+        ticking: learnStatus.continuous.ticking,
+        mosPairs: learnStatus.mos.pairCount,
+        nowcastCases: learnStatus.nowcast.caseCount,
+        patternEvents: learnStatus.pattern.storedEvents,
+        metaMosReady: learnStatus.meta.mosReady,
+        metaPatternReady: learnStatus.meta.patternReady,
+        learningDays: learnStatus.ops.learningDays,
+        warmCount: learnStatus.ops.warmCount,
+      };
+    }
+  } catch {
+    learnOps = undefined;
+  }
   const harbor = harborResolved.harbor
     ? {
         ...harborResolved.harbor,
@@ -335,18 +358,7 @@ async function buildForecast(options: Required<ForecastFetchOptions>): Promise<F
           ...harborResolved.harbor.mos,
           continuous: getContinuousLearnStatus(),
         },
-        learnOps: {
-          tip: learnStatus.tip,
-          cacheWritable: learnStatus.cache.writable,
-          ticking: learnStatus.continuous.ticking,
-          mosPairs: learnStatus.mos.pairCount,
-          nowcastCases: learnStatus.nowcast.caseCount,
-          patternEvents: learnStatus.pattern.storedEvents,
-          metaMosReady: learnStatus.meta.mosReady,
-          metaPatternReady: learnStatus.meta.patternReady,
-          learningDays: learnStatus.ops.learningDays,
-          warmCount: learnStatus.ops.warmCount,
-        },
+        learnOps,
       }
     : null;
 

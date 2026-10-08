@@ -77,7 +77,8 @@ async function resolveSamples(nowMs: number, refresh: boolean): Promise<{
   }
 
   try {
-    const samples = await fetchHarborSamples(nowMs, 7);
+    // Page polls use a short lookback; full refresh may pull a week.
+    const samples = await fetchHarborSamples(nowMs, refresh ? 7 : 2);
     if (samples.length === 0) throw new Error("実況行がありません");
     const next = { fetchedAt: Date.now(), samples };
     await saveCache(next);
@@ -139,7 +140,8 @@ export async function resolveHarbor(
   // Always absorb the latest harbor window into the rolling verification set.
   calibStore = await learnNowcastCalibration(resolved.samples);
   let learningHarbor = resolved.samples;
-  if (refresh || needsDeepNowcastLearn(calibStore, nowMs)) {
+  // Deep 30-day relearn only on explicit full refresh (too heavy for free-tier page polls).
+  if (refresh && needsDeepNowcastLearn(calibStore, nowMs)) {
     const deepHarbor = await fetchHarborSamples(nowMs, 30);
     if (deepHarbor.length > resolved.samples.length) learningHarbor = deepHarbor;
     calibStore = await learnNowcastCalibration(learningHarbor, { deep: true });
