@@ -8,6 +8,8 @@ import {
 } from "./enowin";
 import { learnMos } from "./mos-learn";
 import { applyMosCorrection, summarizeMos } from "./mos";
+import { attachConfidence } from "./confidence";
+import { leadTimeGain } from "./lead-gain";
 import {
   lambdaForMosWindow,
   learnMetaCalibration,
@@ -120,6 +122,7 @@ export async function resolveHarbor(
   refresh: boolean,
   ifsHours: HourSample[] = [],
   refreshHarbor = refresh,
+  options: { ifsDegraded?: boolean } = {},
 ): Promise<{
   harbor: HarborBundle | null;
   windows: WindowForecast[];
@@ -183,10 +186,27 @@ export async function resolveHarbor(
         nowMs,
         nowcast.riseRateMsPerHour,
       );
-  let adjusted = applyMosCorrection(windows, mosStore, (window, correction) =>
-    lambdaForMosWindow(metaStore, window, correction),
-  );
-  adjusted = applyHarborBoost(adjusted, match, metaStore.patternLambda);
+  const mosOnly = applyMosCorrection(windows, mosStore, (window, correction) => {
+    const scenario = lambdaForMosWindow(metaStore, window, correction);
+    return scenario * leadTimeGain(Date.parse(window.start), nowMs);
+  });
+  const boosted =
+    match && !sourceStale
+      ? applyHarborBoost(mosOnly, match, metaStore.patternLambda)
+      : mosOnly;
+  // Pattern boost is for the next hours; far windows stay on MOS-only / raw ECMWF.
+  const limited = boosted.map((window, index) => {
+    if (!window.harborAdjusted) return window;
+    if (leadTimeGain(Date.parse(window.start), nowMs) >= 0.7) return window;
+    return {
+      ...mosOnly[index],
+      harborAdjusted: false,
+      harborAdjustNote: null,
+    };
+  });
+  const adjusted = attachConfidence(limited, nowMs, {
+    ifsDegraded: options.ifsDegraded,
+  });
 
   const recent = resolved.samples.filter((sample) => nowMs - sample.atMs <= 2 * 60 * 60 * 1000);
 

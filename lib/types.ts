@@ -18,6 +18,9 @@ export type WindowForecast = {
   mosAdjusted?: boolean;
   mosAdjustNote?: string | null;
   cycleSpreadMs?: number | null;
+  confidence?: "high" | "mid" | "low";
+  confidenceLabel?: string | null;
+  confidenceScore?: number | null;
 };
 
 export type HarborObservation = {

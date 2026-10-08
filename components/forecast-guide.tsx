@@ -25,7 +25,11 @@ export function ForecastGuide() {
           </li>
           <li>
             <span className="font-medium text-ink/75">補正</span>
-            {" — "}沖予報への局地補正は控えめ（確かな型だけ）。全体平均では沖をハーバーに寄せません。
+            {" — "}沖予報への局地補正は控えめ（確かな型だけ）。近い枠ほど効かせ、遠い枠は素のECMWF寄り。
+          </li>
+          <li>
+            <span className="font-medium text-ink/75">確度</span>
+            {" — "}リードタイム・前後初期値の差・補正の強さから、枠ごとに高／中／低を付けます。
           </li>
           <li>
             <span className="font-medium text-ink/75">実況停止</span>

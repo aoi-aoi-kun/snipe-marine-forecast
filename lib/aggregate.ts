@@ -32,6 +32,9 @@ export type WindowForecast = {
   mosAdjustNote?: string | null;
   /** |wind| difference vs previous ECMWF cycle at the same valid time, if available. */
   cycleSpreadMs?: number | null;
+  confidence?: "high" | "mid" | "low";
+  confidenceLabel?: string | null;
+  confidenceScore?: number | null;
 };
 
 const CALM_MS = 0.3;

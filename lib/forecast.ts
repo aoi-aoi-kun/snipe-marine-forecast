@@ -266,6 +266,7 @@ async function buildForecast(options: Required<ForecastFetchOptions>): Promise<F
     refresh,
     ifsHours,
     refreshHarbor,
+    { ifsDegraded: Boolean(model.resolved?.degraded) },
   );
   if (harborResolved.error) errors.push(harborResolved.error);
 

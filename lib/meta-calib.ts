@@ -5,7 +5,7 @@ import type { HarborSample } from "./enowin";
 import { correctionForWindow, type MosCorrection, type MosStore } from "./mos";
 import { detectRampEvents } from "./nowcast";
 import { loadPatternStore } from "./pattern";
-import { WINDOW_MS, jstParts } from "./time";
+import { WINDOW_MS, floorBlockStart, jstParts } from "./time";
 
 const CACHE_DIR = path.join(process.cwd(), ".cache");
 const STORE_PATH = path.join(CACHE_DIR, "meta-calib.json");
@@ -296,8 +296,9 @@ type RampLike = {
 };
 
 /**
- * Pattern meta cases: after a ramp, would full boost on the next offshore windows
- * overshoot the harbor mean in those windows?
+ * Pattern meta cases: after a ramp, would full boost on following 3h blocks
+ * overshoot harbor? Uses MOS pairs (past completed windows), not only the
+ * forward-looking forecast card list.
  */
 export function collectPatternMetaCases(
   harbor: HarborSample[],
@@ -310,48 +311,68 @@ export function collectPatternMetaCases(
   const detected = detectRampEvents(harbor).map((event) => ({
     atMs: event.atMs,
     peakMeanMs: event.peakMeanMs,
+    boostFactor: undefined as number | undefined,
+    offshoreMeanMs: null as number | null,
   }));
-  const events = [...storedEvents, ...detected];
+  const events: RampLike[] = [...storedEvents, ...detected];
   const cases: MetaCase[] = [];
   const seen = new Set<string>();
+  const pairByStart = new Map(mosStore.pairs.map((pair) => [pair.windowStart, pair]));
 
   for (const event of events) {
-    const nextWindows = windows.filter(
-      (window) =>
-        window.available &&
-        window.windMeanMs !== null &&
-        Date.parse(window.end) <= nowMs &&
-        Date.parse(window.start) >= event.atMs - WINDOW_MS &&
-        Date.parse(window.start) < event.atMs + 9 * 60 * 60 * 1000,
-    );
+    const block0 = floorBlockStart(event.atMs, 3);
     let taken = 0;
-    for (const next of nextWindows) {
-      if (taken >= 2 || next.windMeanMs === null) continue;
-      const actual = harborMeanInWindow(
-        harbor,
-        Date.parse(next.start),
-        Date.parse(next.end),
-      );
+    for (let offset = 0; offset < 3 && taken < 2; offset++) {
+      const wStart = block0 + offset * WINDOW_MS;
+      const wEnd = wStart + WINDOW_MS;
+      if (wEnd > nowMs) continue;
+
+      const actual = harborMeanInWindow(harbor, wStart, wEnd);
       if (actual === null) continue;
 
-      const mos = correctionForWindow(mosStore, next);
+      const pair = pairByStart.get(wStart);
+      const forward = windows.find((window) => Date.parse(window.start) === wStart);
+      const offshoreMs =
+        pair?.offshoreMeanMs ??
+        (forward?.windMeanMs !== null && forward?.windMeanMs !== undefined
+          ? forward.windMeanMs
+          : event.offshoreMeanMs ?? null);
+      if (offshoreMs === null || offshoreMs < 0.5) continue;
+
+      const synthetic = {
+        start: new Date(wStart).toISOString(),
+        end: new Date(wEnd).toISOString(),
+        partialFrom: null,
+        available: true,
+        weather: "晴れ" as const,
+        precipMm: 0,
+        tempMinC: null,
+        tempMaxC: null,
+        windFromDeg: pair?.offshoreFromDeg ?? forward?.windFromDeg ?? null,
+        windFromLabel: null,
+        windMeanMs: offshoreMs,
+        windMaxMs: offshoreMs,
+        windGustMs: pair?.offshoreGustMs ?? forward?.windGustMs ?? offshoreMs,
+        noDeparture: false,
+      };
+      const mos = correctionForWindow(mosStore, synthetic);
       const rawMos = mos?.factor ?? 1;
-      const baseMs = next.windMeanMs * dampenFactor(rawMos, mosLambda);
+      const baseMs = offshoreMs * dampenFactor(rawMos, mosLambda);
       const boost =
         event.boostFactor && event.boostFactor > 1
           ? clamp(event.boostFactor, 1.05, 1.7)
-          : clamp(event.peakMeanMs / Math.max(next.windMeanMs, 0.5), 1.05, 1.7);
+          : clamp(event.peakMeanMs / Math.max(offshoreMs, 0.5), 1.05, 1.7);
       if (Math.abs(boost - 1) < 0.02) continue;
-      const key = `${Date.parse(next.start)}:${boost.toFixed(3)}`;
+      const key = `${wStart}:${boost.toFixed(3)}`;
       if (seen.has(key)) continue;
       seen.add(key);
       cases.push({
-        atMs: Date.parse(next.start),
+        atMs: wStart,
         baseMs,
         rawFactor: boost,
         actualMs: actual,
-        hourBucket: hourBucketOf(Date.parse(next.start)),
-        speedBand: speedBandOf(next.windMeanMs),
+        hourBucket: hourBucketOf(wStart),
+        speedBand: speedBandOf(offshoreMs),
       });
       taken += 1;
     }

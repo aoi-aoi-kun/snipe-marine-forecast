@@ -637,16 +637,25 @@ function WindowCard({ window, scale }: { window: WindowForecast; scale: number }
           {window.noDeparture ? (
             <p className="text-[9px] font-medium tracking-wide text-warn">出艇不可能</p>
           ) : null}
+          {window.confidenceLabel ? (
+            <p
+              className={cn(
+                "text-[9px] font-medium tracking-wide",
+                window.confidence === "low"
+                  ? "text-warn"
+                  : window.confidence === "mid"
+                    ? "text-muted"
+                    : "text-sea",
+              )}
+            >
+              {window.confidenceLabel}
+            </p>
+          ) : null}
           {window.mosAdjusted ? (
             <p className="text-[9px] font-medium tracking-wide text-sea">局地補正</p>
           ) : null}
           {window.harborAdjusted ? (
             <p className="text-[9px] font-medium tracking-wide text-sea">急上昇補正</p>
-          ) : null}
-          {window.cycleSpreadMs != null && window.cycleSpreadMs >= 1.5 ? (
-            <p className="text-[9px] font-medium tracking-wide text-muted">
-              初期値差 {window.cycleSpreadMs.toFixed(1)}
-            </p>
           ) : null}
         </div>
       </div>
@@ -815,7 +824,8 @@ export function ForecastBoard() {
                 <li>棒は地上10mの平均、うすい部分は最大瞬間（目盛の上端は {scale} m/s）。沖の数値です。</li>
                 <li>平均 10 m/s 以上、または瞬間 13 m/s 以上は出艇不可能。</li>
                 <li>瞬間は初期値から90時間先までが枠末1時間、それ以降は3時間の最大。</li>
-                <li>「初期値差」は前後のECMWF初期値で風速がどれだけ違うかの目安です。</li>
+                <li>「確度」はリードタイム・初期値のぶれ・補正の有無をまとめた目安です。</li>
+                <li>近い枠ほど局地補正を効かせ、遠い枠はECMWF寄りに戻します。</li>
               </ul>
             </details>
             <Button
