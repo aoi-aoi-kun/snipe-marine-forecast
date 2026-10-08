@@ -126,6 +126,8 @@ export type HarborBundle = {
     patternEvents: number;
     metaMosReady: boolean;
     metaPatternReady: boolean;
+    learningDays: number;
+    warmCount: number;
   };
 };
 

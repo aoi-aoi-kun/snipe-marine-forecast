@@ -35,6 +35,20 @@ describe("meta calibration", () => {
     assert.ok(fit.mae < 0.2);
   });
 
+  it("fitLambda prefers lower λ when MAE is nearly tied", () => {
+    // actual ≈ base (no gain needed): many λ values fit similarly → pick the smaller one.
+    const cases: MetaCase[] = Array.from({ length: 20 }, (_, index) => ({
+      atMs: 1_000_000 + index * 3 * 3600_000,
+      baseMs: 5,
+      rawFactor: 1.4,
+      actualMs: 5,
+      hourBucket: 0,
+      speedBand: "mod" as const,
+    }));
+    const fit = fitLambda(cases);
+    assert.ok(fit.lambda <= 0.15);
+  });
+
   it("collectMosMetaCases builds cases from stored MOS pairs", () => {
     const start = Date.parse("2026-10-06T00:00:00+09:00");
     const pairs = Array.from({ length: 6 }, (_, index) => ({
@@ -46,6 +60,7 @@ describe("meta calibration", () => {
       offshoreGustMs: 6,
       offshoreFromDeg: 180,
       ratio: 1.25,
+      gustRatio: 1.2,
       biasMs: 1,
     }));
     const store: MosStore = ingestMosPairs(

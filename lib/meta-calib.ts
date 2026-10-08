@@ -103,21 +103,22 @@ export function fitLambda(
     cases.map((item) => item.atMs),
     nowMs,
   );
-  let bestLambda = DEFAULT_LAMBDA;
-  let bestMae = Infinity;
+  const scored: { lambda: number; mae: number }[] = [];
   for (let step = 0; step <= 20; step++) {
     const lambda = step * 0.05;
     const errors = cases.map((item) => {
       const factor = dampenFactor(item.rawFactor, lambda);
       return item.actualMs - item.baseMs * factor;
     });
-    const score = weightedMae(errors, weights);
-    if (score < bestMae) {
-      bestMae = score;
-      bestLambda = lambda;
-    }
+    scored.push({ lambda, mae: weightedMae(errors, weights) });
   }
-  return { lambda: bestLambda, mae: bestMae };
+  const bestMae = Math.min(...scored.map((item) => item.mae));
+  // Harbor verification can favor λ=1; when MAE is nearly tied, prefer lower λ
+  // so offshore (harbor≠grid) is less over-corrected.
+  const tied = scored.filter((item) => item.mae <= bestMae * 1.03);
+  tied.sort((a, b) => a.lambda - b.lambda || a.mae - b.mae);
+  const chosen = tied[0] ?? scored[scored.length - 1];
+  return { lambda: chosen.lambda, mae: chosen.mae };
 }
 
 function normalizeCase(raw: Partial<MetaCase>): MetaCase | null {

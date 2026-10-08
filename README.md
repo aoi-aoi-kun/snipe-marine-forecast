@@ -26,35 +26,41 @@
 
 ## ほかの人にも公開する（おすすめ: Render）
 
-予報の読み取りに `grib_ls` が必要なので、Vercel ではなく Docker で常時起動します。ログインは不要です。発行された HTTPS の URL を送れば、相手のスマホやパソコンから同じ画面を開けます。
+予報の読み取りに `grib_ls` が必要なので、Vercel ではなく Docker で常時起動します。ログインは不要です。発行された HTTPS の URL を送れば、相手のスマホやパソコンから同じ画面を開けます。`.cache` を Disk に載せたまま動かし続けると、学習が日々厚くなります。
 
-### A. リポジトリを用意する
+### A. GitHub リポジトリを用意する
 
-1. このプロジェクトを GitHub の公開リポジトリにする（まだなら作成して push する）
-2. リポジトリの URL を控える（例: `https://github.com/あなた/リポジトリ名`）
+1. このプロジェクトを **GitHub の公開リポジトリ**にする（Cursor なら Create repo から作成して push）
+2. リポジトリの URL を控える（例: `https://github.com/あなた/snipe-marine-forecast`）
 
-### B. Render に載せる
+### B. Render Blueprint で載せる（いちばん簡単）
 
-1. [https://render.com/](https://render.com/) を開き、アカウントを作る（またはログインする）
-2. ダッシュボードで **New +** → **Web Service** を選ぶ
+1. [https://render.com/](https://render.com/) にログインする
+2. **New +** → **Blueprint**
 3. GitHub を接続し、このリポジトリを選ぶ
-4. 次のように設定する
-   - **Language / Runtime**: `Docker`
-   - **Branch**: `main`
-   - **Region**: 近いところ（例: Singapore）
-   - **Instance type**: Free でよい
-5. **Create Web Service** を押してデプロイを待つ（初回はビルドに数分かかることがあります）
-6. 完了したら、画面上部に出る URL（例: `https://xxxx.onrender.com`）をコピーする
+4. `render.yaml` が読み込まれます（Docker・Singapore・Free・`/app/.cache` Disk・`/api/health`）
+5. **Apply** してデプロイを待つ（初回ビルドは数分）
+6. 完了後の URL（例: `https://shichirigahama-forecast.onrender.com`）を控える
 
-`render.yaml` がある場合は、**New +** → **Blueprint** から同じリポジトリを選んでも同じ構成になります。ポートは `3847` です。
+手動で **Web Service** を作る場合も、Runtime は Docker、Branch は `main`、Disk を `/app/.cache` に 1GB 付けてください。ポートは `3847` です。
 
-### C. リンクを共有する
+### C. スリープ対策（無料枠では必須）
 
-1. コピーした `https://….onrender.com` を、見てもらいたい人に送る
-2. 相手はブラウザでその URL を開くだけ（アカウント不要）
-3. スマホでもそのまま読めます
+Render 無料枠はアクセスが無いと眠ります。学習を続けるため、デプロイ後すぐに外部 cron を付けます。
 
-補足（無料枠）: しばらくアクセスがないとスリープします。次に開くとき、起動まで数十秒かかることがあります。精度を上げ続けるには、下の「精度を上げ続けるには」も読んでください。
+1. [https://cron-job.org/](https://cron-job.org/) などで無料アカウントを作る
+2. 新しいジョブを作る
+   - URL: `https://（あなたのRenderのURL）/api/health?warm=1`
+   - 間隔: **8〜10分ごと**
+   - メソッド: GET
+3. 保存したら、数回実行されて `/api/health` の `ops.warmCount` が増えることを確認する
+
+### D. リンクを共有する
+
+1. Render の `https://….onrender.com` を相手に送る
+2. 相手はブラウザで開くだけ（アカウント不要・スマホ可）
+
+補足: 初回起動やスリープ明けは数十秒かかることがあります。Disk を消すと学習が消えます。
 
 ## 精度を上げ続けるには
 

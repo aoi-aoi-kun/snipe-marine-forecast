@@ -3,12 +3,16 @@ services:
     name: shichirigahama-forecast
     runtime: docker
     plan: free
+    region: singapore
     healthCheckPath: /api/health
+    autoDeployTrigger: commit
     envVars:
       - key: PORT
         value: "3847"
       - key: HOSTNAME
         value: "0.0.0.0"
+      - key: KEEP_ALIVE_MINUTES
+        value: "8"
       # RENDER_EXTERNAL_URL is set by Render and enables in-process keep-alive pings.
     disk:
       name: forecast-cache

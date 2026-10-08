@@ -9,11 +9,18 @@ function base(overrides: Partial<TipInput> = {}): TipInput {
     continuous: {
       started: true,
       ticking: false,
-      intervalMinutes: 15,
+      intervalMinutes: 10,
       lastTickAt: "2026-10-08T00:00:00.000Z",
       lastTickError: null,
     },
     cache: { dir: ".cache", writable: true, error: null },
+    ops: {
+      firstSeenAt: "2026-10-01T00:00:00.000Z",
+      lastActiveAt: "2026-10-08T00:00:00.000Z",
+      learningDays: 7,
+      warmCount: 100,
+      learnTickCount: 80,
+    },
     mos: { pairCount: 12, activeBins: 2, note: "" },
     nowcast: { caseCount: 40, calibrated: false, note: "" },
     pattern: { storedEvents: 3 },
@@ -91,5 +98,6 @@ describe("buildLearnTip", () => {
       }),
     );
     assert.match(tip, /蓄積中/);
+    assert.match(tip, /日/);
   });
 });

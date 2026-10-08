@@ -569,7 +569,7 @@ function HarborPanel({ harbor }: { harbor: HarborBundle }) {
                   <p className="text-ink/80">{harbor.learnOps.tip}</p>
                 ) : null}
                 <p>
-                  継続学習は約 {harbor.mos?.continuous.intervalMinutes ?? 15}{" "}
+                  継続学習は約 {harbor.mos?.continuous.intervalMinutes ?? 10}{" "}
                   分ごと
                   {harbor.mos?.continuous.started
                     ? harbor.learnOps?.ticking
@@ -585,6 +585,9 @@ function HarborPanel({ harbor }: { harbor: HarborBundle }) {
                       ? "は書き込み可"
                       : "に書けません"
                     : "の状態は取得中"}
+                  {harbor.learnOps && harbor.learnOps.learningDays > 0
+                    ? ` · 蓄積約 ${harbor.learnOps.learningDays.toFixed(1)} 日（warm ${harbor.learnOps.warmCount}）`
+                    : ""}
                   。
                 </p>
                 <p>

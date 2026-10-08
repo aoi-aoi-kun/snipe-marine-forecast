@@ -4,24 +4,32 @@ import { getContinuousLearnStatus } from "./continuous-learn-state";
 import { loadMetaCalib, summarizeMetaCalib } from "./meta-calib";
 import { loadMosStore, summarizeMos } from "./mos";
 import { loadNowcastCalib, summarizeNowcastCalib } from "./nowcast-learn";
+import { getOpsUptime } from "./ops-uptime";
 import { loadPatternStore } from "./pattern";
 
 const CACHE_DIR = path.join(process.cwd(), ".cache");
 
 export type LearnStatus = {
   generatedAt: string;
-    continuous: {
-      started: boolean;
-      ticking: boolean;
-      /** Wall-clock interval between continuous-learn ticks. */
-      intervalMinutes: number;
-      lastTickAt: string | null;
-      lastTickError: string | null;
-    };
+  continuous: {
+    started: boolean;
+    ticking: boolean;
+    /** Wall-clock interval between continuous-learn ticks. */
+    intervalMinutes: number;
+    lastTickAt: string | null;
+    lastTickError: string | null;
+  };
   cache: {
     dir: string;
     writable: boolean;
     error: string | null;
+  };
+  ops: {
+    firstSeenAt: string;
+    lastActiveAt: string;
+    learningDays: number;
+    warmCount: number;
+    learnTickCount: number;
   };
   mos: {
     pairCount: number;
@@ -75,19 +83,29 @@ export function buildLearnTip(status: Omit<LearnStatus, "tip" | "generatedAt">):
   if (status.continuous.lastTickError) {
     return `直近の学習でエラーがありました: ${status.continuous.lastTickError}`;
   }
+  const days = status.ops?.learningDays ?? 0;
   if (status.mos.pairCount < 48 || !status.meta.patternReady) {
-    return "常時起動を続けると MOS・補正の補正・急上昇の検証が厚くなります。無料枠は外部から約8〜10分ごとに /api/health?warm=1 へアクセスするとスリープしにくいです。";
+    return (
+      "常時起動を続けると MOS・補正の補正・急上昇の検証が厚くなります。" +
+      (days < 1
+        ? "無料枠は外部から約8〜10分ごとに /api/health?warm=1 へアクセスするとスリープしにくいです。"
+        : `蓄積 ${days.toFixed(1)} 日目。無料枠は /api/health?warm=1 の定期アクセスを続けてください。`)
+    );
   }
-  return "学習は蓄積中です。サーバを止めず .cache を消さなければ、使い続けるほど局地補正が安定します。";
+  if (days < 7) {
+    return `学習は蓄積中です（約 ${days.toFixed(1)} 日）。サーバを止めず .cache を消さなければ、季節をまたぐほど局地補正が安定します。`;
+  }
+  return `学習は蓄積中です（約 ${Math.round(days)} 日）。.cache を消さなければ、使い続けるほど暖候期・寒候期の型が厚くなります。`;
 }
 
 export async function getLearnStatus(): Promise<LearnStatus> {
-  const [cache, mosStore, nowcastStore, patternStore, metaStore] = await Promise.all([
+  const [cache, mosStore, nowcastStore, patternStore, metaStore, ops] = await Promise.all([
     probeCache(),
     loadMosStore(),
     loadNowcastCalib(),
     loadPatternStore(),
     loadMetaCalib(),
+    getOpsUptime(),
   ]);
   const mos = summarizeMos(mosStore);
   const nowcast = summarizeNowcastCalib(nowcastStore);
@@ -96,6 +114,13 @@ export async function getLearnStatus(): Promise<LearnStatus> {
   const body = {
     continuous,
     cache,
+    ops: {
+      firstSeenAt: ops.firstSeenAt,
+      lastActiveAt: ops.lastActiveAt,
+      learningDays: ops.learningDays,
+      warmCount: ops.warmCount,
+      learnTickCount: ops.learnTickCount,
+    },
     mos: {
       pairCount: mos.pairCount,
       activeBins: mos.activeBins,

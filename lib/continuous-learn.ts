@@ -6,7 +6,7 @@ import {
 } from "./continuous-learn-state";
 
 const TICK_MS = 10 * 60 * 1000;
-const START_DELAY_MS = 30_000;
+const START_DELAY_MS = 15_000;
 /** Every 3rd tick (~30 min) force refresh so harbor/IFS caches do not stall learning. */
 const REFRESH_EVERY_N_TICKS = 3;
 
@@ -38,6 +38,8 @@ async function tick(reason: string) {
     const meta = summarizeMetaCalib(await loadMetaCalib());
 
     setContinuousLearnTickResult(forecast.errors[0] ?? null);
+    const { touchOps } = await import("./ops-uptime");
+    await touchOps("learn");
     console.info(
       `continuous-learn: done mosPairs=${mos.pairCount} nowcastCases=${nowcast.caseCount} ` +
         `rampPatterns=${patterns.events.length} ` +

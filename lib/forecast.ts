@@ -288,6 +288,8 @@ async function buildForecast(options: Required<ForecastFetchOptions>): Promise<F
           patternEvents: learnStatus.pattern.storedEvents,
           metaMosReady: learnStatus.meta.mosReady,
           metaPatternReady: learnStatus.meta.patternReady,
+          learningDays: learnStatus.ops.learningDays,
+          warmCount: learnStatus.ops.warmCount,
         },
       }
     : null;
