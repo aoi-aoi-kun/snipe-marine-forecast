@@ -774,11 +774,14 @@ export function ForecastBoard() {
       }
       setData(body);
       if (!silent && !body.ifs && body.errors[0]) setError(body.errors[0]);
-      // First paint may only have ~48h while the rest fills in the background.
-      if (!silent && body.ifs?.degraded) {
+      // Retry while ECMWF is still downloading on free-tier cold starts.
+      if (
+        !silent &&
+        (!body.ifs || body.ifs.degraded || body.errors.some((item) => item.includes("取得して")))
+      ) {
         window.setTimeout(() => {
           void load("harbor");
-        }, 45_000);
+        }, 20_000);
       }
     } catch {
       if (!silent) {
