@@ -96,7 +96,8 @@ export function buildWindows(hours: HourSample[], nowMs: number): WindowForecast
       instants.length === expectedInstants &&
       precipValues.every((value) => value !== undefined) &&
       gustValues.every((value) => value !== undefined);
-    if (!complete) continue;
+    // Free-tier cold start may only have a subset of 3h steps — still show those windows.
+    if (!complete && instants.length === 0) continue;
 
     const temps = instants.map((hour) => hour.tempC);
     const clouds = instants.map((hour) => hour.cloudPct);
@@ -109,7 +110,10 @@ export function buildWindows(hours: HourSample[], nowMs: number): WindowForecast
     const from = windFromDegrees(meanU, meanV);
     const windMeanMs = speeds.reduce((sum, value) => sum + value, 0) / speeds.length;
     const windMaxMs = Math.max(...speeds);
-    const windGustMs = Math.max(...gustValues.map((value) => value ?? 0));
+    const windGustMs = Math.max(
+      ...gustValues.map((value) => value ?? 0),
+      ...instants.map((hour) => hour.gustMs),
+    );
 
     windows.push({
       start: new Date(start).toISOString(),
