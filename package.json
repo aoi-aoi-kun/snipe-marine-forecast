@@ -8,7 +8,7 @@
     "start": "next start -p ${PORT:-3847} --hostname 0.0.0.0",
     "lint": "eslint",
     "learning:snapshot": "node scripts/snapshot-learning.mjs",
-    "test": "tsx --test lib/grib.test.ts lib/aggregate.test.ts lib/ecmwf.test.ts lib/jma.test.ts lib/enowin.test.ts lib/geo.test.ts lib/mos.test.ts lib/nowcast-learn.test.ts lib/meta-calib.test.ts lib/cycle-spread.test.ts lib/lead-gain.test.ts lib/confidence.test.ts lib/recency.test.ts lib/learning-progress.test.ts lib/learn-status.test.ts lib/harbor-blend.test.ts lib/open-meteo-archive.test.ts lib/open-meteo-forecast.test.ts lib/ui-copy.test.ts lib/pattern.test.ts lib/pattern-forecast-calib.test.ts lib/nowcast-pattern-blend.test.ts lib/ramp-outlook.test.ts lib/learning-persist.test.ts lib/wind.test.ts"
+    "test": "tsx --test lib/grib.test.ts lib/aggregate.test.ts lib/ecmwf.test.ts lib/jma.test.ts lib/enowin.test.ts lib/geo.test.ts lib/mos.test.ts lib/nowcast-learn.test.ts lib/meta-calib.test.ts lib/cycle-spread.test.ts lib/lead-gain.test.ts lib/confidence.test.ts lib/recency.test.ts lib/learning-progress.test.ts lib/learn-status.test.ts lib/harbor-blend.test.ts lib/open-meteo-archive.test.ts lib/open-meteo-forecast.test.ts lib/ui-copy.test.ts lib/pattern.test.ts lib/pattern-forecast-calib.test.ts lib/nowcast-pattern-blend.test.ts lib/nowcast-pattern-blend-calib.test.ts lib/ramp-outlook.test.ts lib/learning-persist.test.ts lib/wind.test.ts"
   },
   "dependencies": {
     "@radix-ui/react-slot": "^1.4.0",

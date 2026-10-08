@@ -353,6 +353,9 @@ function HarborPanel({
                   ? " 急上昇マッチがあるときは、ピーク目安に向けて短時間予測を寄せています。"
                   : ""}
               </p>
+              {harbor.nowcastSkill.blendCalib ? (
+                <p>{harbor.nowcastSkill.blendCalib.note}</p>
+              ) : null}
               {harbor.nowcastSkill.rampOutlook?.note ? (
                 <p>{harbor.nowcastSkill.rampOutlook.note}</p>
               ) : null}

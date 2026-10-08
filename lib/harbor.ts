@@ -30,6 +30,12 @@ import {
   withNowcastThresholdAlerts,
 } from "./nowcast-pattern-blend";
 import {
+  blendCalibView,
+  learnBlendCalib,
+  recordBlendPending,
+  summarizeBlendCalib,
+} from "./nowcast-pattern-blend-calib";
+import {
   applyHarborBoost,
   learnFromSamples,
   matchPattern,
@@ -194,6 +200,13 @@ export async function resolveHarbor(
     nowMs,
   });
   const patternForecastSummary = summarizePatternForecastCalib(patternForecastCalib);
+  const blendCalibStore = await learnBlendCalib({
+    harbor: harborForLearn,
+    events: patternStore.events,
+    nowMs,
+  });
+  const blendCalibSummary = summarizeBlendCalib(blendCalibStore);
+  const blendCalib = blendCalibView(blendCalibStore);
   const metaStore = await learnMetaCalibration({
     harbor: harborForLearn,
     windows,
@@ -274,12 +287,37 @@ export async function resolveHarbor(
 
   const patternBlend =
     match && !sourceStale
-      ? blendNowcastWithPatternMatch(nowcast.nowcast, latest.meanMs, {
-          score: match.score,
-          expectedPeakMs: match.expectedPeakMs,
-          horizonMinutes: match.horizonMinutes,
-        })
-      : { points: nowcast.nowcast, blended: false, note: null as string | null };
+      ? blendNowcastWithPatternMatch(
+          nowcast.nowcast,
+          latest.meanMs,
+          {
+            score: match.score,
+            expectedPeakMs: match.expectedPeakMs,
+            horizonMinutes: match.horizonMinutes,
+          },
+          blendCalib,
+        )
+      : {
+          points: nowcast.nowcast,
+          blended: false,
+          note: null as string | null,
+          traces: [],
+        };
+  if (match && patternBlend.blended && patternBlend.traces.length > 0 && !sourceStale) {
+    await recordBlendPending({
+      nowMs,
+      currentMeanMs: latest.meanMs,
+      score: match.score,
+      expectedPeakMs: match.expectedPeakMs,
+      matchHorizonMinutes: match.horizonMinutes,
+      points: patternBlend.traces.map((trace) => ({
+        minutesAhead: trace.minutesAhead,
+        nowcastMeanMs: trace.nowcastMeanMs,
+        analogMeanMs: trace.analogMeanMs,
+        baseWeight: trace.baseWeight,
+      })),
+    });
+  }
   const fusedNowcast = patternBlend.points;
   const fusedAlerts = patternBlend.blended
     ? withNowcastThresholdAlerts(nowcast.alerts, fusedNowcast)
@@ -361,9 +399,26 @@ export async function resolveHarbor(
             note: rampOutlook.note,
           }
         : null,
+      blendCalib: {
+        caseCount: blendCalibSummary.caseCount,
+        calibrated: blendCalibSummary.calibrated,
+        globalGain: blendCalibSummary.globalGain,
+        note: blendCalibSummary.note,
+        horizons: blendCalibSummary.horizons.map((item) => ({
+          minutesAhead: item.minutesAhead,
+          count: item.count,
+          gain: item.gain,
+          biasMs: item.biasMs,
+          maeCalibrated: item.maeCalibrated,
+          maeNowcast: item.maeNowcast,
+          skillVsNowcast: item.skillVsNowcast,
+        })),
+      },
       note: sourceStale
         ? "実況の公開停止中のため、ナウキャストは抑制しています。"
-        : [nowcastSkill.note, patternBlend.note, outlookLine].filter(Boolean).join(" "),
+        : [nowcastSkill.note, patternBlend.note, blendCalibSummary.note, outlookLine]
+            .filter(Boolean)
+            .join(" "),
       horizons: nowcastSkill.horizons.map((item) => ({
         minutesAhead: item.minutesAhead,
         count: item.count,

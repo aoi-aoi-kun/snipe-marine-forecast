@@ -62,6 +62,7 @@ describe("blendNowcastWithPatternMatch", () => {
     });
     assert.equal(out.blended, true);
     assert.ok(out.note);
+    assert.ok(out.traces.length >= 1);
     const at30 = out.points.find((p) => p.minutesAhead === 30)!;
     const at15 = out.points.find((p) => p.minutesAhead === 15)!;
     assert.ok(at30.meanMs > base[1].meanMs);
@@ -83,5 +84,34 @@ describe("blendNowcastWithPatternMatch", () => {
     // Pure blend: between trend 10 and analog hold 8
     assert.ok(at60.meanMs < 10);
     assert.ok(at60.meanMs > 8);
+  });
+
+  it("applies learned gain and bias when calib is ready", () => {
+    const base = points([4.2, 4.4, 4.6]);
+    const naive = blendNowcastWithPatternMatch(base, 4.0, {
+      score: 0.9,
+      expectedPeakMs: 8.0,
+      horizonMinutes: 30,
+    });
+    const damped = blendNowcastWithPatternMatch(
+      base,
+      4.0,
+      {
+        score: 0.9,
+        expectedPeakMs: 8.0,
+        horizonMinutes: 30,
+      },
+      {
+        calibrated: true,
+        globalGain: 0.4,
+        horizons: [{ minutesAhead: 30, gain: 0.4, biasMs: 0 }],
+      },
+    );
+    assert.equal(damped.blended, true);
+    const naive30 = naive.points.find((p) => p.minutesAhead === 30)!.meanMs;
+    const damped30 = damped.points.find((p) => p.minutesAhead === 30)!.meanMs;
+    assert.ok(damped30 < naive30);
+    assert.ok(damped30 > base[1].meanMs);
+    assert.ok(damped.note?.includes("融合校正"));
   });
 });

@@ -7,6 +7,7 @@ export const LEARNING_FILE_NAMES = [
   "nowcast-calib.json",
   "harbor-patterns.json",
   "pattern-forecast-calib.json",
+  "nowcast-pattern-blend-calib.json",
   "mos.json",
   "mos-offshore-hours.json",
   "meta-calib.json",

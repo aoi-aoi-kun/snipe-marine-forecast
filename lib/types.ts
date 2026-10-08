@@ -47,6 +47,22 @@ export type RampOutlookView = {
   note: string;
 };
 
+export type BlendCalibViewSkill = {
+  caseCount: number;
+  calibrated: boolean;
+  globalGain: number;
+  note: string;
+  horizons: {
+    minutesAhead: number;
+    count: number;
+    gain: number;
+    biasMs: number;
+    maeCalibrated: number;
+    maeNowcast: number;
+    skillVsNowcast: number;
+  }[];
+};
+
 export type NowcastSkill = {
   caseCount: number;
   calibrated: boolean;
@@ -63,6 +79,8 @@ export type NowcastSkill = {
     skillVsPersistence: number;
   }[];
   rampOutlook?: RampOutlookView | null;
+  /** Learned pull strength when fusing pattern match into nowcast. */
+  blendCalib?: BlendCalibViewSkill | null;
   note: string;
   horizons: {
     minutesAhead: number;

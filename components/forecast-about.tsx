@@ -67,6 +67,19 @@ function accuracyParagraphs(harbor: HarborBundle | null): string[] {
     );
   }
 
+  const blend = harbor.nowcastSkill.blendCalib;
+  if (blend) {
+    parts.push(blend.note);
+    const best = [...blend.horizons].sort(
+      (a, b) => b.skillVsNowcast - a.skillVsNowcast,
+    )[0];
+    if (blend.calibrated && best && best.skillVsNowcast > 0) {
+      parts.push(
+        `融合校正後は、ナウキャスト単体より誤差が小さくなる傾向があります（例: ${best.minutesAhead}分先）。`,
+      );
+    }
+  }
+
   const outlook = harbor.nowcastSkill.rampOutlook;
   if (outlook?.pRiseGe25 != null && outlook.pPeakGe10 != null) {
     parts.push(
@@ -129,7 +142,7 @@ export function ForecastAbout({ harbor }: { harbor: HarborBundle | null }) {
             ナウキャストは、直近およそ30分の実況から風速・風向の傾きを求め、15・30・60分先へ延長します。過去に「同じように延長したあと、実際どうなったか」で減衰とずれを校正します。
           </p>
           <p>
-            平常時と立ち上がり時では校正を分けます。立ち上がりや急上昇マッチがあるときは、傾きを残した校正と、過去の類似イベントのピーク目安への寄せを使います。風向は16方位で扱います。
+            平常時と立ち上がり時では校正を分けます。立ち上がりや急上昇マッチがあるときは、傾きを残した校正と、過去の類似イベントのピーク目安への寄せを使います。融合の寄せ具合も事後検証で重みとバイアスを学習します。風向は16方位で扱います。
           </p>
           <p>
             数時間先の沖の格子予報は画面には出さず、学習用にだけ取得します。出艇の最終判断は、現場と気象庁の発表に従ってください。
