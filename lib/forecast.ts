@@ -46,9 +46,9 @@ let pending: {
   promise: Promise<ForecastResponse>;
   startedAt: number;
 } | null = null;
-const PENDING_MAX_MS = 20_000;
+const PENDING_MAX_MS = 15_000;
 /** Stay under Render free's ~30s request limit (including harbor). */
-const BUILD_BUDGET_MS = 12_000;
+const BUILD_BUDGET_MS = 8_000;
 
 async function readJson<T>(file: string): Promise<T | null> {
   try {
@@ -126,7 +126,7 @@ async function fetchJma(): Promise<JmaCache> {
 }
 
 let ifsFillPromise: Promise<void> | null = null;
-const IFS_WAIT_MS = 18_000;
+const IFS_WAIT_MS = 8_000;
 const IFS_NEAR_HOURS = 18;
 
 function sleep(ms: number) {
@@ -290,21 +290,20 @@ async function forecastFromCaches(
   nowMs: number,
   errors: string[],
 ): Promise<ForecastResponse> {
+  // Network-free fallback so we can always answer inside Render's request window.
   const ifs = await loadIfsCache();
-  const warnings = await resolveJma(false);
-  if (warnings.error) errors.push(warnings.error);
+  const jmaCache = await loadJmaCache();
   const ifsHours = ifs?.hours ?? [];
   const prevIfs = await loadIfsPrevCache();
   const baseWindows = ifs
     ? attachCycleSpread(buildWindows(ifsHours, nowMs), ifsHours, prevIfs?.hours ?? null)
     : [];
-  const harborResolved = await resolveHarbor(nowMs, baseWindows, false, ifsHours, false, {
-    ifsDegraded: true,
-  });
-  if (harborResolved.error) errors.push(harborResolved.error);
   if (!ifs) {
     errors.push("ECMWF の公開データを取得しています。20〜40秒後に再読み込みしてください。");
+  } else {
+    errors.push("取得中の暫定表示です。まもなく最新に更新されます。");
   }
+  startIfsFill(nowMs);
   return {
     point: POINT,
     generatedAt: new Date(nowMs).toISOString(),
@@ -314,45 +313,64 @@ async function forecastFromCaches(
           ageHours: (nowMs - ifs.initMs) / HOUR_MS,
           fetchedAt: new Date(ifs.fetchedAt).toISOString(),
           degraded: true,
-          windows: harborResolved.windows,
+          windows: baseWindows,
         }
       : null,
-    jma: warnings.jma,
-    harbor: harborResolved.harbor
+    jma: jmaCache?.warnings
       ? {
-          ...harborResolved.harbor,
-          mos: {
-            ...harborResolved.harbor.mos,
-            continuous: getContinuousLearnStatus(),
-          },
+          fetchedAt: new Date(jmaCache.fetchedAt).toISOString(),
+          degraded: true,
+          warnings: parseWarnings(jmaCache.warnings),
         }
       : null,
+    harbor: null,
     errors,
   };
+}
+
+async function resolveIfsCacheOnly(nowMs: number): Promise<{
+  cache: IfsCache;
+  degraded: boolean;
+}> {
+  startIfsFill(nowMs);
+  const existing = await loadIfsCache();
+  if (existing && existing.hours.length > 0) {
+    return { cache: existing, degraded: !covers(existing, nowMs) };
+  }
+  throw new Error("ECMWF の公開データを取得しています。自動で再読み込みします。");
 }
 
 export function getForecast(
   options: boolean | ForecastFetchOptions = false,
 ): Promise<ForecastResponse> {
   const opts = normalizeForecastOptions(options);
-  // Keep page traffic off the continuous-learn in-flight promise.
-  const key = opts.refresh
-    ? "full"
-    : opts.refreshHarbor
-      ? "page"
-      : "cache";
+  // Page / harbor polls must not wait on ECMWF downloads (Render ~30s limit).
+  if (!opts.refresh) {
+    const key = opts.refreshHarbor ? "page" : "cache";
+    if (pending && pending.key === key && Date.now() - pending.startedAt < PENDING_MAX_MS) {
+      return pending.promise;
+    }
+    const startedAt = Date.now();
+    const promise = Promise.race([
+      buildForecast({ ...opts, refresh: false }),
+      sleep(BUILD_BUDGET_MS).then(() =>
+        forecastFromCaches(Date.now(), [
+          "ECMWF の公開データを取得しています。自動で再読み込みします。",
+        ]),
+      ),
+    ]).finally(() => {
+      if (pending?.promise === promise) pending = null;
+    });
+    pending = { key, promise, startedAt };
+    return promise;
+  }
+
+  const key = "full";
   if (pending && pending.key === key && Date.now() - pending.startedAt < PENDING_MAX_MS) {
     return pending.promise;
   }
   const startedAt = Date.now();
-  const promise = Promise.race([
-    buildForecast(opts),
-    sleep(BUILD_BUDGET_MS).then(() =>
-      forecastFromCaches(Date.now(), [
-        "取得に時間がかかっているため、キャッシュまたは取得中の状態を返しています。",
-      ]),
-    ),
-  ]).finally(() => {
+  const promise = buildForecast(opts).finally(() => {
     if (pending?.promise === promise) pending = null;
   });
   pending = { key, promise, startedAt };
@@ -363,8 +381,9 @@ async function buildForecast(options: Required<ForecastFetchOptions>): Promise<F
   const { refresh, refreshHarbor } = options;
   const nowMs = Date.now();
   const errors: string[] = [];
+  const ifsResolver = refresh ? resolveIfs(nowMs, true) : resolveIfsCacheOnly(nowMs);
   const [model, warnings] = await Promise.all([
-    resolveIfs(nowMs, refresh).then(
+    ifsResolver.then(
       (resolved) => ({ resolved, error: null as string | null }),
       (error: unknown) => ({
         resolved: null,

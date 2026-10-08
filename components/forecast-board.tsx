@@ -762,7 +762,7 @@ export function ForecastBoard() {
           : "/api/forecast?refreshHarbor=1";
       const response = await fetch(path, {
         cache: "no-store",
-        signal: AbortSignal.timeout(mode === "full" ? 120_000 : 75_000),
+        signal: AbortSignal.timeout(mode === "full" ? 90_000 : 20_000),
       });
       const body = (await response.json()) as ForecastResponse;
       if (!body.ifs && !body.harbor && !body.jma) {
@@ -770,25 +770,35 @@ export function ForecastBoard() {
           setData(null);
           setError(body.errors[0] ?? "予報を取得できませんでした。");
         }
+        window.setTimeout(() => {
+          void load("harbor");
+        }, 12_000);
         return;
       }
       setData(body);
-      if (!silent && !body.ifs && body.errors[0]) setError(body.errors[0]);
-      // Retry while ECMWF is still downloading on free-tier cold starts.
-      if (
-        !silent &&
-        (!body.ifs || body.ifs.degraded || body.errors.some((item) => item.includes("取得して")))
-      ) {
+      const waitingForIfs =
+        !body.ifs ||
+        body.ifs.degraded ||
+        (body.ifs.windows?.filter((window) => window.available).length ?? 0) < 4 ||
+        body.errors.some((item) => item.includes("取得"));
+      if (!silent && !body.ifs && body.errors[0]) {
+        setError(body.errors[0]);
+      } else if (!silent && body.ifs) {
+        setError(null);
+      }
+      if (waitingForIfs) {
         window.setTimeout(() => {
           void load("harbor");
-        }, 20_000);
+        }, 12_000);
       }
     } catch {
+      // Cold start: keep skeleton and retry instead of a hard error.
       if (!silent) {
-        setError(
-          "予報の取得がタイムアウトしました。数十秒待って再読み込みしてください（初回は ECMWF の取得に時間がかかります）。",
-        );
+        setError("ECMWF を取得しています。自動で再試行します…");
       }
+      window.setTimeout(() => {
+        void load(silent ? "harbor" : "page");
+      }, 10_000);
     } finally {
       if (!silent) setLoading(false);
     }
