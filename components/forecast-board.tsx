@@ -760,7 +760,10 @@ export function ForecastBoard() {
         mode === "full"
           ? "/api/forecast?refresh=1"
           : "/api/forecast?refreshHarbor=1";
-      const response = await fetch(path, { cache: "no-store" });
+      const response = await fetch(path, {
+        cache: "no-store",
+        signal: AbortSignal.timeout(mode === "full" ? 120_000 : 75_000),
+      });
       const body = (await response.json()) as ForecastResponse;
       if (!body.ifs && !body.harbor && !body.jma) {
         if (!silent) {
@@ -771,8 +774,18 @@ export function ForecastBoard() {
       }
       setData(body);
       if (!silent && !body.ifs && body.errors[0]) setError(body.errors[0]);
+      // First paint may only have ~48h while the rest fills in the background.
+      if (!silent && body.ifs?.degraded) {
+        window.setTimeout(() => {
+          void load("harbor");
+        }, 45_000);
+      }
     } catch {
-      if (!silent) setError("予報を取得できませんでした。");
+      if (!silent) {
+        setError(
+          "予報の取得がタイムアウトしました。数十秒待って再読み込みしてください（初回は ECMWF の取得に時間がかかります）。",
+        );
+      }
     } finally {
       if (!silent) setLoading(false);
     }

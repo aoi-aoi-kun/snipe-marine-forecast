@@ -69,6 +69,18 @@ export function neededSteps(initMs: number, nowMs: number): number[] {
   return steps;
 }
 
+/** First-paint subset so free-tier hosts can respond before all 144h steps finish. */
+export function nearNeededSteps(
+  initMs: number,
+  nowMs: number,
+  nearHorizonHours = 48,
+): number[] {
+  const cutoff = nowMs + nearHorizonHours * HOUR_MS;
+  return neededSteps(initMs, nowMs).filter(
+    (step) => initMs + step * HOUR_MS <= cutoff,
+  );
+}
+
 export function gribUrl(initMs: number, step: number): string {
   return `${productBase(initMs, step)}.grib2`;
 }

@@ -5,6 +5,7 @@ import { attachCycleSpread } from "./cycle-spread";
 import {
   fetchCycleSamples,
   ifsCycleCandidates,
+  nearNeededSteps,
   neededSteps,
   POINT,
   probeCycle,
@@ -117,6 +118,40 @@ async function fetchJma(): Promise<JmaCache> {
   return cache;
 }
 
+let ifsBackgroundFill: Promise<void> | null = null;
+
+/** Finish remaining 144h steps without blocking the HTTP response. */
+function fillIfsInBackground(initMs: number, nowMs: number, seed: IfsCache) {
+  if (ifsBackgroundFill) return;
+  ifsBackgroundFill = (async () => {
+    try {
+      const steps = neededSteps(initMs, nowMs);
+      const previous = new Map(
+        seed.hours.map((hour) => [
+          Math.round((hour.validMs - initMs) / HOUR_MS),
+          hour,
+        ]),
+      );
+      const hours = await fetchCycleSamples(initMs, steps, previous);
+      const cache: IfsCache = {
+        source: "ecmwf-ifs-0p25-10fg",
+        initMs,
+        fetchedAt: Date.now(),
+        hours: [...hours.values()].sort((a, b) => a.validMs - b.validMs),
+      };
+      await saveIfsCache(cache);
+      console.info(
+        `IFS background fill done: ${cache.hours.length} hours (covers=${covers(cache, nowMs)})`,
+      );
+    } catch (error) {
+      console.warn("IFS background fill failed", error);
+    } finally {
+      ifsBackgroundFill = null;
+    }
+  })();
+  void ifsBackgroundFill;
+}
+
 async function resolveIfs(nowMs: number, refresh: boolean): Promise<{
   cache: IfsCache;
   degraded: boolean;
@@ -126,12 +161,19 @@ async function resolveIfs(nowMs: number, refresh: boolean): Promise<{
     existing && Date.now() - existing.fetchedAt < IFS_FRESH_MS && covers(existing, nowMs);
   if (fresh && !refresh && existing) return { cache: existing, degraded: false };
 
+  // Stale-but-usable cache: serve immediately and refresh off the request path.
+  if (!refresh && existing && covers(existing, nowMs)) {
+    fillIfsInBackground(existing.initMs, nowMs, existing);
+    return { cache: existing, degraded: true };
+  }
+
   for (const initMs of ifsCycleCandidates(nowMs)) {
     const steps = neededSteps(initMs, nowMs);
     if (steps.length === 0) continue;
     if (existing?.initMs === initMs && covers(existing, nowMs)) {
       const touched = { ...existing, fetchedAt: Date.now() };
       await saveIfsCache(touched);
+      if (refresh) fillIfsInBackground(initMs, nowMs, touched);
       return { cache: touched, degraded: false };
     }
     const available = await probeCycle(initMs, steps);
@@ -145,22 +187,20 @@ async function resolveIfs(nowMs: number, refresh: boolean): Promise<{
             ]),
           )
         : new Map<number, HourSample>();
-    const hours = await fetchCycleSamples(initMs, steps, previous);
+    // Cold start / free tier: download ~48h first so the page can render.
+    const near = nearNeededSteps(initMs, nowMs, 48);
+    const hours = await fetchCycleSamples(initMs, near, previous);
     const cache: IfsCache = {
       source: "ecmwf-ifs-0p25-10fg",
       initMs,
       fetchedAt: Date.now(),
       hours: [...hours.values()].sort((a, b) => a.validMs - b.validMs),
     };
-    if (!covers(cache, nowMs)) {
-      if (existing && covers(existing, nowMs)) return { cache: existing, degraded: true };
-      if (existing && existing.initMs !== cache.initMs) await saveIfsPrevCache(existing);
-      await saveIfsCache(cache);
-      return { cache, degraded: true };
-    }
     if (existing && existing.initMs !== cache.initMs) await saveIfsPrevCache(existing);
     await saveIfsCache(cache);
-    return { cache, degraded: false };
+    const complete = covers(cache, nowMs);
+    if (!complete) fillIfsInBackground(initMs, nowMs, cache);
+    return { cache, degraded: !complete };
   }
 
   if (existing) return { cache: existing, degraded: true };
