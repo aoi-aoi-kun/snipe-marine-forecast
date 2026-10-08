@@ -3,13 +3,10 @@ import { WINDY_URL, windyBlurb } from "@/lib/ui-copy";
 
 export default function Page() {
   return (
-    <main className="mx-auto w-full max-w-3xl px-4 pb-[max(3.5rem,env(safe-area-inset-bottom))] pt-[max(0.9rem,env(safe-area-inset-top))] sm:px-6 sm:pb-20 sm:pt-6">
+    <main className="mx-auto w-full max-w-3xl px-4 pb-[max(3.5rem,env(safe-area-inset-bottom))] pt-[max(0.55rem,env(safe-area-inset-top))] sm:px-6 sm:pb-20 sm:pt-3">
       <header className="site-masthead anim-rise">
         <p className="brand">七里ヶ浜</p>
-        <p className="brand-line">
-          江の島ヨットハーバーの実況と、約1時間先までの短時間予測。スナイプ出艇の参考です。
-        </p>
-        <p className="brand-meta">Harbor nowcast</p>
+        <p className="brand-meta">ハーバー実況 · 約1時間</p>
       </header>
 
       <ForecastBoard />

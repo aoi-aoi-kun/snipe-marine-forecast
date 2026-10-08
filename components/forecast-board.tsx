@@ -213,9 +213,8 @@ function HarborPanel({
     <section className="anim-rise">
       <div className="section-head">
         <div className="section-head-copy">
-          <p className="eyebrow mb-1">いまの風</p>
           <h2 className="section-title">江の島ヨットハーバー</h2>
-          <p className="jma-meta mt-1.5">
+          <p className="jma-meta mt-1">
             {jmaLoaded === false ? (
               <span>気象庁の発表を確認中…</span>
             ) : hasWarnings ? (
@@ -606,9 +605,8 @@ export function ForecastBoard() {
         <div>
           <div className="section-head">
             <div className="section-head-copy">
-              <p className="eyebrow mb-1">いまの風</p>
               <h2 className="section-title">江の島ヨットハーバー</h2>
-              <p className="jma-meta mt-1.5">
+              <p className="jma-meta mt-1">
                 {data?.jma?.warnings && data.jma.warnings.length > 0
                   ? null
                   : data?.jma

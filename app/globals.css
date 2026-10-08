@@ -95,22 +95,27 @@ a {
   transition: color 0.2s ease;
 }
 
-/* —— Brand masthead —— */
+/* —— Brand masthead (compact — data stays above the fold) —— */
 .site-masthead {
   position: relative;
   overflow: hidden;
   isolation: isolate;
-  border-radius: var(--radius-lg);
-  padding: 1.45rem 1.25rem 1.55rem;
-  margin-bottom: 1.5rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.35rem 1rem;
+  border-radius: var(--radius-md);
+  padding: 0.55rem 0.85rem 0.6rem;
+  margin-bottom: 0.85rem;
   color: #f4fafb;
-  box-shadow: var(--shadow-panel);
+  box-shadow: var(--shadow-hairline);
 }
 
 @media (min-width: 640px) {
   .site-masthead {
-    padding: 1.65rem 1.5rem 1.75rem;
-    margin-bottom: 1.75rem;
+    padding: 0.6rem 1rem 0.65rem;
+    margin-bottom: 1rem;
   }
 }
 
@@ -119,45 +124,40 @@ a {
   position: absolute;
   inset: 0;
   z-index: -2;
-  background:
-    linear-gradient(125deg, #06343c 0%, #0d6570 42%, #1a7f74 72%, #9a7a45 120%);
-  background-size: 140% 140%;
-  animation: horizon-drift 26s ease-in-out infinite alternate;
+  background: linear-gradient(120deg, #06343c 0%, #0d6570 55%, #1a7f74 100%);
 }
 
 .site-masthead::after {
   content: "";
   position: absolute;
-  inset: 0;
+  inset: auto 0 0;
+  height: 3px;
   z-index: -1;
-  opacity: 0.85;
-  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='40' viewBox='0 0 240 40' fill='none'%3E%3Cpath d='M0 22c20-8 40-8 60 0s40 8 60 0 40-8 60 0 40 8 60 0v18H0V22Z' fill='%23eef4f5' fill-opacity='.16'/%3E%3C/svg%3E")
-    repeat-x bottom / 240px 40px;
-  animation: wave-shift 16s linear infinite;
+  opacity: 0.55;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='8' viewBox='0 0 160 8' fill='none'%3E%3Cpath d='M0 5c12-3 24-3 36 0s24 3 36 0 24-3 36 0 24 3 36 0v3H0V5Z' fill='%23eef4f5' fill-opacity='.35'/%3E%3C/svg%3E")
+    repeat-x bottom / 160px 8px;
+  animation: wave-shift 18s linear infinite;
 }
 
 .site-masthead .brand {
   font-family: var(--font-serif);
-  font-size: clamp(1.85rem, 6.5vw, 2.45rem);
+  font-size: 1.15rem;
   font-weight: 600;
   letter-spacing: 0.04em;
-  line-height: 1.15;
+  line-height: 1.2;
 }
 
-.site-masthead .brand-line {
-  margin-top: 0.45rem;
-  max-width: 28rem;
-  font-size: 0.82rem;
-  line-height: 1.55;
-  color: color-mix(in srgb, #f4fafb 86%, transparent);
+@media (min-width: 640px) {
+  .site-masthead .brand {
+    font-size: 1.25rem;
+  }
 }
 
 .site-masthead .brand-meta {
-  margin-top: 0.85rem;
-  font-size: 0.68rem;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: color-mix(in srgb, #f4fafb 68%, transparent);
+  margin: 0;
+  font-size: 0.65rem;
+  letter-spacing: 0.08em;
+  color: color-mix(in srgb, #f4fafb 72%, transparent);
 }
 
 /* —— Shared type —— */
@@ -171,7 +171,7 @@ a {
 
 .section-title {
   font-family: var(--font-serif);
-  font-size: 1.2rem;
+  font-size: 1.1rem;
   line-height: 1.25;
   letter-spacing: 0.01em;
   color: color-mix(in srgb, var(--color-ink) 90%, var(--color-sea-deep));
@@ -179,7 +179,7 @@ a {
 
 @media (min-width: 640px) {
   .section-title {
-    font-size: 1.35rem;
+    font-size: 1.2rem;
   }
 }
 
@@ -188,8 +188,8 @@ a {
   flex-wrap: wrap;
   align-items: flex-end;
   justify-content: space-between;
-  gap: 0.65rem 1rem;
-  margin-bottom: 0.85rem;
+  gap: 0.45rem 0.85rem;
+  margin-bottom: 0.55rem;
 }
 
 .section-head-copy {
@@ -247,7 +247,7 @@ a {
 /* —— Panels —— */
 .panel-stack {
   display: grid;
-  gap: 0.85rem;
+  gap: 0.7rem;
 }
 
 .panel-head {
@@ -263,7 +263,7 @@ a {
   overflow: hidden;
   isolation: isolate;
   border-radius: var(--radius-lg);
-  padding: 1.05rem 1.1rem 1.15rem;
+  padding: 0.9rem 0.95rem 1rem;
   background:
     linear-gradient(
       160deg,
@@ -272,6 +272,12 @@ a {
       rgba(220, 235, 238, 0.98) 100%
     );
   box-shadow: var(--shadow-panel);
+}
+
+@media (min-width: 640px) {
+  .wind-panel {
+    padding: 1rem 1.05rem 1.1rem;
+  }
 }
 
 .wind-panel::before {
@@ -412,9 +418,9 @@ a {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-height: 7.5rem;
+  min-height: 6.6rem;
   border-radius: var(--radius-md);
-  padding: 0.8rem 0.45rem 0.9rem;
+  padding: 0.65rem 0.4rem 0.75rem;
   text-align: center;
   background: color-mix(in srgb, white 86%, var(--color-paper));
   box-shadow:
@@ -426,8 +432,8 @@ a {
 @media (min-width: 640px) {
   .metric-tile,
   .nowcast-tile {
-    min-height: 8.25rem;
-    padding: 0.9rem 0.5rem 1rem;
+    min-height: 7.25rem;
+    padding: 0.75rem 0.5rem 0.85rem;
   }
 }
 
@@ -498,7 +504,7 @@ a {
 
 .jma-alert {
   border-radius: var(--radius-md);
-  padding: 0.85rem 1rem;
+  padding: 0.7rem 0.85rem;
   background: color-mix(in srgb, var(--color-warn-bg) 84%, white);
   box-shadow: var(--shadow-warn);
 }
@@ -729,7 +735,6 @@ a {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .site-masthead::before,
   .site-masthead::after,
   .wind-panel::before,
   .anim-rise,
