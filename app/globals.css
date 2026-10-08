@@ -123,6 +123,19 @@ a {
   flex: 1 1 12rem;
 }
 
+.section-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.55rem 0.75rem;
+  flex-shrink: 0;
+}
+
+.refresh-button {
+  letter-spacing: 0.02em;
+}
+
 .prose-muted {
   font-size: 0.75rem;
   line-height: 1.65;
@@ -509,18 +522,6 @@ a {
 .alert-stack {
   display: grid;
   gap: 0.45rem;
-}
-
-.utility-strip {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem 0.75rem;
-  border-radius: var(--radius-sm);
-  padding: 0.55rem 0.75rem;
-  background: color-mix(in srgb, white 74%, var(--color-sand));
-  box-shadow: var(--shadow-hairline);
 }
 
 .skeleton-panel {

@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import type { ForecastResponse, HarborBundle } from "@/lib/types";
 import {
   HARBOR_SOURCE_LABEL,
-  WINDY_URL,
   formatPatternMatchNote,
   windyBlurb,
 } from "@/lib/ui-copy";
@@ -180,14 +179,45 @@ function ThresholdBadges({
   );
 }
 
+function SectionTools({
+  loading,
+  onRefresh,
+  showDataNote = false,
+  dataNote,
+}: {
+  loading: boolean;
+  onRefresh: () => void;
+  showDataNote?: boolean;
+  dataNote?: ReactNode;
+}) {
+  return (
+    <div className="section-tools">
+      {showDataNote && dataNote ? dataNote : null}
+      <Button
+        variant="outline"
+        size="sm"
+        className="refresh-button"
+        onClick={onRefresh}
+        disabled={loading}
+      >
+        {loading ? "更新中" : "実況を更新"}
+      </Button>
+    </div>
+  );
+}
+
 function HarborPanel({
   harbor,
   warnings,
   jmaLoaded,
+  loading,
+  onRefresh,
 }: {
   harbor: HarborBundle;
   warnings?: ActiveWarning[] | null;
   jmaLoaded?: boolean;
+  loading: boolean;
+  onRefresh: () => void;
 }) {
   const latest = harbor.latest;
   const rising =
@@ -235,14 +265,21 @@ function HarborPanel({
             )}
           </p>
         </div>
-        <InfoDisclosure title="データについて" className="shrink-0">
-          <p>{harbor.note}</p>
-          <p>出典 {HARBOR_SOURCE_LABEL}。沖の格子点とは地点が異なります。</p>
-          <p>
-            平均 {MEAN_LIMIT_MS} m/s 超、瞬間 {GUST_LIMIT_MS} m/s 超は強調表示します。
-          </p>
-          <p>{windyBlurb()}</p>
-        </InfoDisclosure>
+        <SectionTools
+          loading={loading}
+          onRefresh={onRefresh}
+          showDataNote
+          dataNote={
+            <InfoDisclosure title="データについて" className="shrink-0">
+              <p>{harbor.note}</p>
+              <p>出典 {HARBOR_SOURCE_LABEL}。沖の格子点とは地点が異なります。</p>
+              <p>
+                平均 {MEAN_LIMIT_MS} m/s 超、瞬間 {GUST_LIMIT_MS} m/s 超は強調表示します。
+              </p>
+              <p>{windyBlurb()}</p>
+            </InfoDisclosure>
+          }
+        />
       </div>
 
       {hasWarnings ? <JmaAlert warnings={warningList} /> : null}
@@ -603,6 +640,8 @@ export function ForecastBoard() {
           harbor={data.harbor}
           warnings={data.jma?.warnings}
           jmaLoaded={Boolean(data.jma) || !loading}
+          loading={loading}
+          onRefresh={() => void load("page")}
         />
       ) : (
         <div>
@@ -619,6 +658,7 @@ export function ForecastBoard() {
                       : "気象庁 · 確認待ち"}
               </p>
             </div>
+            <SectionTools loading={loading} onRefresh={() => void load("page")} />
           </div>
           {data?.jma?.warnings && data.jma.warnings.length > 0 ? (
             <JmaAlert warnings={data.jma.warnings} />
@@ -632,24 +672,6 @@ export function ForecastBoard() {
           )}
         </div>
       )}
-
-      <div className="utility-strip">
-        <p className="prose-muted max-w-md">
-          {windyBlurb()}{" "}
-          <a className="soft-link" href={WINDY_URL} target="_blank" rel="noreferrer">
-            Windy
-          </a>
-        </p>
-        <Button
-          variant="outline"
-          size="sm"
-          className="shrink-0"
-          onClick={() => void load("page")}
-          disabled={loading}
-        >
-          {loading ? "更新中" : "実況を更新"}
-        </Button>
-      </div>
 
       <ForecastAbout harbor={data?.harbor ?? null} />
     </section>
