@@ -281,6 +281,10 @@ export async function resolveHarbor(
             boostFactor: match.boostFactor,
             sampleAt: match.sampleAt,
             note: match.note,
+            expectedRiseMs: match.expectedRiseMs,
+            expectedPeakMs: match.expectedPeakMs,
+            expectedMaxMs: match.expectedMaxMs,
+            horizonMinutes: match.horizonMinutes,
           }
         : null,
     },

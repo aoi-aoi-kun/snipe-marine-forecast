@@ -101,17 +101,44 @@ export function shortenLearningNote(note: string): string {
   return first.length > 72 ? `${first.slice(0, 70)}…` : first;
 }
 
-export function formatPatternMatchNote(raw: string, boostFactor: number, score: number): {
+export type PatternDisplay = {
   headline: string;
   detail: string;
-} {
-  const pct = Math.round(score * 100);
-  const headline = `過去の急上昇パターンに近い前兆です（一致 ${pct}%）`;
-  const detail = raw.replace(/（学習用に保持）。?$/, "。").trim();
-  const coeff = `想定倍率 ${boostFactor.toFixed(2)}（参考）`;
+  metrics: { label: string; value: string; hint?: string }[];
+};
+
+export function formatPatternMatchNote(input: {
+  note: string;
+  boostFactor: number;
+  score: number;
+  expectedRiseMs: number;
+  expectedPeakMs: number;
+  expectedMaxMs: number;
+  horizonMinutes: number;
+}): PatternDisplay {
+  const pct = Math.round(input.score * 100);
+  const headline = `過去の急上昇に近い前兆です（一致 ${pct}%）`;
+  const detail = `${input.note.trim()} 類似イベントをいまの実況に当てはめた目安です（校正済み予報ではありません）。`;
   return {
     headline,
-    detail: detail.endsWith("。") ? `${detail} ${coeff}` : `${detail}。${coeff}`,
+    detail,
+    metrics: [
+      {
+        label: "上昇目安",
+        value: `+${input.expectedRiseMs.toFixed(1)} m/s`,
+        hint: `約 ${input.horizonMinutes} 分`,
+      },
+      {
+        label: "ピーク目安",
+        value: `${input.expectedPeakMs.toFixed(1)} m/s`,
+        hint: "平均風速",
+      },
+      {
+        label: "瞬間目安",
+        value: `${input.expectedMaxMs.toFixed(1)} m/s`,
+        hint: `倍率 ${input.boostFactor.toFixed(2)}`,
+      },
+    ],
   };
 }
 

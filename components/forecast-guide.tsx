@@ -38,7 +38,7 @@ export function ForecastGuide() {
           <li>
             <span className="font-medium text-ink/75">急上昇</span>
             {" — "}
-            立ち上がりのアラートと、過去パターンとのマッチを表示します。裏では沖モデルとの突合も続け、型を更新しています。
+            立ち上がりのアラートに加え、似た過去イベントから上昇幅・ピーク・所要時間の目安を出します（アナロジー推定）。裏では沖モデルとの突合も続けます。
           </li>
           <li>
             <span className="font-medium text-ink/75">10 m/s の目安</span>

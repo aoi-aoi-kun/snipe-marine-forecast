@@ -33,7 +33,42 @@ export type PatternMatch = {
   boostFactor: number;
   sampleAt: string;
   note: string;
+  /** Analog estimate: expected mean-wind rise (m/s) over the horizon. */
+  expectedRiseMs: number;
+  /** Analog estimate: expected peak mean wind (m/s). */
+  expectedPeakMs: number;
+  /** Analog estimate: rough instantaneous max (m/s). */
+  expectedMaxMs: number;
+  /** Minutes over which the historical rise typically unfolded. */
+  horizonMinutes: number;
 };
+
+/** Map a matched historical ramp onto the current harbor mean. */
+export function estimateFromMatchedEvent(
+  currentMeanMs: number,
+  event: PatternEvent,
+  score: number,
+): Pick<
+  PatternMatch,
+  "expectedRiseMs" | "expectedPeakMs" | "expectedMaxMs" | "horizonMinutes"
+> {
+  const confidence = clamp(score, 0.5, 1);
+  // Weaker matches → milder rise (still based on the analog event).
+  const riseScale = 0.55 + 0.45 * confidence;
+  const expectedRiseMs = clamp(event.riseMs * riseScale, 0.8, 12);
+  const expectedPeakMs = clamp(currentMeanMs + expectedRiseMs, currentMeanMs, 25);
+  const historicalGustGap = Math.max(0.4, expectedRiseMs * 0.35);
+  const expectedMaxMs = clamp(expectedPeakMs + historicalGustGap, expectedPeakMs, 30);
+  const horizonMinutes = Math.round(
+    clamp(event.riseMinutes || 30, 15, 90),
+  );
+  return {
+    expectedRiseMs: Math.round(expectedRiseMs * 10) / 10,
+    expectedPeakMs: Math.round(expectedPeakMs * 10) / 10,
+    expectedMaxMs: Math.round(expectedMaxMs * 10) / 10,
+    horizonMinutes,
+  };
+}
 
 function hourBucket(atMs: number): number {
   return Math.floor(jstParts(atMs).hour / 3);
@@ -193,11 +228,13 @@ export function matchPattern(
   }
 
   const parts = jstParts(best.event.atMs);
+  const estimate = estimateFromMatchedEvent(latest.meanMs, best.event, best.score);
   return {
     score: best.score,
     boostFactor: best.event.boostFactor,
     sampleAt: new Date(best.event.atMs).toISOString(),
-    note: `${parts.month}月${parts.day}日 ${String(parts.hour).padStart(2, "0")}時台の急上昇（+${best.event.riseMs.toFixed(1)} m/s）に似た流れです。`,
+    note: `${parts.month}月${parts.day}日 ${String(parts.hour).padStart(2, "0")}時台の急上昇（実績 +${best.event.riseMs.toFixed(1)} m/s / ${best.event.riseMinutes}分）に似た流れです。`,
+    ...estimate,
   };
 }
 

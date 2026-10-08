@@ -396,18 +396,25 @@ function HarborPanel({ harbor }: { harbor: HarborBundle }) {
       ) : null}
 
       {harbor.pattern.match ? (
-        <div className="callout-sea rounded-lg py-2 pl-3 text-[12px] leading-relaxed">
+        <div className="callout-sea rounded-lg py-2.5 pl-3 text-[12px] leading-relaxed">
           {(() => {
-            const formatted = formatPatternMatchNote(
-              harbor.pattern.match.note,
-              harbor.pattern.match.boostFactor,
-              harbor.pattern.match.score,
-            );
+            const formatted = formatPatternMatchNote(harbor.pattern.match);
             return (
               <>
                 <p className="font-medium tracking-wide text-sea">急上昇マッチ</p>
                 <p className="mt-0.5 text-ink/85">{formatted.headline}</p>
-                <p className="mt-1 text-muted">{formatted.detail}</p>
+                <dl className="stat-row not-prose mt-2.5">
+                  {formatted.metrics.map((item) => (
+                    <div key={item.label} className="stat-pill">
+                      <dt>{item.label}</dt>
+                      <dd>
+                        {item.value}
+                        {item.hint ? <span className="stat-hint">{item.hint}</span> : null}
+                      </dd>
+                    </div>
+                  ))}
+                </dl>
+                <p className="mt-2 text-muted">{formatted.detail}</p>
               </>
             );
           })()}

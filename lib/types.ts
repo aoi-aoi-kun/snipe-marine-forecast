@@ -80,6 +80,10 @@ export type HarborBundle = {
       boostFactor: number;
       sampleAt: string;
       note: string;
+      expectedRiseMs: number;
+      expectedPeakMs: number;
+      expectedMaxMs: number;
+      horizonMinutes: number;
     } | null;
   };
   mos: {
