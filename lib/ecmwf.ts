@@ -249,7 +249,7 @@ async function downloadStep(initMs: number, step: number): Promise<HourSample | 
       fields.map(async (field) => {
         const response = await getBytes(gribUrl(initMs, step), {
           headers: { "User-Agent": USER_AGENT, Accept: "*/*" },
-          timeoutMs: 60_000,
+          timeoutMs: 25_000,
           range: { start: field.offset, end: field.offset + field.length - 1 },
         });
         if (response.status !== 206 || response.body.length !== field.length) {

@@ -118,38 +118,71 @@ async function fetchJma(): Promise<JmaCache> {
   return cache;
 }
 
-let ifsBackgroundFill: Promise<void> | null = null;
+let ifsFillPromise: Promise<void> | null = null;
+const IFS_WAIT_MS = 35_000;
+const IFS_NEAR_HOURS = 24;
 
-/** Finish remaining 144h steps without blocking the HTTP response. */
-function fillIfsInBackground(initMs: number, nowMs: number, seed: IfsCache) {
-  if (ifsBackgroundFill) return;
-  ifsBackgroundFill = (async () => {
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function hoursToMap(initMs: number, hours: HourSample[]): Map<number, HourSample> {
+  return new Map(
+    hours.map((hour) => [Math.round((hour.validMs - initMs) / HOUR_MS), hour]),
+  );
+}
+
+async function saveHours(initMs: number, hours: Map<number, HourSample>) {
+  const cache: IfsCache = {
+    source: "ecmwf-ifs-0p25-10fg",
+    initMs,
+    fetchedAt: Date.now(),
+    hours: [...hours.values()].sort((a, b) => a.validMs - b.validMs),
+  };
+  await saveIfsCache(cache);
+  return cache;
+}
+
+/** Download IFS off the request thread; save near-term chunks first for fast page paint. */
+function startIfsFill(nowMs: number) {
+  if (ifsFillPromise) return ifsFillPromise;
+  ifsFillPromise = (async () => {
     try {
-      const steps = neededSteps(initMs, nowMs);
-      const previous = new Map(
-        seed.hours.map((hour) => [
-          Math.round((hour.validMs - initMs) / HOUR_MS),
-          hour,
-        ]),
-      );
-      const hours = await fetchCycleSamples(initMs, steps, previous);
-      const cache: IfsCache = {
-        source: "ecmwf-ifs-0p25-10fg",
-        initMs,
-        fetchedAt: Date.now(),
-        hours: [...hours.values()].sort((a, b) => a.validMs - b.validMs),
-      };
-      await saveIfsCache(cache);
-      console.info(
-        `IFS background fill done: ${cache.hours.length} hours (covers=${covers(cache, nowMs)})`,
-      );
+      for (const initMs of ifsCycleCandidates(nowMs)) {
+        const near = nearNeededSteps(initMs, nowMs, IFS_NEAR_HOURS);
+        if (near.length === 0) continue;
+        const available = await probeCycle(initMs, near);
+        if (!available) continue;
+
+        const existing = await loadIfsCache();
+        if (existing && existing.initMs !== initMs) await saveIfsPrevCache(existing);
+        let map =
+          existing?.initMs === initMs ? hoursToMap(initMs, existing.hours) : new Map<number, HourSample>();
+
+        // Save every few steps so waiting requests can return mid-download.
+        for (let i = 0; i < near.length; i += 3) {
+          const chunk = near.slice(i, i + 3);
+          map = await fetchCycleSamples(initMs, chunk, map);
+          await saveHours(initMs, map);
+          console.info(`IFS near chunk saved: ${map.size} hours (init ${new Date(initMs).toISOString()})`);
+        }
+
+        const rest = neededSteps(initMs, nowMs);
+        map = await fetchCycleSamples(initMs, rest, map);
+        const done = await saveHours(initMs, map);
+        console.info(
+          `IFS fill done: ${done.hours.length} hours covers=${covers(done, nowMs)}`,
+        );
+        return;
+      }
+      console.warn("IFS fill: no open-data cycle available");
     } catch (error) {
-      console.warn("IFS background fill failed", error);
+      console.warn("IFS fill failed", error);
     } finally {
-      ifsBackgroundFill = null;
+      ifsFillPromise = null;
     }
   })();
-  void ifsBackgroundFill;
+  return ifsFillPromise;
 }
 
 async function resolveIfs(nowMs: number, refresh: boolean): Promise<{
@@ -161,50 +194,33 @@ async function resolveIfs(nowMs: number, refresh: boolean): Promise<{
     existing && Date.now() - existing.fetchedAt < IFS_FRESH_MS && covers(existing, nowMs);
   if (fresh && !refresh && existing) return { cache: existing, degraded: false };
 
-  // Stale-but-usable cache: serve immediately and refresh off the request path.
-  if (!refresh && existing && covers(existing, nowMs)) {
-    fillIfsInBackground(existing.initMs, nowMs, existing);
+  // Any usable cache: return now, refresh in background.
+  if (existing && existing.hours.length >= 3 && !refresh) {
+    startIfsFill(nowMs);
+    return { cache: existing, degraded: !covers(existing, nowMs) };
+  }
+
+  startIfsFill(nowMs);
+
+  const deadline = Date.now() + IFS_WAIT_MS;
+  while (Date.now() < deadline) {
+    const current = await loadIfsCache();
+    if (current && current.hours.length >= 3) {
+      return { cache: current, degraded: !covers(current, nowMs) };
+    }
+    await sleep(1_500);
+  }
+
+  const late = await loadIfsCache();
+  if (late && late.hours.length > 0) {
+    return { cache: late, degraded: true };
+  }
+  if (existing && existing.hours.length > 0) {
     return { cache: existing, degraded: true };
   }
-
-  for (const initMs of ifsCycleCandidates(nowMs)) {
-    const steps = neededSteps(initMs, nowMs);
-    if (steps.length === 0) continue;
-    if (existing?.initMs === initMs && covers(existing, nowMs)) {
-      const touched = { ...existing, fetchedAt: Date.now() };
-      await saveIfsCache(touched);
-      if (refresh) fillIfsInBackground(initMs, nowMs, touched);
-      return { cache: touched, degraded: false };
-    }
-    const available = await probeCycle(initMs, steps);
-    if (!available) continue;
-    const previous =
-      existing?.initMs === initMs
-        ? new Map(
-            existing.hours.map((hour) => [
-              Math.round((hour.validMs - initMs) / HOUR_MS),
-              hour,
-            ]),
-          )
-        : new Map<number, HourSample>();
-    // Cold start / free tier: download ~48h first so the page can render.
-    const near = nearNeededSteps(initMs, nowMs, 48);
-    const hours = await fetchCycleSamples(initMs, near, previous);
-    const cache: IfsCache = {
-      source: "ecmwf-ifs-0p25-10fg",
-      initMs,
-      fetchedAt: Date.now(),
-      hours: [...hours.values()].sort((a, b) => a.validMs - b.validMs),
-    };
-    if (existing && existing.initMs !== cache.initMs) await saveIfsPrevCache(existing);
-    await saveIfsCache(cache);
-    const complete = covers(cache, nowMs);
-    if (!complete) fillIfsInBackground(initMs, nowMs, cache);
-    return { cache, degraded: !complete };
-  }
-
-  if (existing) return { cache: existing, degraded: true };
-  throw new Error("ECMWF の公開データを取得できませんでした");
+  throw new Error(
+    "ECMWF の公開データを取得しています。20〜40秒後に再読み込みしてください。",
+  );
 }
 
 async function resolveJma(refresh: boolean): Promise<{

@@ -165,13 +165,12 @@ export async function resolveHarbor(
 
   const harborForLearn =
     learningHarbor.length >= resolved.samples.length ? learningHarbor : resolved.samples;
-  // Harbor-only page refreshes should also deepen MOS archive pairing.
-  const deepenLearn = refresh || refreshHarbor;
+  // Full refresh deepens MOS archives; harbor-only page polls stay light on free tier.
   const mosStore = await learnMos({
     nowMs,
     harbor: harborForLearn,
     ifsHours,
-    refresh: deepenLearn,
+    refresh,
   });
   const mosSummary = summarizeMos(mosStore);
   const patternStore = await learnFromSamples(learningHarbor, windows);
