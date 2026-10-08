@@ -41,9 +41,9 @@ export function ForecastGuide() {
             立ち上がりのアラートに加え、似た過去イベントから上昇幅・ピーク・所要時間の目安を出します。マッチ後の実測で目安を校正し、使うほど精度が上がります。
           </li>
           <li>
-            <span className="font-medium text-ink/75">10 m/s の目安</span>
+            <span className="font-medium text-ink/75">強調の目安</span>
             {" — "}
-            ナウキャストの平均が閾値を超えると警告します。出艇の最終判断は現場と気象庁の警報・注意報に従ってください。
+            平均 10 m/s 超、瞬間 13 m/s 超は実況・ナウキャスト・急上昇マッチで強く表示します。出艇の最終判断は現場と気象庁の警報・注意報に従ってください。
           </li>
           <li>
             <span className="font-medium text-ink/75">実況が止まったとき</span>

@@ -165,22 +165,69 @@ function LearnStatusPanel({ harbor }: { harbor: HarborBundle }) {
   );
 }
 
+const MEAN_LIMIT_MS = 10;
+const GUST_LIMIT_MS = 13;
+
+function meanHot(value: number | null | undefined): boolean {
+  return value != null && value >= MEAN_LIMIT_MS;
+}
+
+function gustHot(value: number | null | undefined): boolean {
+  return value != null && value >= GUST_LIMIT_MS;
+}
+
+function ThresholdBadges({
+  meanMs,
+  gustMs,
+  meanLabel = "平均",
+  gustLabel = "瞬間",
+}: {
+  meanMs?: number | null;
+  gustMs?: number | null;
+  meanLabel?: string;
+  gustLabel?: string;
+}) {
+  const showMean = meanHot(meanMs);
+  const showGust = gustHot(gustMs);
+  if (!showMean && !showGust) return null;
+  return (
+    <div className="threshold-row">
+      {showMean ? (
+        <span className="threshold-badge">
+          {meanLabel} {MEAN_LIMIT_MS} m/s 超
+        </span>
+      ) : null}
+      {showGust ? (
+        <span className="threshold-badge">
+          {gustLabel} {GUST_LIMIT_MS} m/s 超
+        </span>
+      ) : null}
+    </div>
+  );
+}
+
 function HarborPanel({ harbor }: { harbor: HarborBundle }) {
   const latest = harbor.latest;
   const rising =
     harbor.riseRateMsPerHour !== null && harbor.riseRateMsPerHour >= 1.5;
-  const nowcastOver10 = harbor.nowcast.some((point) => point.meanMs > 10);
   const lagMinutes =
     latest === null
       ? null
       : Math.max(0, Math.floor((Date.now() - Date.parse(latest.at)) / 60_000));
   const sourceStale = lagMinutes !== null && lagMinutes >= 20;
-  const liveHot = Boolean(latest && (latest.meanMs >= 10 || latest.maxMs >= 13));
-  const stageWarn = sourceStale || liveHot || nowcastOver10;
+  const liveMeanHot = meanHot(latest?.meanMs);
+  const liveGustHot = gustHot(latest?.maxMs);
+  const liveHot = liveMeanHot || liveGustHot;
+  const nowcastHot = harbor.nowcast.some((point) => meanHot(point.meanMs));
+  const match = harbor.pattern.match;
+  const matchMeanHot = meanHot(match?.expectedPeakMs);
+  const matchGustHot = gustHot(match?.expectedMaxMs);
+  const matchHot = matchMeanHot || matchGustHot;
   const riseLabel =
     harbor.riseRateMsPerHour !== null
       ? `${harbor.riseRateMsPerHour >= 0 ? "+" : ""}${harbor.riseRateMsPerHour.toFixed(1)}`
       : null;
+  const matchFormatted = match ? formatPatternMatchNote(match) : null;
 
   return (
     <section className="anim-rise space-y-3">
@@ -192,190 +239,274 @@ function HarborPanel({ harbor }: { harbor: HarborBundle }) {
         <InfoDisclosure title="データについて" className="shrink-0">
           <p>{harbor.note}</p>
           <p>出典 {HARBOR_SOURCE_LABEL}。沖の格子点とは地点が異なります。</p>
+          <p>
+            平均 {MEAN_LIMIT_MS} m/s 超、瞬間 {GUST_LIMIT_MS} m/s 超は強調表示します。
+          </p>
           <p>{windyBlurb()}</p>
         </InfoDisclosure>
       </div>
 
-      {latest || harbor.nowcast.length > 0 ? (
-        <div className={cn("wind-stage anim-rise", stageWarn && "wind-stage-warn")}>
-          {latest ? (
-            <div>
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <p className="text-[12px] font-medium tracking-[0.18em] text-sea">いま</p>
-                  <p
-                    className={cn(
-                      "mt-1 text-[13px] leading-4",
-                      sourceStale ? "font-medium text-warn" : "text-muted",
-                    )}
-                  >
-                    {formatHarborObsTime(latest.at)}
-                    {lagMinutes !== null ? ` · ${lagMinutes}分前` : ""}
+      <div className="panel-stack">
+        {latest ? (
+          <article
+            className={cn(
+              "wind-panel anim-rise",
+              (liveHot || sourceStale) && "wind-panel-warn",
+            )}
+          >
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p className={cn("panel-kicker", liveHot && "panel-kicker-warn")}>実況 · いま</p>
+                <p
+                  className={cn(
+                    "mt-1 text-[13px] leading-4",
+                    sourceStale ? "font-medium text-warn" : "text-muted",
+                  )}
+                >
+                  {formatHarborObsTime(latest.at)}
+                  {lagMinutes !== null ? ` · ${lagMinutes}分前` : ""}
+                </p>
+              </div>
+              <div className="flex items-center gap-3 rounded-2xl bg-white/70 px-3.5 py-2 shadow-[0_0_0_1px_color-mix(in_srgb,var(--color-sea)_16%,transparent)]">
+                <WindArrow
+                  degrees={latest.fromDeg}
+                  blocked={liveHot}
+                  label={latest.fromLabel}
+                  size="lg"
+                />
+                <div className="min-w-[3.5rem]">
+                  <p className="text-[10px] font-medium tracking-wide text-muted">風向</p>
+                  <p className="mt-0.5 font-serif text-xl leading-none tracking-tight text-ink">
+                    {latest.fromLabel ?? "—"}
                   </p>
                 </div>
-                <div className="flex items-center gap-3 rounded-2xl bg-white/70 px-3.5 py-2 shadow-[0_0_0_1px_color-mix(in_srgb,var(--color-sea)_16%,transparent)]">
-                  <WindArrow
-                    degrees={latest.fromDeg}
-                    blocked={liveHot}
-                    label={latest.fromLabel}
-                    size="lg"
-                  />
-                  <div className="min-w-[3.5rem]">
-                    <p className="text-[10px] font-medium tracking-wide text-muted">風向</p>
-                    <p className="mt-0.5 font-serif text-xl leading-none tracking-tight text-ink">
-                      {latest.fromLabel ?? "—"}
-                    </p>
-                  </div>
-                </div>
               </div>
-
-              <div className="mt-5 flex flex-wrap items-end justify-between gap-x-5 gap-y-4">
-                <p
-                  className={cn("live-speed", liveHot && "text-warn")}
-                  aria-label={`平均 ${latest.meanMs.toFixed(1)} メートル毎秒`}
-                >
-                  {latest.meanMs.toFixed(1)}
-                  <span className="live-speed-unit">m/s</span>
-                </p>
-                <dl className="grid min-w-[11rem] grid-cols-2 gap-x-5 gap-y-3">
-                  <div>
-                    <dt className="text-[11px] font-medium tracking-wide text-muted">瞬間</dt>
-                    <dd
-                      className={cn(
-                        "mt-1 font-serif text-3xl tabular-nums leading-none tracking-tight sm:text-4xl",
-                        latest.maxMs >= 13 ? "text-warn" : "text-ink",
-                      )}
-                    >
-                      {latest.maxMs.toFixed(1)}
-                      <span className="ml-1 text-xs font-sans text-muted">m/s</span>
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="text-[11px] font-medium tracking-wide text-muted">傾き</dt>
-                    <dd
-                      className={cn(
-                        "mt-1 font-serif text-3xl tabular-nums leading-none tracking-tight sm:text-4xl",
-                        rising ? "text-warn" : "text-ink",
-                      )}
-                    >
-                      {riseLabel ?? "—"}
-                      {riseLabel ? (
-                        <span className="ml-1 text-[10px] font-sans text-muted">m/s/h</span>
-                      ) : null}
-                    </dd>
-                  </div>
-                </dl>
-              </div>
-
-              {sourceStale ? (
-                <p className="mt-4 text-[13px] font-medium leading-5 text-warn">
-                  公開側の更新が止まっています。新しい観測が来るまで短時間予測は出しません。
-                </p>
-              ) : rising ? (
-                <p className="mt-4 text-[13px] leading-5 text-warn/90">
-                  立ち上がり気味です。下のナウキャストと急上昇アラートも確認してください。
-                </p>
-              ) : null}
             </div>
+
+            <div className="mt-3">
+              <ThresholdBadges meanMs={latest.meanMs} gustMs={latest.maxMs} />
+            </div>
+
+            {liveHot ? (
+              <p className="threshold-banner mt-2.5">
+                {liveMeanHot && liveGustHot
+                  ? `平均 ${MEAN_LIMIT_MS} m/s・瞬間 ${GUST_LIMIT_MS} m/s を超えています。出艇判断を慎重に。`
+                  : liveMeanHot
+                    ? `平均風速が ${MEAN_LIMIT_MS} m/s を超えています。出艇判断を慎重に。`
+                    : `瞬間風速が ${GUST_LIMIT_MS} m/s を超えています。出艇判断を慎重に。`}
+              </p>
+            ) : null}
+
+            <div className="mt-4 flex flex-wrap items-end justify-between gap-x-5 gap-y-4">
+              <p
+                className={cn("live-speed", liveMeanHot && "text-warn")}
+                aria-label={`平均 ${latest.meanMs.toFixed(1)} メートル毎秒`}
+              >
+                {latest.meanMs.toFixed(1)}
+                <span className="live-speed-unit">m/s</span>
+              </p>
+              <dl className="grid min-w-[11rem] grid-cols-2 gap-x-5 gap-y-3">
+                <div>
+                  <dt className="text-[11px] font-medium tracking-wide text-muted">瞬間</dt>
+                  <dd
+                    className={cn(
+                      "mt-1 font-serif text-3xl tabular-nums leading-none tracking-tight sm:text-4xl",
+                      liveGustHot ? "text-warn" : "text-ink",
+                    )}
+                  >
+                    {latest.maxMs.toFixed(1)}
+                    <span className="ml-1 text-xs font-sans text-muted">m/s</span>
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-[11px] font-medium tracking-wide text-muted">傾き</dt>
+                  <dd
+                    className={cn(
+                      "mt-1 font-serif text-3xl tabular-nums leading-none tracking-tight sm:text-4xl",
+                      rising ? "text-warn" : "text-ink",
+                    )}
+                  >
+                    {riseLabel ?? "—"}
+                    {riseLabel ? (
+                      <span className="ml-1 text-[10px] font-sans text-muted">m/s/h</span>
+                    ) : null}
+                  </dd>
+                </div>
+              </dl>
+            </div>
+
+            {sourceStale ? (
+              <p className="mt-4 text-[13px] font-medium leading-5 text-warn">
+                公開側の更新が止まっています。新しい観測が来るまで短時間予測は出しません。
+              </p>
+            ) : rising && !liveHot ? (
+              <p className="mt-4 text-[13px] leading-5 text-warn/90">
+                立ち上がり気味です。ナウキャストと急上昇マッチも確認してください。
+              </p>
+            ) : null}
+          </article>
+        ) : (
+          <p className="text-sm text-muted">実況データはまだありません。</p>
+        )}
+
+        <article
+          className={cn("wind-panel anim-rise anim-rise-delay-1", nowcastHot && "wind-panel-warn")}
+        >
+          <div className="mb-2.5 flex flex-wrap items-start justify-between gap-2">
+            <div>
+              <p className={cn("panel-kicker", nowcastHot && "panel-kicker-warn")}>
+                ナウキャスト
+              </p>
+              <p className="mt-1 text-[13px] text-muted">15 / 30 / 60 分先の目安</p>
+            </div>
+            <InfoDisclosure title="説明">
+              <p>
+                {harbor.nowcastSkill.calibrated
+                  ? "直近30分の傾きを延長し、過去の実況との突合で風速・風向を整えています。"
+                  : "直近30分の傾きが続くと仮定した、15・30・60分先の目安です。"}
+              </p>
+              <p>{harbor.nowcastSkill.note}</p>
+            </InfoDisclosure>
+          </div>
+
+          {nowcastHot ? (
+            <p className="threshold-banner mb-2.5">
+              60分以内の見込みが平均 {MEAN_LIMIT_MS} m/s を超えます。
+            </p>
           ) : null}
 
           {harbor.nowcast.length > 0 ? (
-            <div className="nowcast-block">
-              <div className="mb-2.5 flex flex-wrap items-baseline justify-between gap-2">
-                <div>
-                  <p className="text-[12px] font-medium tracking-[0.16em] text-sea">これから</p>
-                  <p className="mt-0.5 text-[12px] text-muted">
-                    ナウキャスト · 15 / 30 / 60 分先
-                  </p>
-                </div>
-                <InfoDisclosure title="説明">
-                  <p>
-                    {harbor.nowcastSkill.calibrated
-                      ? "直近30分の傾きを延長し、過去の実況との突合で風速・風向を整えています。"
-                      : "直近30分の傾きが続くと仮定した、15・30・60分先の目安です。"}
-                  </p>
-                  <p>{harbor.nowcastSkill.note}</p>
-                </InfoDisclosure>
-              </div>
-
-              {nowcastOver10 ? (
-                <div className="callout mb-2.5 rounded-lg py-1.5 text-[12px] leading-4">
-                  <p className="font-medium tracking-wide">風速注意</p>
-                  <p className="mt-0.5 text-warn/90">
-                    60分以内の見込みが平均 10 m/s を超えます。
-                  </p>
-                </div>
-              ) : null}
-
-              <ol className="nowcast-rail">
-                {harbor.nowcast.map((point, index) => {
-                  const delta = latest === null ? null : point.meanMs - latest.meanMs;
-                  const over10 = point.meanMs > 10;
-                  return (
-                    <li
-                      key={point.minutesAhead}
-                      className={cn("nowcast-tile", over10 && "nowcast-tile-warn")}
-                      style={{ animationDelay: `${0.08 + index * 0.07}s` }}
-                    >
-                      <p className="text-[11px] font-medium tracking-wide text-muted">
-                        +{point.minutesAhead}分
+            <ol className="nowcast-rail">
+              {harbor.nowcast.map((point, index) => {
+                const delta = latest === null ? null : point.meanMs - latest.meanMs;
+                const overMean = meanHot(point.meanMs);
+                return (
+                  <li
+                    key={point.minutesAhead}
+                    className={cn("nowcast-tile", overMean && "nowcast-tile-warn")}
+                    style={{ animationDelay: `${0.08 + index * 0.07}s` }}
+                  >
+                    <p className="text-[11px] font-medium tracking-wide text-muted">
+                      +{point.minutesAhead}分
+                    </p>
+                    <div className="mt-2 flex justify-center">
+                      <WindArrow
+                        degrees={point.fromDeg}
+                        blocked={overMean}
+                        label={point.fromLabel}
+                        size="md"
+                      />
+                    </div>
+                    <p className={cn("nowcast-speed mt-2", overMean ? "text-warn" : "text-ink")}>
+                      {point.meanMs.toFixed(1)}
+                      <span className="nowcast-speed-unit">m/s</span>
+                    </p>
+                    {overMean ? (
+                      <p className="mt-2 text-[11px] font-medium text-warn">
+                        平均 {MEAN_LIMIT_MS} 超
                       </p>
-                      <div className="mt-2 flex justify-center">
-                        <WindArrow
-                          degrees={point.fromDeg}
-                          blocked={over10}
-                          label={point.fromLabel}
-                          size="md"
-                        />
-                      </div>
+                    ) : delta !== null ? (
                       <p
                         className={cn(
-                          "nowcast-speed mt-2",
-                          over10 ? "text-warn" : "text-ink",
+                          "mt-2 text-[12px] tabular-nums font-medium",
+                          delta > 0.15
+                            ? "text-warn"
+                            : delta < -0.15
+                              ? "text-sea"
+                              : "text-muted",
                         )}
                       >
-                        {point.meanMs.toFixed(1)}
-                        <span className="nowcast-speed-unit">m/s</span>
+                        {delta > 0 ? "+" : ""}
+                        {delta.toFixed(1)} いま比
                       </p>
-                      {over10 ? (
-                        <p className="mt-2 text-[11px] font-medium text-warn">10 m/s 超</p>
-                      ) : delta !== null ? (
-                        <p
-                          className={cn(
-                            "mt-2 text-[12px] tabular-nums font-medium",
-                            delta > 0.15
-                              ? "text-warn"
-                              : delta < -0.15
-                                ? "text-sea"
-                                : "text-muted",
-                          )}
-                        >
-                          {delta > 0 ? "+" : ""}
-                          {delta.toFixed(1)} いま比
-                        </p>
-                      ) : (
-                        <p className="mt-2 text-[11px] text-muted">
-                          {point.fromLabel ?? "風向 —"}
-                        </p>
-                      )}
-                    </li>
-                  );
-                })}
-              </ol>
-            </div>
+                    ) : (
+                      <p className="mt-2 text-[11px] text-muted">
+                        {point.fromLabel ?? "風向 —"}
+                      </p>
+                    )}
+                  </li>
+                );
+              })}
+            </ol>
           ) : latest && sourceStale ? (
-            <p className="nowcast-block text-[13px] text-muted">
+            <p className="text-[13px] text-muted">
               実況が止まっているため、短時間予測は表示していません。
             </p>
-          ) : latest ? (
-            <p className="nowcast-block text-[13px] text-muted">
+          ) : (
+            <p className="text-[13px] text-muted">
               傾きがはっきりしないため、短時間予測は出せません。
             </p>
-          ) : null}
-        </div>
-      ) : (
-        <p className="text-sm text-muted">実況データはまだありません。</p>
-      )}
+          )}
+        </article>
+
+        <article
+          className={cn(
+            "wind-panel anim-rise anim-rise-delay-2",
+            match && matchHot && "wind-panel-warn",
+          )}
+        >
+          <div className="mb-2.5 flex flex-wrap items-start justify-between gap-2">
+            <div>
+              <p className={cn("panel-kicker", match && matchHot && "panel-kicker-warn")}>
+                急上昇マッチ
+              </p>
+              <p className="mt-1 text-[13px] text-muted">
+                {match
+                  ? "類似イベントから見た上昇の目安"
+                  : "いまは該当する前兆がありません"}
+              </p>
+            </div>
+            {match ? (
+              <InfoDisclosure title="説明">
+                <p>{matchFormatted?.detail}</p>
+              </InfoDisclosure>
+            ) : null}
+          </div>
+
+          {match && matchFormatted ? (
+            <>
+              <ThresholdBadges
+                meanMs={match.expectedPeakMs}
+                gustMs={match.expectedMaxMs}
+                meanLabel="ピーク"
+                gustLabel="瞬間"
+              />
+              {matchHot ? (
+                <p className="threshold-banner mt-2.5">
+                  {matchMeanHot && matchGustHot
+                    ? `ピーク平均 ${MEAN_LIMIT_MS} m/s・瞬間 ${GUST_LIMIT_MS} m/s を超える見込みです。`
+                    : matchMeanHot
+                      ? `ピーク平均が ${MEAN_LIMIT_MS} m/s を超える見込みです。`
+                      : `瞬間が ${GUST_LIMIT_MS} m/s を超える見込みです。`}
+                </p>
+              ) : null}
+              <p className="mt-2.5 text-[13px] leading-5 text-ink/85">{matchFormatted.headline}</p>
+              <dl className="metric-rail not-prose mt-3">
+                {matchFormatted.metrics.map((item) => {
+                  const warn =
+                    (item.label === "ピーク目安" && matchMeanHot) ||
+                    (item.label === "瞬間目安" && matchGustHot) ||
+                    (item.label === "上昇目安" &&
+                      meanHot((latest?.meanMs ?? 0) + match.expectedRiseMs));
+                  return (
+                    <div key={item.label} className={cn("metric-tile", warn && "metric-tile-warn")}>
+                      <dt>{item.label}</dt>
+                      <dd>
+                        {item.value}
+                        {item.hint ? <span className="metric-hint">{item.hint}</span> : null}
+                      </dd>
+                    </div>
+                  );
+                })}
+              </dl>
+            </>
+          ) : (
+            <p className="text-[13px] leading-5 text-muted">
+              立ち上がりがはっきりしたとき、過去の急上昇パターンとの一致と定量目安をここに出します。
+            </p>
+          )}
+        </article>
+      </div>
 
       {harbor.alerts.some((alert) => alert.kind !== "stale") ? (
         <div className="space-y-1.5">
@@ -392,32 +523,6 @@ function HarborPanel({ harbor }: { harbor: HarborBundle }) {
                 {alert.message}
               </div>
             ))}
-        </div>
-      ) : null}
-
-      {harbor.pattern.match ? (
-        <div className="callout-sea rounded-lg py-2.5 pl-3 text-[12px] leading-relaxed">
-          {(() => {
-            const formatted = formatPatternMatchNote(harbor.pattern.match);
-            return (
-              <>
-                <p className="font-medium tracking-wide text-sea">急上昇マッチ</p>
-                <p className="mt-0.5 text-ink/85">{formatted.headline}</p>
-                <dl className="stat-row not-prose mt-2.5">
-                  {formatted.metrics.map((item) => (
-                    <div key={item.label} className="stat-pill">
-                      <dt>{item.label}</dt>
-                      <dd>
-                        {item.value}
-                        {item.hint ? <span className="stat-hint">{item.hint}</span> : null}
-                      </dd>
-                    </div>
-                  ))}
-                </dl>
-                <p className="mt-2 text-muted">{formatted.detail}</p>
-              </>
-            );
-          })()}
         </div>
       ) : null}
 
