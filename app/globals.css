@@ -46,15 +46,6 @@
   }
 }
 
-@keyframes wave-shift {
-  from {
-    background-position: 0 bottom;
-  }
-  to {
-    background-position: 240px bottom;
-  }
-}
-
 @keyframes pulse-soft {
   0%,
   100% {
