@@ -399,35 +399,28 @@ a {
   opacity: 0.86;
 }
 
-.jma-banner {
-  border-radius: 0.85rem;
-  padding: 0.7rem 0.9rem;
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-sea) 14%, transparent);
-  background: color-mix(in srgb, white 82%, var(--color-sand));
+.jma-meta {
+  font-size: 0.7rem;
+  line-height: 1.45;
+  color: color-mix(in srgb, var(--color-muted) 92%, var(--color-ink));
 }
 
-.jma-banner-active {
-  background: color-mix(in srgb, var(--color-warn-bg) 78%, white);
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-warn) 36%, transparent);
-}
-
-.jma-banner-clear {
-  background:
-    linear-gradient(
-      120deg,
-      color-mix(in srgb, white 88%, var(--color-sand)),
-      color-mix(in srgb, var(--color-mist) 35%, white)
-    );
-}
-
-.jma-banner-title {
-  font-size: 0.68rem;
+.jma-meta-warn {
+  color: var(--color-warn);
   font-weight: 500;
-  letter-spacing: 0.08em;
-  color: color-mix(in srgb, var(--color-muted) 70%, var(--color-sea));
 }
 
-.jma-banner-active .jma-banner-title {
+.jma-alert {
+  border-radius: 0.75rem;
+  padding: 0.75rem 0.9rem;
+  background: color-mix(in srgb, var(--color-warn-bg) 82%, white);
+  box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--color-warn) 42%, transparent);
+}
+
+.jma-alert-title {
+  font-size: 0.7rem;
+  font-weight: 500;
+  letter-spacing: 0.06em;
   color: var(--color-warn);
 }
 

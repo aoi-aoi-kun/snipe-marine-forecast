@@ -180,7 +180,15 @@ function ThresholdBadges({
   );
 }
 
-function HarborPanel({ harbor }: { harbor: HarborBundle }) {
+function HarborPanel({
+  harbor,
+  warnings,
+  jmaLoaded,
+}: {
+  harbor: HarborBundle;
+  warnings?: ActiveWarning[] | null;
+  jmaLoaded?: boolean;
+}) {
   const latest = harbor.latest;
   const rising =
     harbor.riseRateMsPerHour !== null && harbor.riseRateMsPerHour >= 1.5;
@@ -198,6 +206,8 @@ function HarborPanel({ harbor }: { harbor: HarborBundle }) {
   const outlookLine = harbor.nowcastSkill.rampOutlook
     ? formatRampOutlookLine(harbor.nowcastSkill.rampOutlook)
     : null;
+  const warningList = warnings ?? [];
+  const hasWarnings = warningList.length > 0;
 
   return (
     <section className="anim-rise space-y-3">
@@ -205,6 +215,26 @@ function HarborPanel({ harbor }: { harbor: HarborBundle }) {
         <div>
           <p className="eyebrow mb-0.5">Live</p>
           <h2 className="section-title">江の島ヨットハーバー</h2>
+          <p className="jma-meta mt-1">
+            {jmaLoaded === false ? (
+              <span>気象庁の発表を確認中…</span>
+            ) : hasWarnings ? (
+              <span className="jma-meta-warn">気象庁 · 警報・注意報あり（下を確認）</span>
+            ) : (
+              <span>
+                気象庁 · 発表なし
+                {" · "}
+                <a
+                  className="soft-link"
+                  href="https://www.jma.go.jp/bosai/warning/#lang=ja&area_type=class20s&area_code=1420400"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  一覧
+                </a>
+              </span>
+            )}
+          </p>
         </div>
         <InfoDisclosure title="データについて" className="shrink-0">
           <p>{harbor.note}</p>
@@ -215,6 +245,8 @@ function HarborPanel({ harbor }: { harbor: HarborBundle }) {
           <p>{windyBlurb()}</p>
         </InfoDisclosure>
       </div>
+
+      {hasWarnings ? <JmaAlert warnings={warningList} /> : null}
 
       <div className="panel-stack">
         <article className="wind-panel anim-rise">
@@ -452,24 +484,12 @@ function HarborPanel({ harbor }: { harbor: HarborBundle }) {
   );
 }
 
-function JmaBanner({
-  warnings,
-  loaded,
-}: {
-  warnings: ActiveWarning[] | null | undefined;
-  loaded: boolean;
-}) {
-  const list = warnings ?? [];
+/** Full alert block — only rendered when JMA has active warnings. */
+function JmaAlert({ warnings }: { warnings: ActiveWarning[] }) {
   return (
-    <section
-      className={cn(
-        "jma-banner anim-rise",
-        list.length > 0 ? "jma-banner-active" : "jma-banner-clear",
-      )}
-      aria-label="気象庁 鎌倉市の警報・注意報"
-    >
+    <aside className="jma-alert anim-rise" aria-label="気象庁 鎌倉市の警報・注意報">
       <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-        <p className="jma-banner-title">気象庁 · 鎌倉市</p>
+        <p className="jma-alert-title">気象庁 · 鎌倉市の警報・注意報</p>
         <a
           className="soft-link text-[10px]"
           href="https://www.jma.go.jp/bosai/warning/#lang=ja&area_type=class20s&area_code=1420400"
@@ -479,29 +499,24 @@ function JmaBanner({
           発表一覧
         </a>
       </div>
-      {!loaded ? (
-        <p className="mt-1 text-[12px] text-muted">警報・注意報を確認しています…</p>
-      ) : list.length === 0 ? (
-        <p className="mt-1 text-[12px] leading-5 text-ink/70">
-          発表中の警報・注意報はありません。
-        </p>
-      ) : (
-        <ul className="mt-1.5 space-y-1 text-[12px] leading-5">
-          {list.map((warning) => (
-            <li
-              key={warning.code}
-              className={cn(warning.severe ? "font-medium text-warn" : "text-warn/90")}
-            >
-              {warning.name}
-              <span className="text-warn/75">
-                （{warning.status}
-                {warning.notes.length > 0 ? ` · ${warning.notes.join(" · ")}` : ""}）
-              </span>
-            </li>
-          ))}
-        </ul>
-      )}
-    </section>
+      <ul className="mt-1.5 space-y-1 text-[12px] leading-5">
+        {warnings.map((warning) => (
+          <li
+            key={warning.code}
+            className={cn(warning.severe ? "font-medium text-warn" : "text-warn/90")}
+          >
+            {warning.name}
+            <span className="text-warn/75">
+              （{warning.status}
+              {warning.notes.length > 0 ? ` · ${warning.notes.join(" · ")}` : ""}）
+            </span>
+          </li>
+        ))}
+      </ul>
+      <p className="mt-1.5 text-[11px] leading-4 text-warn/80">
+        出艇の最終判断は、この発表と現場の状況を優先してください。
+      </p>
+    </aside>
   );
 }
 
@@ -576,16 +591,29 @@ export function ForecastBoard() {
 
   return (
     <section className="anim-rise space-y-4 sm:space-y-5" aria-live="polite">
-      <JmaBanner warnings={data?.jma?.warnings} loaded={Boolean(data?.jma) || !loading} />
-
       {error ? <p className="callout py-2 text-xs">{error}</p> : null}
 
       {data?.harbor ? (
-        <HarborPanel harbor={data.harbor} />
+        <HarborPanel
+          harbor={data.harbor}
+          warnings={data.jma?.warnings}
+          jmaLoaded={Boolean(data.jma) || !loading}
+        />
       ) : (
         <div className="space-y-2">
           <p className="eyebrow">Live</p>
           <h2 className="section-title">江の島ヨットハーバー</h2>
+          {data?.jma?.warnings && data.jma.warnings.length > 0 ? (
+            <JmaAlert warnings={data.jma.warnings} />
+          ) : (
+            <p className="jma-meta">
+              {data?.jma
+                ? "気象庁 · 発表なし"
+                : loading
+                  ? "気象庁の発表を確認中…"
+                  : "気象庁 · 確認待ち"}
+            </p>
+          )}
           <div className="skeleton-pulse h-36 bg-sand/70" />
           {loading ? null : (
             <p className="text-[11px] text-muted">実況データはまだありません。</p>
