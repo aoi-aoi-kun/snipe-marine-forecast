@@ -10,13 +10,14 @@ const CACHE_DIR = path.join(process.cwd(), ".cache");
 
 export type LearnStatus = {
   generatedAt: string;
-  continuous: {
-    started: boolean;
-    ticking: boolean;
-    intervalMinutes: number;
-    lastTickAt: string | null;
-    lastTickError: string | null;
-  };
+    continuous: {
+      started: boolean;
+      ticking: boolean;
+      /** Wall-clock interval between continuous-learn ticks. */
+      intervalMinutes: number;
+      lastTickAt: string | null;
+      lastTickError: string | null;
+    };
   cache: {
     dir: string;
     writable: boolean;
@@ -75,7 +76,7 @@ export function buildLearnTip(status: Omit<LearnStatus, "tip" | "generatedAt">):
     return `直近の学習でエラーがありました: ${status.continuous.lastTickError}`;
   }
   if (status.mos.pairCount < 48 || !status.meta.patternReady) {
-    return "常時起動を続けると MOS・補正の補正・急上昇の検証が厚くなります。無料枠は外部から /api/health?warm=1 を定期アクセスするとスリープしにくいです。";
+    return "常時起動を続けると MOS・補正の補正・急上昇の検証が厚くなります。無料枠は外部から約8〜10分ごとに /api/health?warm=1 へアクセスするとスリープしにくいです。";
   }
   return "学習は蓄積中です。サーバを止めず .cache を消さなければ、使い続けるほど局地補正が安定します。";
 }

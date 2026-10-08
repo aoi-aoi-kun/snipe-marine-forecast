@@ -29,15 +29,20 @@ export type MosPair = {
   offshoreGustMs: number;
   offshoreFromDeg: number | null;
   ratio: number;
+  /** Harbor 5-min max ÷ offshore gust, when gust is usable. */
+  gustRatio: number | null;
   biasMs: number;
 };
 
 export type MosBin = {
   key: string;
+  /** 0 = Oct–Mar, 1 = Apr–Sep (sea-breeze half). null on synthetic hour/global bins. */
+  season: 0 | 1 | null;
   hourBucket: number;
   dirSector: number | null;
   count: number;
   meanRatio: number;
+  meanGustRatio: number | null;
   meanBiasMs: number;
 };
 
@@ -60,6 +65,7 @@ export type MosTier = "exact" | "hour" | "neighbor" | "global";
 
 export type MosCorrection = {
   factor: number;
+  gustFactor: number | null;
   binKey: string;
   count: number;
   meanBiasMs: number;
@@ -89,8 +95,16 @@ function hourBucket(atMs: number): number {
   return Math.floor(jstParts(atMs).hour / 3);
 }
 
-function binKey(hour: number, dirSector: number | null): string {
-  return dirSector === null ? `h${hour}:x` : `h${hour}:d${dirSector}`;
+/** Apr–Sep sea-breeze season vs Oct–Mar winter monsoon half. */
+export function seasonHalf(atMs: number): 0 | 1 {
+  const month = jstParts(atMs).month;
+  return month >= 4 && month <= 9 ? 1 : 0;
+}
+
+function binKey(season: 0 | 1, hour: number, dirSector: number | null): string {
+  return dirSector === null
+    ? `s${season}:h${hour}:x`
+    : `s${season}:h${hour}:d${dirSector}`;
 }
 
 function circularMeanDeg(degrees: number[]): number | null {
@@ -137,6 +151,16 @@ function offshoreAt(
   return { meanMs, gustMs: sample.gustMs, fromDeg };
 }
 
+function normalizePair(pair: MosPair): MosPair {
+  return {
+    ...pair,
+    gustRatio:
+      pair.gustRatio === undefined
+        ? null
+        : pair.gustRatio,
+  };
+}
+
 /** Build completed 3-hour pairs from harbor samples and ECMWF point hours. */
 export function buildMosPairs(
   harbor: HarborSample[],
@@ -156,6 +180,10 @@ export function buildMosPairs(
     const model = offshoreAt(hours, start, end);
     if (!local || !model) continue;
     const ratio = clamp(local.meanMs / model.meanMs, MIN_FACTOR, MAX_FACTOR);
+    const gustRatio =
+      Number.isFinite(model.gustMs) && model.gustMs >= 0.5
+        ? clamp(local.maxMs / model.gustMs, MIN_FACTOR, MAX_FACTOR)
+        : null;
     pairs.push({
       windowStart: start,
       harborMeanMs: local.meanMs,
@@ -165,6 +193,7 @@ export function buildMosPairs(
       offshoreGustMs: model.gustMs,
       offshoreFromDeg: model.fromDeg,
       ratio,
+      gustRatio,
       biasMs: local.meanMs - model.meanMs,
     });
   }
@@ -173,11 +202,23 @@ export function buildMosPairs(
 
 export function mergeMosPairs(existing: MosPair[], incoming: MosPair[]): MosPair[] {
   const byStart = new Map<number, MosPair>();
-  for (const pair of existing) byStart.set(pair.windowStart, pair);
-  for (const pair of incoming) byStart.set(pair.windowStart, pair);
+  for (const pair of existing) byStart.set(pair.windowStart, normalizePair(pair));
+  for (const pair of incoming) byStart.set(pair.windowStart, normalizePair(pair));
   return [...byStart.values()]
     .sort((a, b) => b.windowStart - a.windowStart)
     .slice(0, MAX_PAIRS);
+}
+
+function meanGustRatioOf(list: MosPair[], weights: number[]): number | null {
+  const ratios: number[] = [];
+  const used: number[] = [];
+  list.forEach((pair, index) => {
+    if (pair.gustRatio == null) return;
+    ratios.push(pair.gustRatio);
+    used.push(weights[index] ?? 1);
+  });
+  if (ratios.length < MIN_BIN_PAIRS) return null;
+  return clamp(weightedMean(ratios, used), MIN_FACTOR, MAX_FACTOR);
 }
 
 export function rebuildMosBins(
@@ -188,7 +229,7 @@ export function rebuildMosBins(
   for (const pair of pairs) {
     const sector =
       pair.offshoreFromDeg === null ? null : windSector8(pair.offshoreFromDeg);
-    const key = binKey(hourBucket(pair.windowStart), sector);
+    const key = binKey(seasonHalf(pair.windowStart), hourBucket(pair.windowStart), sector);
     const list = groups.get(key) ?? [];
     list.push(pair);
     groups.set(key, list);
@@ -208,13 +249,18 @@ export function rebuildMosBins(
       list.map((pair) => pair.biasMs),
       weights,
     );
-    const [hourPart, dirPart] = key.split(":");
+    const parts = key.split(":");
+    const season = Number(parts[0].slice(1)) as 0 | 1;
+    const hourPart = parts[1];
+    const dirPart = parts[2];
     bins.push({
       key,
+      season,
       hourBucket: Number(hourPart.slice(1)),
       dirSector: dirPart === "x" ? null : Number(dirPart.slice(1)),
       count: list.length,
       meanRatio: clamp(meanRatio, MIN_FACTOR, MAX_FACTOR),
+      meanGustRatio: meanGustRatioOf(list, weights),
       meanBiasMs,
     });
   }
@@ -229,11 +275,12 @@ export async function loadMosStore(): Promise<MosStore> {
   try {
     const raw = JSON.parse(await readFile(MOS_CACHE, "utf8")) as MosStore;
     if (!Array.isArray(raw.pairs)) return emptyMosStore();
+    const pairs = raw.pairs.map((pair) => normalizePair(pair as MosPair));
     return {
       updatedAt: raw.updatedAt ?? 0,
       lastBackfillAt: raw.lastBackfillAt ?? 0,
-      pairs: raw.pairs,
-      bins: Array.isArray(raw.bins) ? raw.bins : rebuildMosBins(raw.pairs),
+      pairs,
+      bins: rebuildMosBins(pairs),
     };
   } catch {
     return emptyMosStore();
@@ -255,9 +302,14 @@ export function ingestMosPairs(store: MosStore, incoming: MosPair[]): MosStore {
   };
 }
 
-function hourOnlyBins(pairs: MosPair[], nowMs = Date.now()): Map<number, MosBin> {
+function hourOnlyBins(
+  pairs: MosPair[],
+  season: 0 | 1 | null,
+  nowMs = Date.now(),
+): Map<number, MosBin> {
   const groups = new Map<number, MosPair[]>();
   for (const pair of pairs) {
+    if (season !== null && seasonHalf(pair.windowStart) !== season) continue;
     const hour = hourBucket(pair.windowStart);
     const list = groups.get(hour) ?? [];
     list.push(pair);
@@ -270,7 +322,8 @@ function hourOnlyBins(pairs: MosPair[], nowMs = Date.now()): Map<number, MosBin>
       nowMs,
     );
     map.set(hour, {
-      key: `h${hour}:*`,
+      key: season === null ? `h${hour}:*` : `s${season}:h${hour}:*`,
+      season,
       hourBucket: hour,
       dirSector: null,
       count: list.length,
@@ -282,6 +335,7 @@ function hourOnlyBins(pairs: MosPair[], nowMs = Date.now()): Map<number, MosBin>
         MIN_FACTOR,
         MAX_FACTOR,
       ),
+      meanGustRatio: meanGustRatioOf(list, weights),
       meanBiasMs: weightedMean(
         list.map((pair) => pair.biasMs),
         weights,
@@ -295,10 +349,13 @@ function hourOnlyBins(pairs: MosPair[], nowMs = Date.now()): Map<number, MosBin>
 function neighborHourBlend(
   hourBins: Map<number, MosBin>,
   hour: number,
+  season: 0 | 1 | null,
 ): MosBin | null {
   let total = 0;
   let ratioSum = 0;
   let biasSum = 0;
+  let gustSum = 0;
+  let gustWeight = 0;
   for (const delta of [-1, 0, 1]) {
     const bucket = (hour + delta + HOUR_BUCKETS) % HOUR_BUCKETS;
     const bin = hourBins.get(bucket);
@@ -306,14 +363,23 @@ function neighborHourBlend(
     total += bin.count;
     ratioSum += bin.meanRatio * bin.count;
     biasSum += bin.meanBiasMs * bin.count;
+    if (bin.meanGustRatio != null) {
+      gustSum += bin.meanGustRatio * bin.count;
+      gustWeight += bin.count;
+    }
   }
   if (total < MIN_NEIGHBOR_PAIRS) return null;
   return {
-    key: `h${hour}:~`,
+    key: season === null ? `h${hour}:~` : `s${season}:h${hour}:~`,
+    season,
     hourBucket: hour,
     dirSector: null,
     count: total,
     meanRatio: clamp(ratioSum / total, MIN_FACTOR, MAX_FACTOR),
+    meanGustRatio:
+      gustWeight >= MIN_BIN_PAIRS
+        ? clamp(gustSum / gustWeight, MIN_FACTOR, MAX_FACTOR)
+        : null,
     meanBiasMs: biasSum / total,
   };
 }
@@ -335,23 +401,43 @@ function globalRatioBin(pairs: MosPair[], nowMs = Date.now()): MosBin | null {
   );
   return {
     key: "h*:g",
+    season: null,
     hourBucket: -1,
     dirSector: null,
     count: pairs.length,
     meanRatio: clamp(meanRatio, MIN_FACTOR, MAX_FACTOR),
+    meanGustRatio: meanGustRatioOf(pairs, weights),
     meanBiasMs,
   };
 }
 
 function binLabel(bin: MosBin, targetHour: number): string {
   if (bin.key === "h*:g") return "全体平均";
+  const seasonLabel =
+    bin.season === 1 ? "暖候期" : bin.season === 0 ? "寒候期" : null;
+  const prefix = seasonLabel ? `${seasonLabel}・` : "";
   if (bin.key.endsWith(":~")) {
-    return `${targetHour * 3}–${targetHour * 3 + 3}時台（近傍時間帯）`;
+    return `${prefix}${targetHour * 3}–${targetHour * 3 + 3}時台（近傍時間帯）`;
   }
   if (bin.dirSector === null) {
-    return `${bin.hourBucket * 3}–${bin.hourBucket * 3 + 3}時台`;
+    return `${prefix}${bin.hourBucket * 3}–${bin.hourBucket * 3 + 3}時台`;
   }
-  return `${bin.hourBucket * 3}–${bin.hourBucket * 3 + 3}時台・方位帯${bin.dirSector}`;
+  return `${prefix}${bin.hourBucket * 3}–${bin.hourBucket * 3 + 3}時台・方位帯${bin.dirSector}`;
+}
+
+function findExactBin(
+  store: MosStore,
+  season: 0 | 1,
+  hour: number,
+  sector: number | null,
+): MosBin | undefined {
+  return store.bins.find(
+    (bin) =>
+      bin.season === season &&
+      bin.hourBucket === hour &&
+      bin.dirSector === sector &&
+      bin.count >= MIN_BIN_PAIRS,
+  );
 }
 
 /** Look up a MOS factor for a forecast window. */
@@ -362,22 +448,54 @@ export function correctionForWindow(
   if (!window.available || window.windMeanMs === null) return null;
   const start = Date.parse(window.start);
   const hour = hourBucket(start);
+  const season = seasonHalf(start);
   const sector =
     window.windFromDeg === null ? null : windSector8(window.windFromDeg);
-  const exact = store.bins.find(
-    (bin) => bin.hourBucket === hour && bin.dirSector === sector && bin.count >= MIN_BIN_PAIRS,
-  );
   const nowMs = Date.now();
-  const hourBins = hourOnlyBins(store.pairs, nowMs);
-  const hourBin = hourBins.get(hour);
-  let chosen = exact;
+
+  let chosen = findExactBin(store, season, hour, sector);
   let tier: MosTier = "exact";
-  if (!chosen && hourBin && hourBin.count >= MIN_HOUR_PAIRS) {
-    chosen = hourBin;
-    tier = "hour";
+
+  // Cross-season exact (same hour×dir) when this half-year is still thin.
+  if (!chosen) {
+    const other = findExactBin(store, season === 0 ? 1 : 0, hour, sector);
+    if (other) {
+      chosen = other;
+      tier = "exact";
+    }
+  }
+
+  if (!chosen) {
+    const seasonHour = hourOnlyBins(store.pairs, season, nowMs).get(hour);
+    if (seasonHour && seasonHour.count >= MIN_HOUR_PAIRS) {
+      chosen = seasonHour;
+      tier = "hour";
+    }
   }
   if (!chosen) {
-    const neighbor = neighborHourBlend(hourBins, hour);
+    const anyHour = hourOnlyBins(store.pairs, null, nowMs).get(hour);
+    if (anyHour && anyHour.count >= MIN_HOUR_PAIRS) {
+      chosen = anyHour;
+      tier = "hour";
+    }
+  }
+  if (!chosen) {
+    const neighbor = neighborHourBlend(
+      hourOnlyBins(store.pairs, season, nowMs),
+      hour,
+      season,
+    );
+    if (neighbor) {
+      chosen = neighbor;
+      tier = "neighbor";
+    }
+  }
+  if (!chosen) {
+    const neighbor = neighborHourBlend(
+      hourOnlyBins(store.pairs, null, nowMs),
+      hour,
+      null,
+    );
     if (neighbor) {
       chosen = neighbor;
       tier = "neighbor";
@@ -393,13 +511,20 @@ export function correctionForWindow(
   if (!chosen) return null;
   if (Math.abs(chosen.meanRatio - 1) < NEUTRAL_BAND) return null;
 
+  const gustNote =
+    chosen.meanGustRatio != null &&
+    Math.abs(chosen.meanGustRatio - chosen.meanRatio) >= NEUTRAL_BAND
+      ? ` 瞬間×${chosen.meanGustRatio.toFixed(2)}。`
+      : "";
+
   return {
     factor: chosen.meanRatio,
+    gustFactor: chosen.meanGustRatio,
     binKey: chosen.key,
     count: chosen.count,
     meanBiasMs: chosen.meanBiasMs,
     tier,
-    note: `局地補正（MOS）: 過去 ${chosen.count} 枠のハーバー÷沖予報 = ${chosen.meanRatio.toFixed(2)}（${binLabel(chosen, hour)}、差 ${chosen.meanBiasMs >= 0 ? "+" : ""}${chosen.meanBiasMs.toFixed(1)} m/s）。`,
+    note: `局地補正（MOS）: 過去 ${chosen.count} 枠のハーバー÷沖予報 = ${chosen.meanRatio.toFixed(2)}（${binLabel(chosen, hour)}、差 ${chosen.meanBiasMs >= 0 ? "+" : ""}${chosen.meanBiasMs.toFixed(1)} m/s）。${gustNote}`,
   };
 }
 
@@ -439,9 +564,13 @@ export function applyMosCorrection(
         mosAdjustNote: null,
       };
     }
+    const gustBase =
+      correction.gustFactor != null
+        ? 1 + gain * (correction.gustFactor - 1)
+        : factor;
     const mean = window.windMeanMs * factor;
     const gust =
-      window.windGustMs === null ? null : window.windGustMs * factor;
+      window.windGustMs === null ? null : window.windGustMs * gustBase;
     const max =
       window.windMaxMs === null ? null : window.windMaxMs * factor;
     const note =

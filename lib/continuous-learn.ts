@@ -5,10 +5,10 @@ import {
   setContinuousLearnTicking,
 } from "./continuous-learn-state";
 
-const TICK_MS = 15 * 60 * 1000;
-const START_DELAY_MS = 45_000;
-/** Every 4th tick (~1h) force refresh so harbor/IFS caches do not stall learning. */
-const REFRESH_EVERY_N_TICKS = 4;
+const TICK_MS = 10 * 60 * 1000;
+const START_DELAY_MS = 30_000;
+/** Every 3rd tick (~30 min) force refresh so harbor/IFS caches do not stall learning. */
+const REFRESH_EVERY_N_TICKS = 3;
 
 let timer: ReturnType<typeof setInterval> | null = null;
 let tickCount = 0;

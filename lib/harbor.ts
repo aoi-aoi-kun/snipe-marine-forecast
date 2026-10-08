@@ -9,6 +9,7 @@ import {
 import { learnMos } from "./mos-learn";
 import { applyMosCorrection, summarizeMos } from "./mos";
 import { attachConfidence } from "./confidence";
+import { blendNearWindowsTowardHarbor } from "./harbor-blend";
 import { leadTimeGain } from "./lead-gain";
 import { captureLearningProgress } from "./learning-progress";
 import {
@@ -218,7 +219,25 @@ export async function resolveHarbor(
       harborAdjustNote: null,
     };
   });
-  const adjusted = attachConfidence(limited, nowMs, {
+  const blendSamples = resolved.samples.filter(
+    (sample) => nowMs - sample.atMs <= 45 * 60_000,
+  );
+  const blendAnchor =
+    blendSamples.length > 0
+      ? {
+          meanMs:
+            blendSamples.reduce((sum, sample) => sum + sample.meanMs, 0) /
+            blendSamples.length,
+          maxMs: Math.max(...blendSamples.map((sample) => sample.maxMs)),
+        }
+      : { meanMs: latest.meanMs, maxMs: latest.maxMs };
+  const blended = blendNearWindowsTowardHarbor(
+    limited,
+    blendAnchor,
+    nowMs,
+    sourceStale,
+  );
+  const adjusted = attachConfidence(blended, nowMs, {
     ifsDegraded: options.ifsDegraded,
   });
 
@@ -229,7 +248,7 @@ export async function resolveHarbor(
     pointName: "江の島ヨットハーバー",
     note: sourceStale
       ? "5分ごとの実況です。公開が止まっているため短時間予測は出していません。"
-      : "5分ごとの実況です。沖の予報とは地点が異なります。いま〜1時間はここ、数時間先は沖予報を参照。",
+      : "5分ごとの実況です。沖の予報とは地点が異なります。いま〜1時間はここ、近い3時間枠は実況も混ぜ、それより先は沖予報を参照。",
     fetchedAt: new Date(resolved.fetchedAt).toISOString(),
     degraded: resolved.degraded,
     latest: toObservation(latest),

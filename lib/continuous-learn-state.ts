@@ -9,7 +9,7 @@ export type ContinuousLearnStatus = {
 const state: ContinuousLearnStatus = {
   started: false,
   ticking: false,
-  intervalMinutes: 15,
+  intervalMinutes: 10,
   lastTickAt: null,
   lastTickError: null,
 };

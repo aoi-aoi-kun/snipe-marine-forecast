@@ -4,7 +4,7 @@
  * /api/health?warm=1 (see README).
  */
 
-const DEFAULT_MINUTES = 10;
+const DEFAULT_MINUTES = 8;
 
 let timer: ReturnType<typeof setInterval> | null = null;
 

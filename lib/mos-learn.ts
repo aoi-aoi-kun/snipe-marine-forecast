@@ -11,16 +11,19 @@ import {
   summarizeMos,
   type MosStore,
 } from "./mos";
+import { fetchOpenMeteoArchiveHours } from "./open-meteo-archive";
 
 const CACHE_DIR = path.join(process.cwd(), ".cache");
 const ARCHIVE_HOURS = path.join(CACHE_DIR, "mos-offshore-hours.json");
 /** Page visits with refreshHarbor also trigger backfill; keep cooldown short. */
-const BACKFILL_COOLDOWN_MS = 3 * 60 * 60 * 1000;
-const MIN_PAIRS_BEFORE_SKIP_BACKFILL = 80;
+const BACKFILL_COOLDOWN_MS = 2 * 60 * 60 * 1000;
+const MIN_PAIRS_BEFORE_SKIP_BACKFILL = 120;
 /** Harbor history for MOS pairs — longer lookback is the cheapest way to thicken bins. */
 const HARBOR_LOOKBACK_DAYS = 30;
-/** 00/12 UTC cycles (~15 days) with short-lead steps for offshore pairing. */
+/** 00/12 UTC cycles with short-lead steps for offshore pairing (open-data). */
 const ARCHIVE_CYCLES = 30;
+/** Open-Meteo historical IFS fills the gap when open-data retention is short. */
+const OPEN_METEO_PAST_DAYS = 31;
 
 type ArchiveCache = {
   fetchedAt: number;
@@ -54,7 +57,11 @@ async function saveArchiveHours(hours: HourSample[]) {
 function mergeHours(a: HourSample[], b: HourSample[]): HourSample[] {
   const byValid = new Map<number, HourSample>();
   for (const hour of a) byValid.set(hour.validMs, hour);
-  for (const hour of b) byValid.set(hour.validMs, hour);
+  // Prefer later sources only when filling gaps; first writer wins for equal keys
+  // so live ECMWF open-data (passed first after merge) stays authoritative.
+  for (const hour of b) {
+    if (!byValid.has(hour.validMs)) byValid.set(hour.validMs, hour);
+  }
   return [...byValid.values()].sort((x, y) => x.validMs - y.validMs);
 }
 
@@ -80,7 +87,7 @@ export async function learnMos(options: {
     refresh ||
     store.pairs.length < MIN_PAIRS_BEFORE_SKIP_BACKFILL ||
     nowMs - store.lastBackfillAt > BACKFILL_COOLDOWN_MS ||
-    archived.length < 16;
+    archived.length < 48;
 
   if (!needsBackfill) return store;
 
@@ -88,18 +95,31 @@ export async function learnMos(options: {
   if (!backfillPending) {
     backfillPending = (async () => {
       try {
-        console.info("MOS backfill: fetching harbor history and ECMWF archive");
-        const [historyHarbor, fetched] = await Promise.all([
+        console.info(
+          "MOS backfill: harbor history + ECMWF open-data + Open-Meteo historical IFS",
+        );
+        const [historyHarbor, fetched, openMeteo] = await Promise.all([
           fetchHarborSamples(nowMs, HARBOR_LOOKBACK_DAYS),
-          fetchArchiveHoursForMos(nowMs, ARCHIVE_CYCLES),
+          fetchArchiveHoursForMos(nowMs, ARCHIVE_CYCLES).catch((error) => {
+            console.warn("MOS open-data archive failed", error);
+            return [] as HourSample[];
+          }),
+          fetchOpenMeteoArchiveHours(nowMs, OPEN_METEO_PAST_DAYS).catch((error) => {
+            console.warn("MOS Open-Meteo archive failed", error);
+            return [] as HourSample[];
+          }),
         ]);
-        await saveArchiveHours(mergeHours(archived, fetched));
-        const mergedHours = mergeHours(hours, fetched);
+        // Live/open-data first, then Open-Meteo fills missing valid times only.
+        const combined = mergeHours(mergeHours(archived, fetched), openMeteo);
+        await saveArchiveHours(combined);
+        const mergedHours = mergeHours(hours, combined);
         let next = await loadMosStore();
         next = ingestMosPairs(next, buildMosPairs(historyHarbor, mergedHours, nowMs));
         next = { ...next, lastBackfillAt: Date.now() };
         await saveMosStore(next);
-        console.info(`MOS backfill done: ${summarizeMos(next).note}`);
+        console.info(
+          `MOS backfill done: ${summarizeMos(next).note} (archive hours=${combined.length})`,
+        );
         return next;
       } catch (error) {
         console.warn("MOS backfill failed", error);
