@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import type { HarborBundle } from "@/lib/types";
 import {
   formatContinuousLine,
@@ -101,6 +102,24 @@ function accuracyParagraphs(harbor: HarborBundle | null): string[] {
   return parts;
 }
 
+function AboutDisclosure({
+  title,
+  children,
+}: {
+  title: string;
+  children: ReactNode;
+}) {
+  return (
+    <details className="about-block">
+      <summary>
+        <span className="about-block-title">{title}</span>
+        <span className="about-block-chevron" aria-hidden="true" />
+      </summary>
+      <div className="about-block-body">{children}</div>
+    </details>
+  );
+}
+
 export function ForecastAbout({ harbor }: { harbor: HarborBundle | null }) {
   const input = learnInput(harbor);
   const metrics = input ? formatLearnMetrics(input) : [];
@@ -108,7 +127,7 @@ export function ForecastAbout({ harbor }: { harbor: HarborBundle | null }) {
 
   return (
     <section className="about-panel anim-rise" aria-labelledby="about-heading">
-      <div className="mb-5 sm:mb-6">
+      <div className="mb-4 sm:mb-5">
         <p className="eyebrow mb-1">案内</p>
         <h2 id="about-heading" className="section-title">
           このアプリについて
@@ -120,8 +139,7 @@ export function ForecastAbout({ harbor }: { harbor: HarborBundle | null }) {
       </div>
 
       <div className="about-grid">
-        <article className="about-block">
-          <h3>アプリの見方</h3>
+        <AboutDisclosure title="アプリの見方">
           <p>
             画面上部の細いブランド帯の直後に、実況・ナウキャストが並びます。気象庁の警報・注意報は、発表があるときだけ見出し直下に強く出します。ないときは「発表なし」一行に留めます。
           </p>
@@ -134,10 +152,9 @@ export function ForecastAbout({ harbor }: { harbor: HarborBundle | null }) {
               Windy を開く
             </a>
           </p>
-        </article>
+        </AboutDisclosure>
 
-        <article className="about-block">
-          <h3>予測の計算方法</h3>
+        <AboutDisclosure title="予測の計算方法">
           <p>
             ナウキャストは、直近およそ30分の実況から風速・風向の傾きを求め、15・30・60分先へ延長します。過去に「同じように延長したあと、実際どうなったか」で減衰とずれを校正します。
           </p>
@@ -147,17 +164,15 @@ export function ForecastAbout({ harbor }: { harbor: HarborBundle | null }) {
           <p>
             数時間先の沖の格子予報は画面には出さず、学習用にだけ取得します。出艇の最終判断は、現場と気象庁の発表に従ってください。
           </p>
-        </article>
+        </AboutDisclosure>
 
-        <article className="about-block">
-          <h3>予測の精確性</h3>
+        <AboutDisclosure title="予測の精確性">
           {accuracyParagraphs(harbor).map((paragraph, index) => (
             <p key={index}>{paragraph}</p>
           ))}
-        </article>
+        </AboutDisclosure>
 
-        <article className="about-block">
-          <h3>学習の状態</h3>
+        <AboutDisclosure title="学習の状態">
           {input ? (
             <>
               <p>{formatLearnLead(input)}</p>
@@ -195,7 +210,7 @@ export function ForecastAbout({ harbor }: { harbor: HarborBundle | null }) {
           ) : (
             <p>実況を読み込むと、学習の件数と稼働状況を表示します。</p>
           )}
-        </article>
+        </AboutDisclosure>
       </div>
     </section>
   );
