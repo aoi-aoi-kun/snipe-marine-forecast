@@ -197,7 +197,7 @@ export function matchPattern(
     score: best.score,
     boostFactor: best.event.boostFactor,
     sampleAt: new Date(best.event.atMs).toISOString(),
-    note: `${parts.month}/${parts.day} ${String(parts.hour).padStart(2, "0")}時台の急上昇（+${best.event.riseMs.toFixed(1)} m/s）に近い前兆です。補正係数 ${best.event.boostFactor.toFixed(2)}（学習用に保持）。`,
+    note: `${parts.month}月${parts.day}日 ${String(parts.hour).padStart(2, "0")}時台の急上昇（+${best.event.riseMs.toFixed(1)} m/s）に似た流れです。`,
   };
 }
 

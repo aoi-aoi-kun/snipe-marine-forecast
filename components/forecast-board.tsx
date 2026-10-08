@@ -1,13 +1,21 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import type { ForecastResponse, HarborBundle } from "@/lib/types";
+import {
+  HARBOR_SOURCE_LABEL,
+  WINDY_URL,
+  formatContinuousLine,
+  formatLearnLead,
+  formatLearnMetrics,
+  formatLearningTrend,
+  formatPatternMatchNote,
+  shortenLearningNote,
+  windyBlurb,
+} from "@/lib/ui-copy";
 import { JST_OFFSET_MS, jstParts } from "@/lib/time";
 import { cn } from "@/lib/utils";
-
-const WINDY_URL =
-  "https://www.windy.com/35.309/139.482?35.250,139.500,11,i:pressure";
 
 function formatStamp(iso: string): string {
   const parts = jstParts(Date.parse(iso));
@@ -21,6 +29,25 @@ function formatHarborObsTime(iso: string): string {
   const hour = shifted.getUTCHours();
   const minute = shifted.getUTCMinutes();
   return `${month}月${day}日 ${hour}時${minute.toString().padStart(2, "0")}分`;
+}
+
+function InfoDisclosure({
+  title,
+  children,
+  className,
+}: {
+  title: string;
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <details className={cn("info-disclosure group", className)}>
+      <summary className="cursor-pointer list-none text-[11px] marker:content-none">
+        <span className="soft-link group-open:text-ink">{title}</span>
+      </summary>
+      <div className="prose-muted mt-1.5 space-y-1.5">{children}</div>
+    </details>
+  );
 }
 
 /** Unified wind arrow: points to the direction the wind is going (fromDeg + 180). */
@@ -87,6 +114,66 @@ function harborWindCardClass(over10: boolean): string {
   return cn("tile px-1.5 py-1.5 text-center sm:px-2 sm:py-2", over10 && "tile-warn");
 }
 
+function LearnStatusPanel({ harbor }: { harbor: HarborBundle }) {
+  const input = {
+    tip: harbor.learnOps?.tip,
+    intervalMinutes: harbor.mos?.continuous.intervalMinutes ?? 10,
+    continuousStarted: harbor.mos?.continuous.started ?? false,
+    ticking: harbor.learnOps?.ticking ?? false,
+    lastTickAt: harbor.mos?.continuous.lastTickAt ?? null,
+    cacheWritable: harbor.learnOps?.cacheWritable,
+    learningDays: harbor.learnOps?.learningDays ?? 0,
+    warmCount: harbor.learnOps?.warmCount ?? 0,
+    nowcastCases: harbor.learnOps?.nowcastCases ?? harbor.nowcastSkill.caseCount,
+    nowcastCalibrated: harbor.nowcastSkill.calibrated,
+    mosPairs: harbor.learnOps?.mosPairs ?? harbor.mos?.pairCount ?? 0,
+    mosActiveBins: harbor.mos?.activeBins ?? 0,
+    patternEvents: harbor.learnOps?.patternEvents ?? harbor.pattern.storedEvents,
+    metaMosReady: Boolean(harbor.learnOps?.metaMosReady || harbor.mos?.meta?.mosReady),
+    metaPatternReady: Boolean(
+      harbor.learnOps?.metaPatternReady || harbor.mos?.meta?.patternReady,
+    ),
+    learningNote: harbor.learning?.note,
+    improving: harbor.learning?.improving,
+  };
+  const metrics = formatLearnMetrics(input);
+  const trend = formatLearningTrend(input.improving);
+
+  return (
+    <InfoDisclosure title="学習の状態">
+      <p className="text-ink/80">{formatLearnLead(input)}</p>
+      <p>{formatContinuousLine(input)}</p>
+      <dl className="stat-row not-prose">
+        {metrics.map((item) => (
+          <div key={item.label} className="stat-pill">
+            <dt>{item.label}</dt>
+            <dd>
+              {item.value}
+              {item.hint ? <span className="stat-hint">{item.hint}</span> : null}
+            </dd>
+          </div>
+        ))}
+      </dl>
+      {harbor.learning ? (
+        <>
+          <p>{shortenLearningNote(harbor.learning.note)}</p>
+          {trend ? <p>{trend}</p> : null}
+        </>
+      ) : (
+        <p>
+          {harbor.nowcastSkill.calibrated
+            ? "ナウキャストは過去実況で校正済みです。"
+            : "ナウキャストは検証データを蓄積中です。"}
+          {harbor.mos?.note ? ` ${harbor.mos.note}` : ""}
+        </p>
+      )}
+      {harbor.mos?.meta?.note ? (
+        <p className="text-[0.625rem] leading-relaxed opacity-90">{harbor.mos.meta.note}</p>
+      ) : null}
+    </InfoDisclosure>
+  );
+}
+
 function HarborPanel({ harbor }: { harbor: HarborBundle }) {
   const latest = harbor.latest;
   const rising =
@@ -100,17 +187,19 @@ function HarborPanel({ harbor }: { harbor: HarborBundle }) {
   const panelWarn = nowcastOver10 || rising;
 
   return (
-    <section className="anim-rise space-y-2">
-      <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-        <h2 className="section-title">江の島ヨットハーバー</h2>
-        <details className="group">
-          <summary className="cursor-pointer list-none text-[11px] text-muted marker:content-none">
-            <span className="soft-link">補足</span>
-          </summary>
-          <p className="mt-1 max-w-md text-[11px] leading-4 text-muted">
-            {harbor.note} 出典：{harbor.source}
+    <section className="anim-rise space-y-2.5">
+      <div className="flex flex-wrap items-end justify-between gap-x-3 gap-y-1">
+        <div>
+          <p className="eyebrow mb-0.5">Live</p>
+          <h2 className="section-title">江の島ヨットハーバー</h2>
+          <p className="mt-0.5 text-[11px] leading-4 text-muted">{harbor.note}</p>
+        </div>
+        <InfoDisclosure title="データについて" className="shrink-0">
+          <p>
+            出典 {HARBOR_SOURCE_LABEL}。ハーバー周辺の風を5分ごとに更新します。沖の格子点とは地点が異なります。
           </p>
-        </details>
+          <p>{windyBlurb()}</p>
+        </InfoDisclosure>
       </div>
 
       {latest || harbor.nowcast.length > 0 ? (
@@ -122,17 +211,17 @@ function HarborPanel({ harbor }: { harbor: HarborBundle }) {
         >
           {nowcastOver10 ? (
             <div className="callout mb-2 py-1.5 text-[11px] leading-4">
-              <p className="font-medium tracking-wide">警告 · 10 m/s 超え</p>
+              <p className="font-medium tracking-wide">風速注意</p>
               <p className="mt-0.5 text-warn/90">
-                ナウキャストの平均が 10 m/s を超えます。出艇の目安を上回る見込みです。
+                60分以内の見込みが平均 10 m/s を超えます。出艇の目安を上回る可能性があります。
               </p>
             </div>
           ) : null}
           {sourceStale ? (
             <div className="callout mb-2 py-1.5 text-[11px] leading-4">
-              <p className="font-medium tracking-wide">実況の公開が停止中</p>
+              <p className="font-medium tracking-wide">実況の更新停止</p>
               <p className="mt-0.5 text-warn/90">
-                enowin の最新が約 {lagMinutes} 分前のままです。公開側に新しい観測がありません。
+                最新の公開が約 {lagMinutes} 分前で止まっています。新しい観測が来るまで短時間予測は出しません。
               </p>
             </div>
           ) : null}
@@ -157,7 +246,7 @@ function HarborPanel({ harbor }: { harbor: HarborBundle }) {
                   )}
                 >
                   {formatHarborObsTime(latest.at)}
-                  {lagMinutes !== null ? `（${lagMinutes}分前）` : ""}
+                  {lagMinutes !== null ? ` · ${lagMinutes}分前` : ""}
                 </p>
                 <div className="mt-1 flex justify-center">
                   <WindArrow
@@ -171,7 +260,7 @@ function HarborPanel({ harbor }: { harbor: HarborBundle }) {
                   <span className="ml-0.5 text-[10px] font-sans text-muted">m/s</span>
                 </p>
                 <p className="mt-1 text-[9px] tabular-nums text-muted">
-                  最大 {latest.maxMs.toFixed(1)}
+                  瞬間 {latest.maxMs.toFixed(1)}
                 </p>
               </li>
             ) : null}
@@ -186,7 +275,7 @@ function HarborPanel({ harbor }: { harbor: HarborBundle }) {
                   style={{ animationDelay: `${0.05 + index * 0.06}s` }}
                 >
                   <p className="text-[10px] font-medium text-muted">
-                    {point.minutesAhead}分後
+                    +{point.minutesAhead}分
                   </p>
                   <p className="mt-px min-h-3 text-[9px] leading-3" aria-hidden="true" />
                   <div className="mt-1 flex justify-center">
@@ -207,7 +296,7 @@ function HarborPanel({ harbor }: { harbor: HarborBundle }) {
                     <span className="ml-0.5 text-[10px] font-sans text-muted">m/s</span>
                   </p>
                   {over10 ? (
-                    <p className="mt-1 text-[9px] font-medium text-warn">10超え</p>
+                    <p className="mt-1 text-[9px] font-medium text-warn">10 m/s 超</p>
                   ) : delta !== null ? (
                     <p
                       className={cn(
@@ -224,95 +313,28 @@ function HarborPanel({ harbor }: { harbor: HarborBundle }) {
             })}
           </ol>
 
-          <div className="mt-2.5 flex flex-wrap items-baseline gap-x-3 gap-y-1 border-t border-line/40 pt-2">
+          <div className="mt-2.5 flex flex-wrap items-baseline gap-x-4 gap-y-2 border-t border-line/40 pt-2.5">
             {harbor.nowcast.length > 0 ? (
-              <details className="group">
-                <summary className="cursor-pointer list-none text-[11px] marker:content-none">
-                  <span className="soft-link group-open:text-ink">ナウキャストの説明</span>
-                </summary>
-                <div className="mt-1.5 space-y-1 text-[11px] leading-4 text-muted">
-                  <p>
-                    {harbor.nowcastSkill.calibrated
-                      ? "過去実況で校正した、風速・風向の短時間予測です。"
-                      : "直近の傾きが続くと仮定した、風速・風向の短時間予測です。"}
-                  </p>
-                  <p>{harbor.nowcastSkill.note}</p>
-                </div>
-              </details>
+              <InfoDisclosure title="ナウキャストについて">
+                <p>
+                  {harbor.nowcastSkill.calibrated
+                    ? "直近30分の傾きを延長し、過去の実況との突合で風速・風向を整えています。"
+                    : "直近30分の傾きが続くと仮定した、15・30・60分先の目安です。"}
+                </p>
+                <p>{harbor.nowcastSkill.note}</p>
+              </InfoDisclosure>
             ) : latest && sourceStale ? (
-              <p className="text-[11px] text-muted">
-                実況の公開停止中のため、短時間予測は出していません。
-              </p>
+              <p className="text-[11px] text-muted">実況が止まっているため、短時間予測は表示していません。</p>
             ) : latest ? (
-              <p className="text-[11px] text-muted">直近の傾きが足りず、ナウキャストを出せません。</p>
+              <p className="text-[11px] text-muted">
+                傾きがはっきりしないため、短時間予測は出せません。
+              </p>
             ) : null}
-            <details className="group">
-              <summary className="cursor-pointer list-none text-[11px] text-muted marker:content-none">
-                <span className="soft-link group-open:text-ink">学習の状態</span>
-              </summary>
-              <div className="mt-1.5 space-y-1.5 text-[11px] leading-4 text-muted">
-                {harbor.learnOps ? (
-                  <p className="text-ink/80">{harbor.learnOps.tip}</p>
-                ) : null}
-                <p>
-                  継続学習は約 {harbor.mos?.continuous.intervalMinutes ?? 10}{" "}
-                  分ごと
-                  {harbor.mos?.continuous.started
-                    ? harbor.learnOps?.ticking
-                      ? "（いま学習中）"
-                      : "（稼働中）"
-                    : "（次の取得で開始）"}
-                  {harbor.mos?.continuous.lastTickAt
-                    ? ` · 前回 ${formatStamp(harbor.mos.continuous.lastTickAt)}`
-                    : ""}
-                  。ページを開くたびにも実況を取り込みます。キャッシュ
-                  {harbor.learnOps
-                    ? harbor.learnOps.cacheWritable
-                      ? "は書き込み可"
-                      : "に書けません"
-                    : "の状態は取得中"}
-                  {harbor.learnOps && harbor.learnOps.learningDays > 0
-                    ? ` · 蓄積約 ${harbor.learnOps.learningDays.toFixed(1)} 日（warm ${harbor.learnOps.warmCount}）`
-                    : ""}
-                  。
-                </p>
-                <p>
-                  検証件数 · ナウキャスト{" "}
-                  {harbor.learnOps?.nowcastCases ?? harbor.nowcastSkill.caseCount} ·
-                  MOS {harbor.learnOps?.mosPairs ?? harbor.mos?.pairCount ?? 0} ·
-                  急上昇{" "}
-                  {harbor.learnOps?.patternEvents ?? harbor.pattern.storedEvents} ·
-                  補正の補正{" "}
-                  {harbor.learnOps?.metaMosReady || harbor.mos?.meta?.mosReady
-                    ? "MOS側あり"
-                    : "MOS側蓄積中"}
-                  /
-                  {harbor.learnOps?.metaPatternReady || harbor.mos?.meta?.patternReady
-                    ? "急上昇側あり"
-                    : "急上昇側蓄積中"}
-                </p>
-                {harbor.learning ? (
-                  <p>
-                    {harbor.learning.note}
-                    {harbor.learning.improving === true
-                      ? " 使うほど誤差が縮む方向です。"
-                      : ""}
-                  </p>
-                ) : (
-                  <p>
-                    ナウキャストは
-                    {harbor.nowcastSkill.calibrated
-                      ? `校正済み（検証 ${harbor.nowcastSkill.caseCount} 件）。`
-                      : `検証 ${harbor.nowcastSkill.caseCount} 件を蓄積中。`}
-                    {harbor.mos ? ` ${harbor.mos.note}` : ""}
-                  </p>
-                )}
-              </div>
-            </details>
+            <LearnStatusPanel harbor={harbor} />
           </div>
         </div>
       ) : (
-        <p className="text-sm text-muted">実況はまだありません。</p>
+        <p className="text-sm text-muted">実況データはまだありません。</p>
       )}
 
       {harbor.alerts.some((alert) => alert.kind !== "stale") ? (
@@ -323,7 +345,7 @@ function HarborPanel({ harbor }: { harbor: HarborBundle }) {
               <div
                 key={`${alert.kind}-${alert.message}`}
                 className={cn(
-                  "py-1.5 text-[11px] leading-4",
+                  "rounded-lg py-1.5 pl-3 text-[11px] leading-4",
                   alert.level === "watch" ? "callout" : "callout-sea",
                 )}
               >
@@ -334,18 +356,28 @@ function HarborPanel({ harbor }: { harbor: HarborBundle }) {
       ) : null}
 
       {harbor.pattern.match ? (
-        <div className="callout-sea py-1.5 text-[11px] leading-4">
-          <p className="font-medium tracking-wide text-sea">急上昇マッチ</p>
-          <p className="mt-0.5">{harbor.pattern.match.note}</p>
-          <p className="mt-1 text-muted">
-            補正係数 {harbor.pattern.match.boostFactor.toFixed(2)} · 一致度{" "}
-            {(harbor.pattern.match.score * 100).toFixed(0)}%
-          </p>
+        <div className="callout-sea rounded-lg py-2 pl-3 text-[11px] leading-relaxed">
+          {(() => {
+            const formatted = formatPatternMatchNote(
+              harbor.pattern.match.note,
+              harbor.pattern.match.boostFactor,
+              harbor.pattern.match.score,
+            );
+            return (
+              <>
+                <p className="font-medium tracking-wide text-sea">急上昇マッチ</p>
+                <p className="mt-0.5 text-ink/85">{formatted.headline}</p>
+                <p className="mt-1 text-muted">{formatted.detail}</p>
+              </>
+            );
+          })()}
         </div>
       ) : null}
 
       {harbor.degraded ? (
-        <p className="text-[11px] text-muted">取得に失敗したため、保存済みの実況を表示しています。</p>
+        <p className="text-[11px] text-muted">
+          取得に失敗したため、保存してある直近の実況を表示しています。
+        </p>
       ) : null}
     </section>
   );
@@ -387,7 +419,7 @@ export function ForecastBoard() {
       }
     } catch {
       if (!silent) {
-        setError("実況を取得しています。自動で再試行します…");
+        setError("接続中です。自動で再取得します…");
       }
       window.setTimeout(() => {
         void load("harbor");
@@ -426,12 +458,12 @@ export function ForecastBoard() {
 
       {data?.jma && data.jma.warnings.length > 0 ? (
         <div className="callout py-2 text-xs leading-5">
-          <p className="font-medium tracking-wide">鎌倉市に発表中</p>
+          <p className="font-medium tracking-wide">鎌倉市 · 警報・注意報</p>
           <ul className="mt-1 space-y-0.5 text-warn/90">
             {data.jma.warnings.map((warning) => (
               <li key={warning.code} className={warning.severe ? "font-medium" : undefined}>
                 {warning.name}（{warning.status}
-                {warning.notes.length > 0 ? `・${warning.notes.join("・")}` : ""}）
+                {warning.notes.length > 0 ? ` · ${warning.notes.join(" · ")}` : ""}）
               </li>
             ))}
           </ul>
@@ -442,30 +474,30 @@ export function ForecastBoard() {
         <HarborPanel harbor={data.harbor} />
       ) : (
         <div className="space-y-2">
+          <p className="eyebrow">Live</p>
           <h2 className="section-title">江の島ヨットハーバー</h2>
           <div className="skeleton-pulse h-36 bg-sand/70" />
           {loading ? null : (
-            <p className="text-[11px] text-muted">実況はまだありません。</p>
+            <p className="text-[11px] text-muted">実況データはまだありません。</p>
           )}
         </div>
       )}
 
-      <div className="flex flex-wrap items-center justify-between gap-2 border-t border-line/45 pt-3">
-        <p className="text-[11px] leading-4 text-muted">
-          数時間〜数日の風の見通しは{" "}
+      <div className="windy-strip flex flex-wrap items-center justify-between gap-2">
+        <p className="prose-muted max-w-md">
+          {windyBlurb()}{" "}
           <a className="soft-link" href={WINDY_URL} target="_blank" rel="noreferrer">
             Windy
           </a>
-          を参照してください。
         </p>
         <Button
           variant="outline"
           size="sm"
-          className="h-7 shrink-0 px-2.5 text-[11px]"
+          className="h-7 shrink-0 border-line/80 bg-white/60 px-2.5 text-[11px]"
           onClick={() => void load("page")}
           disabled={loading}
         >
-          {loading ? "取得中" : "実況を更新"}
+          {loading ? "更新中" : "実況を更新"}
         </Button>
       </div>
     </section>

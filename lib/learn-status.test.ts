@@ -58,7 +58,7 @@ describe("buildLearnTip", () => {
         },
       }),
     );
-    assert.match(tip, /継続学習/);
+    assert.match(tip, /バックグラウンド学習/);
   });
 
   it("surfaces the last tick error", () => {
@@ -77,7 +77,18 @@ describe("buildLearnTip", () => {
   });
 
   it("nudges warm cron while MOS is still thin", () => {
-    const tip = buildLearnTip(base({ mos: { pairCount: 10, activeBins: 1, note: "" } }));
+    const tip = buildLearnTip(
+      base({
+        mos: { pairCount: 10, activeBins: 1, note: "" },
+        ops: {
+          firstSeenAt: "2026-10-08T00:00:00.000Z",
+          lastActiveAt: "2026-10-08T00:00:00.000Z",
+          learningDays: 0.2,
+          warmCount: 2,
+          learnTickCount: 1,
+        },
+      }),
+    );
     assert.match(tip, /\/api\/health\?warm=1/);
   });
 
@@ -97,7 +108,7 @@ describe("buildLearnTip", () => {
         },
       }),
     );
-    assert.match(tip, /蓄積中/);
+    assert.match(tip, /蓄積/);
     assert.match(tip, /日/);
   });
 });

@@ -87,18 +87,17 @@ export function summarizeLearningProgress(
   }
 
   const parts = [
-    `検証 ナウキャスト ${current.nowcastCases}・MOS ${current.mosPairs}・補正の補正 ${current.metaMosCases}`,
-    `急上昇 ${current.patternEvents} 件（減衰検証 ${current.metaPatternCases}）`,
+    `ナウキャスト ${current.nowcastCases} 件 · MOS ${current.mosPairs} 枠 · 急上昇 ${current.patternEvents} 件`,
   ];
   if (current.nowcastMae15 != null) {
-    parts.push(`15分MAE ${current.nowcastMae15.toFixed(2)} m/s`);
+    parts.push(`15分先の平均誤差 ${current.nowcastMae15.toFixed(2)} m/s`);
   }
   if (improving === true) {
-    parts.push("直近の誤差は以前より小さめです");
+    parts.push("直近は誤差が縮む方向");
   } else if (improving === false && earlier?.nowcastMae15 != null) {
-    parts.push("季節変化などで誤差が揺れることがあります");
+    parts.push("誤差は季節などで揺れます");
   } else {
-    parts.push("使うほど検証が増え、補正が自動更新されます");
+    parts.push("実況が増えるほど自動更新");
   }
 
   return {

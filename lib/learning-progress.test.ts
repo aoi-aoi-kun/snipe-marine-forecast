@@ -24,14 +24,14 @@ describe("learning progress", () => {
       current,
     );
     assert.equal(progress.improving, true);
-    assert.match(progress.note, /誤差は以前より小さめ/);
+    assert.match(progress.note, /誤差が縮む/);
   });
 
   it("stays neutral until enough verification accumulates", () => {
     const current = snap({ atMs: 1, nowcastCases: 10, nowcastMae15: 1 });
     const progress = summarizeLearningProgress({ snapshots: [] }, current);
     assert.equal(progress.improving, null);
-    assert.match(progress.note, /使うほど検証が増え/);
+    assert.match(progress.note, /自動更新/);
   });
 
   it("stays neutral with a single snapshot even when MAE is present", () => {

@@ -248,8 +248,8 @@ export async function resolveHarbor(
     source: ENOWIN_SOURCE,
     pointName: "江の島ヨットハーバー",
     note: sourceStale
-      ? "5分ごとの実況です。公開が止まっているため短時間予測は出していません。"
-      : "5分ごとの実況です。いま〜1時間はここを見てください。数時間〜数日の沖の見通しは Windy を参照。",
+      ? "5分間隔の実況です。公開が止まっている間は、短時間予測を表示しません。"
+      : "5分間隔の実況です。いまから約1時間先までを、この画面で確認できます。",
     fetchedAt: new Date(resolved.fetchedAt).toISOString(),
     degraded: resolved.degraded,
     latest: toObservation(latest),
@@ -286,7 +286,7 @@ export async function resolveHarbor(
     },
     mos: {
       ...mosSummary,
-      note: `${mosSummary.note} ${metaSummary.note}`,
+      note: mosSummary.note,
       meta: metaSummary,
       continuous: {
         started: false,

@@ -342,7 +342,7 @@ export function summarizeNowcastCalib(store: NowcastCalibStore): {
     return {
       caseCount: store.cases.length,
       horizons: [],
-      note: "校正用の検証がまだ少ないです。実況が増えるほど精度が上がります。",
+      note: "検証データが少ないため、傾きの延長をそのまま使っています。実況が増えると自動で校正されます。",
     };
   }
   const parts = store.horizons.map((item) => {
@@ -357,6 +357,6 @@ export function summarizeNowcastCalib(store: NowcastCalibStore): {
   return {
     caseCount: store.cases.length,
     horizons: store.horizons,
-    note: `検証 ${store.cases.length} 件で校正。${parts.join(" · ")}`,
+    note: `${store.cases.length} 件の過去実況で校正。${parts.join(" · ")}`,
   };
 }

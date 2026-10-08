@@ -607,7 +607,7 @@ export function summarizeMos(store: MosStore): MosSummary {
     activeBins,
     note:
       store.pairs.length === 0
-        ? "突合データはまだありません。実況と ECMWF が揃い次第、学習を始めます。"
-        : `突合 ${store.pairs.length} 枠（約 ${Math.max(1, Math.round(spanHours / 24))} 日分）。使える時間帯・風向の型は ${activeBins} 個。`,
+        ? "ハーバー実況と沖モデルの突合は、まだ始まっていません。"
+        : `${store.pairs.length} 枠を突合済み（おおよそ ${Math.max(1, Math.round(spanHours / 24))} 日分）。有効な型 ${activeBins} 個。`,
   };
 }

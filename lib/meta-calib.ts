@@ -391,15 +391,15 @@ export function summarizeMetaCalib(store: MetaCalibStore): MetaCalibSummary {
   const parts: string[] = [];
   if (mosReady) {
     parts.push(
-      `MOS減衰 λ=${store.mosLambda.toFixed(2)}（検証 ${store.mosCases.length}・局面 ${store.mosBins.length}）`,
+      `MOS 減衰 ${store.mosLambda.toFixed(2)}（${store.mosCases.length} 件・${store.mosBins.length} 局面）`,
     );
   } else {
-    parts.push(`MOS減衰は検証 ${store.mosCases.length}/${MIN_CASES}`);
+    parts.push(`MOS 減衰 ${store.mosCases.length}/${MIN_CASES} 件`);
   }
   if (patternReady) {
-    parts.push(`急上昇減衰 λ=${store.patternLambda.toFixed(2)}（検証 ${store.patternCases.length}）`);
+    parts.push(`急上昇減衰 ${store.patternLambda.toFixed(2)}（${store.patternCases.length} 件）`);
   } else {
-    parts.push(`急上昇減衰は検証 ${store.patternCases.length}/${MIN_CASES}`);
+    parts.push(`急上昇減衰 ${store.patternCases.length}/${MIN_CASES} 件`);
   }
   return {
     mosLambda: store.mosLambda,
@@ -409,7 +409,7 @@ export function summarizeMetaCalib(store: MetaCalibStore): MetaCalibSummary {
     mosReady,
     patternReady,
     mosBins: store.mosBins.length,
-    note: `補正の補正: ${parts.join(" · ")}`,
+    note: parts.join(" · "),
   };
 }
 

@@ -75,27 +75,27 @@ async function probeCache(): Promise<LearnStatus["cache"]> {
 /** Pure tip for ops UI / tests (cache + continuous + MOS readiness). */
 export function buildLearnTip(status: Omit<LearnStatus, "tip" | "generatedAt">): string {
   if (!status.cache.writable) {
-    return "キャッシュに書き込めません。.cache ボリューム（Render Disk / Docker volume）を確認してください。";
+    return "学習結果をディスクに保存できていません。Render では Disk、ローカルでは .cache の権限を確認してください。";
   }
   if (!status.continuous.started) {
-    return "継続学習が止まっています。サーバを常時起動し、DISABLE_CONTINUOUS_LEARN が無いことを確認してください。";
+    return "バックグラウンド学習が起動していません。サーバを常時稼働させ、DISABLE_CONTINUOUS_LEARN が無効か確認してください。";
   }
   if (status.continuous.lastTickError) {
-    return `直近の学習でエラーがありました: ${status.continuous.lastTickError}`;
+    return `直近の学習に失敗しました（${status.continuous.lastTickError}）。しばらくすると自動で再試行します。`;
   }
   const days = status.ops?.learningDays ?? 0;
   if (status.mos.pairCount < 48 || !status.meta.patternReady) {
     return (
-      "常時起動を続けると MOS・補正の補正・急上昇の検証が厚くなります。" +
+      "データが増えるほど、ナウキャストと急上昇マッチの精度が上がります。" +
       (days < 1
-        ? "無料枠は外部から約8〜10分ごとに /api/health?warm=1 へアクセスするとスリープしにくいです。"
-        : `蓄積 ${days.toFixed(1)} 日目。無料枠は /api/health?warm=1 の定期アクセスを続けてください。`)
+        ? "無料ホストでは、8〜10分ごとに /api/health?warm=1 へアクセスするとスリープしにくくなります。"
+        : `稼働 ${days.toFixed(1)} 日目。warm の定期アクセスを続けると学習が途切れにくいです。`)
     );
   }
   if (days < 7) {
-    return `学習は蓄積中です（約 ${days.toFixed(1)} 日）。サーバを止めず .cache を消さなければ、季節をまたぐほど局地補正が安定します。`;
+    return `約 ${days.toFixed(1)} 日分の検証を蓄積中です。サーバと .cache を維持すると、季節をまたいだ型が安定します。`;
   }
-  return `学習は蓄積中です（約 ${Math.round(days)} 日）。.cache を消さなければ、使い続けるほど暖候期・寒候期の型が厚くなります。`;
+  return `約 ${Math.round(days)} 日分の検証を蓄積しています。.cache を消さなければ、暖候期・寒候期それぞれの型が厚くなります。`;
 }
 
 export async function getLearnStatus(): Promise<LearnStatus> {
