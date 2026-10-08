@@ -1,5 +1,4 @@
 import { ForecastBoard } from "@/components/forecast-board";
-import { WINDY_URL, windyBlurb } from "@/lib/ui-copy";
 
 export default function Page() {
   return (
@@ -24,11 +23,7 @@ export default function Page() {
           </a>
         </p>
         <p>
-          {windyBlurb()}
-          <a className="soft-link" href={WINDY_URL} target="_blank" rel="noreferrer">
-            Windy
-          </a>
-          。急上昇の学習用に ECMWF 公開データも裏で取得しますが、3時間予報はこの画面には出しません。
+          急上昇の学習用に ECMWF 公開データも裏で取得しますが、3時間予報はこの画面には出しません。
         </p>
       </footer>
     </main>

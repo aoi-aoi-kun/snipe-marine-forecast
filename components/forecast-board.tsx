@@ -6,7 +6,6 @@ import type { ForecastResponse, HarborBundle } from "@/lib/types";
 import {
   HARBOR_SOURCE_LABEL,
   formatPatternMatchNote,
-  windyBlurb,
 } from "@/lib/ui-copy";
 import { formatRampOutlookLine } from "@/lib/ramp-outlook";
 import { JST_OFFSET_MS } from "@/lib/time";
@@ -276,7 +275,6 @@ function HarborPanel({
               <p>
                 平均 {MEAN_LIMIT_MS} m/s 超、瞬間 {GUST_LIMIT_MS} m/s 超は強調表示します。
               </p>
-              <p>{windyBlurb()}</p>
             </InfoDisclosure>
           }
         />

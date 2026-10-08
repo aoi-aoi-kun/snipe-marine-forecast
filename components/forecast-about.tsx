@@ -6,8 +6,6 @@ import {
   formatLearnMetrics,
   formatLearningTrend,
   shortenLearningNote,
-  WINDY_URL,
-  windyBlurb,
 } from "@/lib/ui-copy";
 import { HARBOR_TO_OFFSHORE_KM } from "@/lib/geo";
 
@@ -145,12 +143,6 @@ export function ForecastAbout({ harbor }: { harbor: HarborBundle | null }) {
           </p>
           <p>
             短時間の判断はナウキャストの15・30・60分を見てください。平均 10 m/s 超、瞬間 13 m/s 超は強調表示します。急上昇マッチは類似の有無と見込みの目安で、数値はナウキャストに織り込みます。
-          </p>
-          <p>
-            {windyBlurb()}
-            <a className="soft-link" href={WINDY_URL} target="_blank" rel="noreferrer">
-              Windy を開く
-            </a>
           </p>
         </AboutDisclosure>
 
