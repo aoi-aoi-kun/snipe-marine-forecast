@@ -16,3 +16,7 @@ services:
       - key: KEEP_ALIVE_MINUTES
         value: "8"
       # RENDER_EXTERNAL_URL is set by Render and enables in-process keep-alive pings.
+<<<<<<< HEAD
+=======
+  
+>>>>>>> github/main
