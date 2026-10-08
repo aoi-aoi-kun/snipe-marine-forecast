@@ -247,11 +247,11 @@ function HarborPanel({
 
       {hasWarnings ? <JmaAlert warnings={warningList} /> : null}
 
-      <div className="panel-stack">
+      <div className="primary-panels">
         {latest ? (
           <article
             className={cn(
-              "wind-panel anim-rise",
+              "wind-panel wind-panel-live anim-rise",
               (liveHot || sourceStale) && "wind-panel-warn",
             )}
           >
@@ -273,25 +273,25 @@ function HarborPanel({
                 degrees={latest.fromDeg}
                 blocked={liveHot}
                 label={latest.fromLabel}
-                size="lg"
+                size="md"
               />
             </div>
 
-            <div className="mt-2.5">
+            <div className="mt-2">
               <ThresholdBadges meanMs={latest.meanMs} gustMs={latest.maxMs} />
             </div>
 
             {liveHot ? (
-              <p className="threshold-banner mt-2.5">
+              <p className="threshold-banner mt-2">
                 {liveMeanHot && liveGustHot
-                  ? `平均 ${MEAN_LIMIT_MS} m/s・瞬間 ${GUST_LIMIT_MS} m/s を超えています。出艇判断を慎重に。`
+                  ? `平均 ${MEAN_LIMIT_MS}・瞬間 ${GUST_LIMIT_MS} m/s 超。出艇判断を慎重に。`
                   : liveMeanHot
-                    ? `平均風速が ${MEAN_LIMIT_MS} m/s を超えています。出艇判断を慎重に。`
-                    : `瞬間風速が ${GUST_LIMIT_MS} m/s を超えています。出艇判断を慎重に。`}
+                    ? `平均風速が ${MEAN_LIMIT_MS} m/s 超。出艇判断を慎重に。`
+                    : `瞬間風速が ${GUST_LIMIT_MS} m/s 超。出艇判断を慎重に。`}
               </p>
             ) : null}
 
-            <dl className="metric-rail metric-rail-2 not-prose mt-3">
+            <dl className="metric-rail metric-rail-2 not-prose mt-2.5">
               <div className={cn("metric-tile", liveMeanHot && "metric-tile-warn")}>
                 <dt>平均</dt>
                 <dd>
@@ -310,16 +310,16 @@ function HarborPanel({
 
             {sourceStale ? (
               <p className="panel-body font-medium text-warn">
-                公開側の更新が止まっています。新しい観測が来るまで短時間予測は出しません。
+                公開更新が停止中。短時間予測は出しません。
               </p>
             ) : rising && !liveHot ? (
               <p className="panel-body text-warn/90">
-                立ち上がり気味です。ナウキャストと急上昇マッチも確認してください。
+                立ち上がり気味です。ナウキャストも確認してください。
               </p>
             ) : null}
           </article>
         ) : (
-          <article className="wind-panel anim-rise">
+          <article className="wind-panel wind-panel-live anim-rise">
             <p className="panel-kicker">実況 · いま</p>
             <p className="panel-body text-muted">実況データはまだありません。</p>
           </article>
@@ -327,7 +327,7 @@ function HarborPanel({
 
         <article
           className={cn(
-            "wind-panel anim-rise anim-rise-delay-1",
+            "wind-panel wind-panel-nowcast anim-rise anim-rise-delay-1",
             nowcastHot && "wind-panel-warn",
           )}
         >
@@ -364,13 +364,13 @@ function HarborPanel({
           </div>
 
           {nowcastHot ? (
-            <p className="threshold-banner mt-2.5">
-              60分以内の見込みが平均 {MEAN_LIMIT_MS} m/s を超えます。
+            <p className="threshold-banner mt-2">
+              60分以内の見込みが平均 {MEAN_LIMIT_MS} m/s 超。
             </p>
           ) : null}
 
           {harbor.nowcast.length > 0 ? (
-            <ol className="nowcast-rail mt-3">
+            <ol className="nowcast-rail mt-2.5">
               {harbor.nowcast.map((point, index) => {
                 const delta = latest === null ? null : point.meanMs - latest.meanMs;
                 const overMean = meanHot(point.meanMs);
@@ -381,12 +381,12 @@ function HarborPanel({
                     style={{ animationDelay: `${0.08 + index * 0.07}s` }}
                   >
                     <p className="tile-label">+{point.minutesAhead}分</p>
-                    <div className="mt-2 flex justify-center">
+                    <div className="mt-1.5 flex justify-center">
                       <WindArrow
                         degrees={point.fromDeg}
                         blocked={overMean}
                         label={point.fromLabel}
-                        size="md"
+                        size="sm"
                       />
                     </div>
                     <p className="nowcast-speed">
@@ -418,7 +418,7 @@ function HarborPanel({
             </ol>
           ) : latest && sourceStale ? (
             <p className="panel-body text-muted">
-              実況が止まっているため、短時間予測は表示していません。
+              実況停止中のため、短時間予測は表示していません。
             </p>
           ) : (
             <p className="panel-body text-muted">
@@ -426,8 +426,10 @@ function HarborPanel({
             </p>
           )}
         </article>
+      </div>
 
-        <article className="wind-panel anim-rise anim-rise-delay-2">
+      <div className="panel-stack panel-stack-secondary">
+        <article className="wind-panel wind-panel-match anim-rise anim-rise-delay-2">
           <div className="panel-head">
             <div>
               <p className="panel-kicker">急上昇マッチ</p>
@@ -450,7 +452,7 @@ function HarborPanel({
           </div>
 
           {match && matchFormatted ? (
-            <div className="mt-2.5 space-y-1.5">
+            <div className="mt-2 space-y-1">
               <p className="panel-body">{matchFormatted.headline}</p>
               {outlookLine ? <p className="panel-body text-warn/90">{outlookLine}</p> : null}
             </div>
@@ -489,7 +491,7 @@ function HarborPanel({
 /** Full alert block — only rendered when JMA has active warnings. */
 function JmaAlert({ warnings }: { warnings: ActiveWarning[] }) {
   return (
-    <aside className="jma-alert anim-rise mb-3" aria-label="気象庁 鎌倉市の警報・注意報">
+    <aside className="jma-alert anim-rise" aria-label="気象庁 鎌倉市の警報・注意報">
       <div className="panel-head">
         <p className="jma-alert-title">気象庁 · 鎌倉市の警報・注意報</p>
         <a
@@ -518,9 +520,7 @@ function JmaAlert({ warnings }: { warnings: ActiveWarning[] }) {
           </li>
         ))}
       </ul>
-      <p className="jma-alert-note">
-        出艇の最終判断は、この発表と現場の状況を優先してください。
-      </p>
+      <p className="jma-alert-note">最終判断は発表と現場を優先。</p>
     </aside>
   );
 }
@@ -595,7 +595,7 @@ export function ForecastBoard() {
   }, [load]);
 
   return (
-    <section className="anim-rise space-y-5 sm:space-y-6" aria-live="polite">
+    <section className="anim-rise space-y-3 sm:space-y-3.5" aria-live="polite">
       {error ? <p className="callout">{error}</p> : null}
 
       {data?.harbor ? (
@@ -623,10 +623,9 @@ export function ForecastBoard() {
           {data?.jma?.warnings && data.jma.warnings.length > 0 ? (
             <JmaAlert warnings={data.jma.warnings} />
           ) : null}
-          <div className="panel-stack">
+          <div className="primary-panels">
             <div className="skeleton-panel skeleton-pulse" />
             <div className="skeleton-panel skeleton-pulse anim-rise-delay-1" />
-            <div className="skeleton-panel skeleton-pulse anim-rise-delay-2" />
           </div>
           {loading ? null : (
             <p className="prose-muted mt-3">実況データはまだありません。</p>
