@@ -5,11 +5,12 @@ import type { HarborSample } from "./enowin";
 import { correctionForWindow, type MosCorrection, type MosStore } from "./mos";
 import { detectRampEvents } from "./nowcast";
 import { loadPatternStore } from "./pattern";
+import { recencyWeights, weightedMae } from "./recency";
 import { WINDOW_MS, floorBlockStart, jstParts } from "./time";
 
 const CACHE_DIR = path.join(process.cwd(), ".cache");
 const STORE_PATH = path.join(CACHE_DIR, "meta-calib.json");
-const MAX_CASES = 600;
+const MAX_CASES = 900;
 const MIN_CASES = 12;
 const MIN_BIN_CASES = 8;
 const DEFAULT_LAMBDA = 1;
@@ -60,11 +61,6 @@ function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
 }
 
-function mae(errors: number[]): number {
-  if (errors.length === 0) return 0;
-  return errors.reduce((sum, value) => sum + Math.abs(value), 0) / errors.length;
-}
-
 export function speedBandOf(ms: number): SpeedBand {
   if (ms < 4) return "light";
   if (ms < 8) return "mod";
@@ -98,10 +94,15 @@ export function dampenFactor(rawFactor: number, lambda: number): number {
 export function fitLambda(
   cases: MetaCase[],
   minCases = MIN_CASES,
+  nowMs = Date.now(),
 ): { lambda: number; mae: number } {
   if (cases.length < minCases) {
     return { lambda: DEFAULT_LAMBDA, mae: 0 };
   }
+  const weights = recencyWeights(
+    cases.map((item) => item.atMs),
+    nowMs,
+  );
   let bestLambda = DEFAULT_LAMBDA;
   let bestMae = Infinity;
   for (let step = 0; step <= 20; step++) {
@@ -110,7 +111,7 @@ export function fitLambda(
       const factor = dampenFactor(item.rawFactor, lambda);
       return item.actualMs - item.baseMs * factor;
     });
-    const score = mae(errors);
+    const score = weightedMae(errors, weights);
     if (score < bestMae) {
       bestMae = score;
       bestLambda = lambda;
@@ -151,7 +152,10 @@ function mergeCases(existing: MetaCase[], incoming: MetaCase[]): MetaCase[] {
     .slice(0, MAX_CASES);
 }
 
-export function rebuildMosLambdaBins(cases: MetaCase[]): MetaLambdaBin[] {
+export function rebuildMosLambdaBins(
+  cases: MetaCase[],
+  nowMs = Date.now(),
+): MetaLambdaBin[] {
   const groups = new Map<string, MetaCase[]>();
   for (const item of cases) {
     const exactKey = `h${item.hourBucket}:s${item.speedBand}`;
@@ -169,7 +173,7 @@ export function rebuildMosLambdaBins(cases: MetaCase[]): MetaLambdaBin[] {
     // Deduplicate within a group (hour/band keys may receive duplicates).
     const unique = mergeCases([], list);
     if (unique.length < MIN_BIN_CASES) continue;
-    const fit = fitLambda(unique, MIN_BIN_CASES);
+    const fit = fitLambda(unique, MIN_BIN_CASES, nowMs);
     const [hourPart, bandPart] = key.split(":");
     bins.push({
       key,
@@ -418,8 +422,8 @@ export async function learnMetaCalibration(options: {
   const store = await loadMetaCalib();
   const mosIncoming = collectMosMetaCases(mosStore);
   const mosCases = mergeCases(store.mosCases, mosIncoming);
-  const mosFit = fitLambda(mosCases);
-  const mosBins = rebuildMosLambdaBins(mosCases);
+  const mosFit = fitLambda(mosCases, MIN_CASES, nowMs);
+  const mosBins = rebuildMosLambdaBins(mosCases, nowMs);
 
   const patternStore = await loadPatternStore();
   const patternIncoming = collectPatternMetaCases(
@@ -431,7 +435,7 @@ export async function learnMetaCalibration(options: {
     patternStore.events,
   );
   const patternCases = mergeCases(store.patternCases, patternIncoming);
-  const patternFit = fitLambda(patternCases);
+  const patternFit = fitLambda(patternCases, MIN_CASES, nowMs);
 
   const next: MetaCalibStore = {
     updatedAt: Date.now(),

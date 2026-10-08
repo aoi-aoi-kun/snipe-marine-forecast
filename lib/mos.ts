@@ -3,12 +3,13 @@ import path from "node:path";
 import type { HourSample, WindowForecast } from "./aggregate";
 import { departureBlocked } from "./aggregate";
 import type { HarborSample } from "./enowin";
+import { recencyWeights, weightedMean } from "./recency";
 import { HOUR_MS, WINDOW_MS, floorBlockStart, jstParts } from "./time";
 import { windFromDegrees, windSector8 } from "./wind";
 
 const CACHE_DIR = path.join(process.cwd(), ".cache");
 const MOS_CACHE = path.join(CACHE_DIR, "mos.json");
-const MAX_PAIRS = 800;
+const MAX_PAIRS = 1200;
 const MIN_HARBOR_SAMPLES = 4;
 const MIN_BIN_PAIRS = 3;
 const MIN_HOUR_PAIRS = 4;
@@ -179,7 +180,10 @@ export function mergeMosPairs(existing: MosPair[], incoming: MosPair[]): MosPair
     .slice(0, MAX_PAIRS);
 }
 
-export function rebuildMosBins(pairs: MosPair[]): MosBin[] {
+export function rebuildMosBins(
+  pairs: MosPair[],
+  nowMs = Date.now(),
+): MosBin[] {
   const groups = new Map<string, MosPair[]>();
   for (const pair of pairs) {
     const sector =
@@ -192,10 +196,18 @@ export function rebuildMosBins(pairs: MosPair[]): MosBin[] {
 
   const bins: MosBin[] = [];
   for (const [key, list] of groups) {
-    const meanRatio =
-      list.reduce((sum, pair) => sum + pair.ratio, 0) / list.length;
-    const meanBiasMs =
-      list.reduce((sum, pair) => sum + pair.biasMs, 0) / list.length;
+    const weights = recencyWeights(
+      list.map((pair) => pair.windowStart),
+      nowMs,
+    );
+    const meanRatio = weightedMean(
+      list.map((pair) => pair.ratio),
+      weights,
+    );
+    const meanBiasMs = weightedMean(
+      list.map((pair) => pair.biasMs),
+      weights,
+    );
     const [hourPart, dirPart] = key.split(":");
     bins.push({
       key,
@@ -243,7 +255,7 @@ export function ingestMosPairs(store: MosStore, incoming: MosPair[]): MosStore {
   };
 }
 
-function hourOnlyBins(pairs: MosPair[]): Map<number, MosBin> {
+function hourOnlyBins(pairs: MosPair[], nowMs = Date.now()): Map<number, MosBin> {
   const groups = new Map<number, MosPair[]>();
   for (const pair of pairs) {
     const hour = hourBucket(pair.windowStart);
@@ -253,17 +265,27 @@ function hourOnlyBins(pairs: MosPair[]): Map<number, MosBin> {
   }
   const map = new Map<number, MosBin>();
   for (const [hour, list] of groups) {
+    const weights = recencyWeights(
+      list.map((pair) => pair.windowStart),
+      nowMs,
+    );
     map.set(hour, {
       key: `h${hour}:*`,
       hourBucket: hour,
       dirSector: null,
       count: list.length,
       meanRatio: clamp(
-        list.reduce((sum, pair) => sum + pair.ratio, 0) / list.length,
+        weightedMean(
+          list.map((pair) => pair.ratio),
+          weights,
+        ),
         MIN_FACTOR,
         MAX_FACTOR,
       ),
-      meanBiasMs: list.reduce((sum, pair) => sum + pair.biasMs, 0) / list.length,
+      meanBiasMs: weightedMean(
+        list.map((pair) => pair.biasMs),
+        weights,
+      ),
     });
   }
   return map;
@@ -297,12 +319,20 @@ function neighborHourBlend(
 }
 
 /** Last-resort factor from all pairs — useful while ECMWF open-data history is short. */
-function globalRatioBin(pairs: MosPair[]): MosBin | null {
+function globalRatioBin(pairs: MosPair[], nowMs = Date.now()): MosBin | null {
   if (pairs.length < MIN_NEIGHBOR_PAIRS) return null;
-  const meanRatio =
-    pairs.reduce((sum, pair) => sum + pair.ratio, 0) / pairs.length;
-  const meanBiasMs =
-    pairs.reduce((sum, pair) => sum + pair.biasMs, 0) / pairs.length;
+  const weights = recencyWeights(
+    pairs.map((pair) => pair.windowStart),
+    nowMs,
+  );
+  const meanRatio = weightedMean(
+    pairs.map((pair) => pair.ratio),
+    weights,
+  );
+  const meanBiasMs = weightedMean(
+    pairs.map((pair) => pair.biasMs),
+    weights,
+  );
   return {
     key: "h*:g",
     hourBucket: -1,
@@ -337,7 +367,8 @@ export function correctionForWindow(
   const exact = store.bins.find(
     (bin) => bin.hourBucket === hour && bin.dirSector === sector && bin.count >= MIN_BIN_PAIRS,
   );
-  const hourBins = hourOnlyBins(store.pairs);
+  const nowMs = Date.now();
+  const hourBins = hourOnlyBins(store.pairs, nowMs);
   const hourBin = hourBins.get(hour);
   let chosen = exact;
   let tier: MosTier = "exact";
@@ -353,7 +384,7 @@ export function correctionForWindow(
     }
   }
   if (!chosen) {
-    const global = globalRatioBin(store.pairs);
+    const global = globalRatioBin(store.pairs, nowMs);
     if (global) {
       chosen = global;
       tier = "global";

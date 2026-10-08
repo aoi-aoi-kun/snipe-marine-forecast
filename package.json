@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start -p ${PORT:-3847} --hostname 0.0.0.0",
     "lint": "eslint",
-    "test": "tsx --test lib/grib.test.ts lib/aggregate.test.ts lib/ecmwf.test.ts lib/jma.test.ts lib/enowin.test.ts lib/geo.test.ts lib/mos.test.ts lib/nowcast-learn.test.ts lib/meta-calib.test.ts lib/cycle-spread.test.ts lib/lead-gain.test.ts lib/confidence.test.ts"
+    "test": "tsx --test lib/grib.test.ts lib/aggregate.test.ts lib/ecmwf.test.ts lib/jma.test.ts lib/enowin.test.ts lib/geo.test.ts lib/mos.test.ts lib/nowcast-learn.test.ts lib/meta-calib.test.ts lib/cycle-spread.test.ts lib/lead-gain.test.ts lib/confidence.test.ts lib/recency.test.ts lib/learning-progress.test.ts"
   },
   "dependencies": {
     "@radix-ui/react-slot": "^1.4.0",

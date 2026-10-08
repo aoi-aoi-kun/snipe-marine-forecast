@@ -10,10 +10,11 @@ import {
   sampleNear,
   type NowcastHorizon,
 } from "./nowcast";
+import { recencyWeights, weightedMae, weightedMean } from "./recency";
 
 const CACHE_DIR = path.join(process.cwd(), ".cache");
 const STORE_PATH = path.join(CACHE_DIR, "nowcast-calib.json");
-const MAX_CASES = 2500;
+const MAX_CASES = 4000;
 const MIN_CASES = 24;
 const SAMPLE_STRIDE_MS = 15 * 60 * 1000;
 const ACTUAL_TOLERANCE_MS = 4 * 60 * 1000;
@@ -50,7 +51,8 @@ export type NowcastCalibStore = {
   horizons: NowcastHorizonCalib[];
 };
 
-const DEEP_LEARN_MS = 6 * 60 * 60 * 1000;
+/** Visit-triggered deep relearn cadence (shorter = learns while the app is used). */
+const DEEP_LEARN_MS = 2 * 60 * 60 * 1000;
 
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
@@ -178,15 +180,17 @@ export function mergeNowcastCases(
     .slice(0, MAX_CASES);
 }
 
-function mae(values: number[]): number {
-  if (values.length === 0) return 0;
-  return values.reduce((sum, value) => sum + Math.abs(value), 0) / values.length;
-}
-
-/** Fit actual ≈ current + dampen * trendDelta + bias via least squares on dampen, then bias. */
-export function fitHorizon(cases: NowcastCase[]): NowcastHorizonCalib | null {
+/** Fit actual ≈ current + dampen * trendDelta + bias; recent cases weigh more. */
+export function fitHorizon(
+  cases: NowcastCase[],
+  nowMs = Date.now(),
+): NowcastHorizonCalib | null {
   if (cases.length < MIN_CASES) return null;
   const minutesAhead = cases[0].minutesAhead;
+  const weights = recencyWeights(
+    cases.map((item) => item.atMs),
+    nowMs,
+  );
 
   // Grid-search dampen in [0, 1]; coastal trends usually overshoot so dampen < 1.
   let bestDampen = 0.55;
@@ -198,9 +202,9 @@ export function fitHorizon(cases: NowcastCase[]): NowcastHorizonCalib | null {
       return item.actualMs - predicted;
     });
     // remove mean bias for fair dampen comparison
-    const meanErr = errors.reduce((sum, value) => sum + value, 0) / errors.length;
+    const meanErr = weightedMean(errors, weights);
     const centered = errors.map((value) => value - meanErr);
-    const score = mae(centered);
+    const score = weightedMae(centered, weights);
     if (score < bestMae) {
       bestMae = score;
       bestDampen = dampen;
@@ -210,7 +214,7 @@ export function fitHorizon(cases: NowcastCase[]): NowcastHorizonCalib | null {
   const residuals = cases.map(
     (item) => item.actualMs - (item.currentMs + bestDampen * item.trendDeltaMs),
   );
-  const biasMs = residuals.reduce((sum, value) => sum + value, 0) / residuals.length;
+  const biasMs = weightedMean(residuals, weights);
 
   const rawErrors = cases.map(
     (item) => item.actualMs - (item.currentMs + item.trendDeltaMs),
@@ -220,9 +224,9 @@ export function fitHorizon(cases: NowcastCase[]): NowcastHorizonCalib | null {
       item.actualMs - (item.currentMs + bestDampen * item.trendDeltaMs + biasMs),
   );
   const persistErrors = cases.map((item) => item.actualMs - item.currentMs);
-  const maeRaw = mae(rawErrors);
-  const maeCalibrated = mae(calibErrors);
-  const maePersist = mae(persistErrors);
+  const maeRaw = weightedMae(rawErrors, weights);
+  const maeCalibrated = weightedMae(calibErrors, weights);
+  const maePersist = weightedMae(persistErrors, weights);
   const skillVsPersistence =
     maePersist <= 1e-6 ? 0 : clamp(1 - maeCalibrated / maePersist, -1, 1);
 
@@ -236,6 +240,10 @@ export function fitHorizon(cases: NowcastCase[]): NowcastHorizonCalib | null {
   let dirMaeRaw = 0;
   let dirMaeCalibrated = 0;
   if (dirCases.length >= MIN_CASES) {
+    const dirWeights = recencyWeights(
+      dirCases.map((item) => item.atMs),
+      nowMs,
+    );
     let bestDir = 0.45;
     let bestDirMae = Infinity;
     for (let step = 0; step <= 20; step++) {
@@ -248,14 +256,14 @@ export function fitHorizon(cases: NowcastCase[]): NowcastHorizonCalib | null {
           ),
         ),
       );
-      const score = mae(errors);
+      const score = weightedMae(errors, dirWeights);
       if (score < bestDirMae) {
         bestDirMae = score;
         bestDir = dampen;
       }
     }
     dirDampen = bestDir;
-    dirMaeRaw = mae(
+    dirMaeRaw = weightedMae(
       dirCases.map((item) =>
         Math.abs(
           circularDeltaDeg(
@@ -264,8 +272,9 @@ export function fitHorizon(cases: NowcastCase[]): NowcastHorizonCalib | null {
           ),
         ),
       ),
+      dirWeights,
     );
-    dirMaeCalibrated = mae(
+    dirMaeCalibrated = weightedMae(
       dirCases.map((item) =>
         Math.abs(
           circularDeltaDeg(
@@ -274,6 +283,7 @@ export function fitHorizon(cases: NowcastCase[]): NowcastHorizonCalib | null {
           ),
         ),
       ),
+      dirWeights,
     );
   }
 
@@ -291,11 +301,14 @@ export function fitHorizon(cases: NowcastCase[]): NowcastHorizonCalib | null {
   };
 }
 
-export function rebuildCalib(cases: NowcastCase[]): NowcastHorizonCalib[] {
+export function rebuildCalib(
+  cases: NowcastCase[],
+  nowMs = Date.now(),
+): NowcastHorizonCalib[] {
   const horizons: NowcastHorizonCalib[] = [];
   for (const minutes of HORIZONS) {
     const subset = cases.filter((item) => item.minutesAhead === minutes);
-    const fitted = fitHorizon(subset);
+    const fitted = fitHorizon(subset, nowMs);
     if (fitted) horizons.push(fitted);
   }
   return horizons;
@@ -309,11 +322,12 @@ export async function learnNowcastCalibration(
   const incoming = collectNowcastCases(samples);
   if (incoming.length === 0 && !options.deep) return store;
   const cases = mergeNowcastCases(store.cases, incoming);
+  const nowMs = Date.now();
   const next: NowcastCalibStore = {
-    updatedAt: Date.now(),
-    lastDeepLearnAt: options.deep ? Date.now() : store.lastDeepLearnAt,
+    updatedAt: nowMs,
+    lastDeepLearnAt: options.deep ? nowMs : store.lastDeepLearnAt,
     cases,
-    horizons: rebuildCalib(cases),
+    horizons: rebuildCalib(cases, nowMs),
   };
   await saveNowcastCalib(next);
   return next;

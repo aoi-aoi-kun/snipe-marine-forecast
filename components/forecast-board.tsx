@@ -566,22 +566,33 @@ function HarborPanel({ harbor }: { harbor: HarborBundle }) {
               </summary>
               <div className="mt-1.5 space-y-1.5 text-[11px] leading-4 text-muted">
                 <p>
-                  サーバ起動中は約 {harbor.mos?.continuous.intervalMinutes ?? 15}{" "}
-                  分ごとに学習を続けます
+                  ページを開くたびに実況を取り込み、約{" "}
+                  {harbor.mos?.continuous.intervalMinutes ?? 15}{" "}
+                  分ごとにも学習を続けます
                   {harbor.mos?.continuous.started ? "（稼働中）" : "（次の取得で開始）"}
                   {harbor.mos?.continuous.lastTickAt
                     ? ` · 前回 ${formatStamp(harbor.mos.continuous.lastTickAt)}`
                     : ""}
-                  。
+                  。新しい検証ほど補正に強く効きます。
                 </p>
-                <p>
-                  ナウキャストは
-                  {harbor.nowcastSkill.calibrated
-                    ? `校正済み（検証 ${harbor.nowcastSkill.caseCount} 件）。`
-                    : `検証 ${harbor.nowcastSkill.caseCount} 件を蓄積中。`}
-                  沖予報のMOSと急上昇パターン（{harbor.pattern.storedEvents} 件）、補正の補正も更新中。
-                  {harbor.mos ? ` ${harbor.mos.note}` : ""}
-                </p>
+                {harbor.learning ? (
+                  <p>
+                    {harbor.learning.note}
+                    {harbor.learning.improving === true
+                      ? " 使うほど誤差が縮む方向です。"
+                      : ""}
+                  </p>
+                ) : (
+                  <p>
+                    ナウキャストは
+                    {harbor.nowcastSkill.calibrated
+                      ? `校正済み（検証 ${harbor.nowcastSkill.caseCount} 件）。`
+                      : `検証 ${harbor.nowcastSkill.caseCount} 件を蓄積中。`}
+                    沖予報のMOSと急上昇パターン（{harbor.pattern.storedEvents}{" "}
+                    件）、補正の補正も更新中。
+                    {harbor.mos ? ` ${harbor.mos.note}` : ""}
+                  </p>
+                )}
               </div>
             </details>
           </div>

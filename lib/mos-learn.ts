@@ -14,7 +14,8 @@ import {
 
 const CACHE_DIR = path.join(process.cwd(), ".cache");
 const ARCHIVE_HOURS = path.join(CACHE_DIR, "mos-offshore-hours.json");
-const BACKFILL_COOLDOWN_MS = 12 * 60 * 60 * 1000;
+/** Page visits with refreshHarbor also trigger backfill; keep cooldown short. */
+const BACKFILL_COOLDOWN_MS = 3 * 60 * 60 * 1000;
 const MIN_PAIRS_BEFORE_SKIP_BACKFILL = 80;
 /** Harbor history for MOS pairs — longer lookback is the cheapest way to thicken bins. */
 const HARBOR_LOOKBACK_DAYS = 30;

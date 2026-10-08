@@ -105,6 +105,17 @@ export type HarborBundle = {
       lastTickError: string | null;
     };
   };
+  learning?: {
+    improving: boolean | null;
+    nowcastCases: number;
+    mosPairs: number;
+    metaMosCases: number;
+    metaPatternCases: number;
+    patternEvents: number;
+    nowcastMae15: number | null;
+    earlierNowcastMae15: number | null;
+    note: string;
+  };
 };
 
 export type ActiveWarning = {

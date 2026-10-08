@@ -10,6 +10,7 @@ import { learnMos } from "./mos-learn";
 import { applyMosCorrection, summarizeMos } from "./mos";
 import { attachConfidence } from "./confidence";
 import { leadTimeGain } from "./lead-gain";
+import { captureLearningProgress } from "./learning-progress";
 import {
   lambdaForMosWindow,
   learnMetaCalibration,
@@ -163,11 +164,13 @@ export async function resolveHarbor(
 
   const harborForLearn =
     learningHarbor.length >= resolved.samples.length ? learningHarbor : resolved.samples;
+  // Harbor-only page refreshes should also deepen MOS archive pairing.
+  const deepenLearn = refresh || refreshHarbor;
   const mosStore = await learnMos({
     nowMs,
     harbor: harborForLearn,
     ifsHours,
-    refresh,
+    refresh: deepenLearn,
   });
   const mosSummary = summarizeMos(mosStore);
   const patternStore = await learnFromSamples(learningHarbor, windows);
@@ -178,6 +181,17 @@ export async function resolveHarbor(
     nowMs,
   });
   const metaSummary = summarizeMetaCalib(metaStore);
+  const mae15 =
+    nowcastSkill.horizons.find((item) => item.minutesAhead === 15)?.maeCalibrated ??
+    null;
+  const learning = await captureLearningProgress({
+    nowMs,
+    nowcastCases: nowcastSkill.caseCount,
+    nowcastMae15: mae15,
+    mos: mosSummary,
+    meta: metaSummary,
+    patternEvents: patternStore.events.length,
+  });
   const match: PatternMatch | null = sourceStale
     ? null
     : matchPattern(
@@ -261,6 +275,7 @@ export async function resolveHarbor(
         lastTickError: null,
       },
     },
+    learning,
   };
 
   return { harbor, windows: adjusted, error: resolved.error };
