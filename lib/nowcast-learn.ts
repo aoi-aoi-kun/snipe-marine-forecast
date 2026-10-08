@@ -1,4 +1,4 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { getCacheDir } from "./cache-dir";
 import type { HarborSample } from "./enowin";
@@ -156,8 +156,10 @@ export function needsDeepNowcastLearn(store: NowcastCalibStore, nowMs: number): 
 }
 
 export async function saveNowcastCalib(store: NowcastCalibStore): Promise<void> {
-  await mkdir(CACHE_DIR, { recursive: true });
-  await writeFile(STORE_PATH, JSON.stringify(store));
+  const { writeProtectedJson } = await import("./learning-persist");
+  await writeProtectedJson(STORE_PATH, JSON.stringify(store), {
+    label: "nowcast-calib.json",
+  });
 }
 
 /** Build verification cases: at time t, raw trend nowcast vs actual at t+h. */

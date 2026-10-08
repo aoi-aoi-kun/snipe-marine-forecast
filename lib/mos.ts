@@ -1,4 +1,4 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile } from "node:fs/promises";
 import path from "node:path";
 import { getCacheDir } from "./cache-dir";
 import type { HourSample, WindowForecast } from "./aggregate";
@@ -290,7 +290,10 @@ export async function loadMosStore(): Promise<MosStore> {
 
 export async function saveMosStore(store: MosStore): Promise<void> {
   await mkdir(CACHE_DIR, { recursive: true });
-  await writeFile(MOS_CACHE, JSON.stringify(store));
+  const { writeProtectedJson } = await import("./learning-persist");
+  await writeProtectedJson(MOS_CACHE, JSON.stringify(store), {
+    label: "mos.json",
+  });
 }
 
 export function ingestMosPairs(store: MosStore, incoming: MosPair[]): MosStore {

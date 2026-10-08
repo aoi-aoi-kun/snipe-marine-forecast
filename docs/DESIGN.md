@@ -266,7 +266,7 @@ JSON を返す（Cache-Control: no-store）
 | `skill-history.json` | 学習進捗スナップショット |
 | `ops.json` | 初回起動・warm 回数・蓄積日数 |
 
-ルートは `CACHE_DIR`（未設定時は `.cache/`）。Render では Disk を `/app/.cache` に載せると再デプロイ後も学習が残ります。
+ルートは `CACHE_DIR`（未設定時は `.cache/`）。学習ファイルは起動時に `LEARNING_SEED_DIR`（既定 `data/learning-seed`）と `CACHE_DIR/learning-mirror` から復元し、学習後にミラーへ二重保存します。空に近い内容での上書きは拒否します。Render では Disk を `/app/.cache` に載せるとライブ学習も再デプロイをまたぎます。
 
 取得に失敗したときは、保存済みがあればそれを出して `degraded` 扱いにします。
 

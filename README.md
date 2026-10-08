@@ -42,7 +42,7 @@ MOS・急上昇マッチの学習用に、裏で ECMWF 公開データ（IFS 0.2
 5. **Apply** してデプロイを待つ（初回ビルドは数分）
 6. 完了後の URL（例: `https://shichirigahama-forecast.onrender.com`）を控える
 
-補足: **Free プランでは Disk（永続ディスク）が使えません**。学習キャッシュは再デプロイで消えることがあります。溜め続けたいときは、後から有料プランにして `/app/.cache` に Disk を付けてください。ポートは `3847` です。
+補足: 学習データは `data/learning-seed/` にスナップショットされ、Docker イメージに焼き込まれます。再デプロイ後も起動時に復元します。さらに溜め続けるには有料 Disk を `/app/.cache` に付けるか、デプロイ前に `npm run learning:snapshot` してシードを更新・コミットしてください。ポートは `3847` です。
 
 ### C. スリープ対策（無料枠では必須）
 
@@ -68,10 +68,13 @@ Render 無料枠はアクセスが無いと眠ります。学習を続けるた�
 
 1. **常時起動**  
    Docker / Render の Web Service を止めない。`DISABLE_CONTINUOUS_LEARN=1` は付けない（約10分ごとに学習）。
-2. **`.cache` を永続化する**  
-   - Render: `render.yaml` の Disk（`/app/.cache`）をそのまま使う  
-   - 自宅 Docker: `docker compose` の `forecast-cache` ボリュームを消さない  
-   デプロイや再起動のたびに `.cache` を空にすると学習が振り出しに戻ります。
+2. **学習データを消さない**  
+   - 起動時: Disk ミラー（`.cache/learning-mirror`）→ なければ `data/learning-seed` から復元  
+   - 学習後: 同じ内容をミラー（と書き込み可能なシード）へ二重保存。空に近い上書きは拒否  
+   - Render: 可能なら Disk を `/app/.cache` に付ける。Free でもイメージ内シードは残る  
+   - デプロイ前: `npm run learning:snapshot` でシードを更新してコミットすると、次のイメージに最新学習が入る  
+   - Docker Compose: ボリューム `forecast-cache` が既定でマウントされます  
+
 3. **無料枠のスリープを減らす**  
    プロセス内 keep-alive は、すでに起きているときだけ効きます（`RENDER_EXTERNAL_URL` または `KEEP_ALIVE_URL`、既定約8分）。眠ったあとは外部から起こす必要があります。  
    - 例: [cron-job.org](https://cron-job.org/) などで **8〜10分ごと**に GET  

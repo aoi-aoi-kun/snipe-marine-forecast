@@ -1,4 +1,4 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile } from "node:fs/promises";
 import path from "node:path";
 import { getCacheDir } from "./cache-dir";
 import type { MetaCalibSummary } from "./meta-calib";
@@ -48,7 +48,10 @@ async function loadHistory(): Promise<SkillHistory> {
 
 async function saveHistory(history: SkillHistory): Promise<void> {
   await mkdir(CACHE_DIR, { recursive: true });
-  await writeFile(STORE_PATH, JSON.stringify(history));
+  const { writeProtectedJson } = await import("./learning-persist");
+  await writeProtectedJson(STORE_PATH, JSON.stringify(history), {
+    label: "skill-history.json",
+  });
 }
 
 export async function recordSkillSnapshot(snapshot: SkillSnapshot): Promise<SkillHistory> {

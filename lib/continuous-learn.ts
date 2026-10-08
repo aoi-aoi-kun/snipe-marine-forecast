@@ -36,6 +36,8 @@ async function tick(reason: string) {
     setContinuousLearnTickResult(forecast.errors[0] ?? null);
     const { touchOps } = await import("./ops-uptime");
     await touchOps("learn");
+    const { mirrorLearningCache } = await import("./learning-persist");
+    await mirrorLearningCache();
     console.info(
       `continuous-learn: done mosPairs=${mos.pairCount} nowcastCases=${nowcast.caseCount} ` +
         `rampPatterns=${patterns.events.length} ` +

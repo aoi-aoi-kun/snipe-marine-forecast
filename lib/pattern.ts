@@ -1,4 +1,4 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile } from "node:fs/promises";
 import path from "node:path";
 import { getCacheDir } from "./cache-dir";
 import type { WindowForecast } from "./aggregate";
@@ -168,7 +168,10 @@ export async function loadPatternStore(): Promise<PatternStore> {
 
 export async function savePatternStore(store: PatternStore): Promise<void> {
   await mkdir(CACHE_DIR, { recursive: true });
-  await writeFile(PATTERN_CACHE, JSON.stringify(store));
+  const { writeProtectedJson } = await import("./learning-persist");
+  await writeProtectedJson(PATTERN_CACHE, JSON.stringify(store), {
+    label: "harbor-patterns.json",
+  });
 }
 
 export function mergePatternEvents(

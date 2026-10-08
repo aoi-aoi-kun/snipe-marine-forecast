@@ -1,4 +1,4 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile } from "node:fs/promises";
 import path from "node:path";
 import { getCacheDir } from "./cache-dir";
 import type { WindowForecast } from "./aggregate";
@@ -245,7 +245,10 @@ export async function loadMetaCalib(): Promise<MetaCalibStore> {
 
 export async function saveMetaCalib(store: MetaCalibStore): Promise<void> {
   await mkdir(CACHE_DIR, { recursive: true });
-  await writeFile(STORE_PATH, JSON.stringify(store));
+  const { writeProtectedJson } = await import("./learning-persist");
+  await writeProtectedJson(STORE_PATH, JSON.stringify(store), {
+    label: "meta-calib.json",
+  });
 }
 
 /** Build MOS meta cases from stored pairs: would the applied factor overshoot harbor? */

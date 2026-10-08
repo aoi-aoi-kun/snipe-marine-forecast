@@ -1,4 +1,4 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { getCacheDir } from "./cache-dir";
 
@@ -30,8 +30,8 @@ async function loadRaw(): Promise<OpsUptime | null> {
 }
 
 async function save(ops: OpsUptime): Promise<void> {
-  await mkdir(CACHE_DIR, { recursive: true });
-  await writeFile(OPS_PATH, JSON.stringify(ops));
+  const { writeProtectedJson } = await import("./learning-persist");
+  await writeProtectedJson(OPS_PATH, JSON.stringify(ops), { label: "ops.json" });
 }
 
 export async function touchOps(kind: "boot" | "warm" | "learn"): Promise<OpsUptime> {

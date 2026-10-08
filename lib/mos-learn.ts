@@ -1,4 +1,4 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { getCacheDir } from "./cache-dir";
 import type { HourSample } from "./aggregate";
@@ -43,15 +43,16 @@ async function loadArchiveHours(): Promise<HourSample[]> {
 }
 
 async function saveArchiveHours(hours: HourSample[]) {
-  await mkdir(CACHE_DIR, { recursive: true });
   const byValid = new Map<number, HourSample>();
   for (const hour of hours) byValid.set(hour.validMs, hour);
-  await writeFile(
+  const { writeProtectedJson } = await import("./learning-persist");
+  await writeProtectedJson(
     ARCHIVE_HOURS,
     JSON.stringify({
       fetchedAt: Date.now(),
       hours: [...byValid.values()].sort((a, b) => a.validMs - b.validMs),
     }),
+    { label: "mos-offshore-hours.json" },
   );
 }
 

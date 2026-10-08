@@ -1,4 +1,4 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile } from "node:fs/promises";
 import path from "node:path";
 import { getCacheDir } from "./cache-dir";
 import type { HarborSample } from "./enowin";
@@ -146,7 +146,10 @@ export async function loadPatternForecastCalib(): Promise<PatternForecastCalibSt
 
 async function savePatternForecastCalib(store: PatternForecastCalibStore): Promise<void> {
   await mkdir(CACHE_DIR, { recursive: true });
-  await writeFile(STORE_PATH, JSON.stringify(store));
+  const { writeProtectedJson } = await import("./learning-persist");
+  await writeProtectedJson(STORE_PATH, JSON.stringify(store), {
+    label: "pattern-forecast-calib.json",
+  });
 }
 
 /** Observed peak mean / max in [start, end]. */

@@ -1,5 +1,7 @@
-# Free tier: no persistent disk. Learning in /app/.cache resets on redeploy.
-# For durable MOS/nowcast learning, upgrade the service and attach a Disk at /app/.cache.
+# Learning durability:
+# - Image bakes data/learning-seed (restored on boot if .cache is empty).
+# - Prefer a persistent Disk at /app/.cache so live learning survives redeploys.
+# Free plan cannot attach Disk; upgrade and uncomment the disk block below.
 services:
   - type: web
     name: shichirigahama-forecast
@@ -17,4 +19,12 @@ services:
         value: "8"
       - key: ECMWF_CONCURRENCY
         value: "2"
+      - key: CACHE_DIR
+        value: "/app/.cache"
+      - key: LEARNING_SEED_DIR
+        value: "/app/data/learning-seed"
       # RENDER_EXTERNAL_URL is set by Render and enables in-process keep-alive pings.
+    # disk:
+    #   name: forecast-learning
+    #   mountPath: /app/.cache
+    #   sizeGB: 1
