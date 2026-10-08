@@ -290,12 +290,17 @@ export async function fetchCycleSamples(
   const { ymd, hh } = formatCycle(initMs);
   console.info(`ECMWF IFS ${ymd} ${hh}z: ${missing.length} steps`);
   // Keep concurrency low for Render free (512MB) — grib_ls + buffers OOM easily at 6.
-  const concurrency = Math.max(1, Number(process.env.ECMWF_CONCURRENCY || 2) || 2);
-  const downloaded = await mapPool(missing, concurrency, (step) => downloadStep(initMs, step));
+  const concurrency = Math.max(1, Number(process.env.ECMWF_CONCURRENCY || 1) || 1);
   const merged = new Map(already);
-  for (const sample of downloaded) {
-    if (!sample) continue;
-    merged.set(Math.round((sample.validMs - initMs) / HOUR_MS), sample);
+  // Sequential-ish chunks keep memory and event-loop pressure low on free tier.
+  for (let i = 0; i < missing.length; i += concurrency) {
+    const chunk = missing.slice(i, i + concurrency);
+    const downloaded = await Promise.all(chunk.map((step) => downloadStep(initMs, step)));
+    for (const sample of downloaded) {
+      if (!sample) continue;
+      merged.set(Math.round((sample.validMs - initMs) / HOUR_MS), sample);
+    }
+    await new Promise((resolve) => setTimeout(resolve, 20));
   }
   return merged;
 }

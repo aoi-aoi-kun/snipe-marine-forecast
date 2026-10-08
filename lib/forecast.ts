@@ -46,8 +46,9 @@ let pending: {
   promise: Promise<ForecastResponse>;
   startedAt: number;
 } | null = null;
-const PENDING_MAX_MS = 25_000;
-const BUILD_BUDGET_MS = 22_000;
+const PENDING_MAX_MS = 20_000;
+/** Stay under Render free's ~30s request limit (including harbor). */
+const BUILD_BUDGET_MS = 12_000;
 
 async function readJson<T>(file: string): Promise<T | null> {
   try {
