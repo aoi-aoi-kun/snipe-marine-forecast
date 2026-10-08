@@ -19,10 +19,13 @@ describe("ui-copy", () => {
       expectedPeakMs: 7.1,
       expectedMaxMs: 8.2,
       horizonMinutes: 30,
+      calib: { caseCount: 20, calibrated: true, note: "事後検証 20 件で校正。" },
     });
     assert.match(out.headline, /一致 82%/);
+    assert.match(out.headline, /事後校正/);
     assert.equal(out.metrics.length, 3);
     assert.match(out.metrics[0].value, /\+3\.2/);
     assert.match(out.metrics[1].value, /7\.1/);
   });
 });
+

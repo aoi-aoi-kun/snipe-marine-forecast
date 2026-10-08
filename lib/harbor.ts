@@ -30,6 +30,12 @@ import {
   matchPattern,
   type PatternMatch,
 } from "./pattern";
+import {
+  applyPatternForecastCalib,
+  learnPatternForecastCalib,
+  recordPatternForecastPending,
+  summarizePatternForecastCalib,
+} from "./pattern-forecast-calib";
 import type { HarborBundle } from "./types";
 
 const CACHE_DIR = path.join(process.cwd(), ".cache");
@@ -176,6 +182,12 @@ export async function resolveHarbor(
   });
   const mosSummary = summarizeMos(mosStore);
   const patternStore = await learnFromSamples(learningHarbor, windows);
+  const patternForecastCalib = await learnPatternForecastCalib({
+    harbor: harborForLearn,
+    events: patternStore.events,
+    nowMs,
+  });
+  const patternForecastSummary = summarizePatternForecastCalib(patternForecastCalib);
   const metaStore = await learnMetaCalibration({
     harbor: harborForLearn,
     windows,
@@ -194,14 +206,41 @@ export async function resolveHarbor(
     meta: metaSummary,
     patternEvents: patternStore.events.length,
   });
-  const match: PatternMatch | null = sourceStale
+  const pendingRaw: {
+    raw: Parameters<typeof applyPatternForecastCalib>[0] | null;
+    currentMeanMs: number | null;
+  } = { raw: null, currentMeanMs: null };
+  const matchBase: PatternMatch | null = sourceStale
     ? null
     : matchPattern(
         resolved.samples,
         patternStore,
         nowMs,
         nowcast.riseRateMsPerHour,
+        (raw, currentMeanMs) => {
+          pendingRaw.raw = raw;
+          pendingRaw.currentMeanMs = currentMeanMs;
+          return applyPatternForecastCalib(raw, currentMeanMs, patternForecastCalib);
+        },
       );
+  const match: PatternMatch | null = matchBase
+    ? {
+        ...matchBase,
+        calib: {
+          caseCount: patternForecastSummary.caseCount,
+          calibrated: patternForecastSummary.calibrated,
+          note: patternForecastSummary.note,
+        },
+      }
+    : null;
+  if (match && pendingRaw.raw && pendingRaw.currentMeanMs != null && !sourceStale) {
+    await recordPatternForecastPending({
+      nowMs,
+      currentMeanMs: pendingRaw.currentMeanMs,
+      match,
+      raw: pendingRaw.raw,
+    });
+  }
   const mosOnly = applyMosCorrection(windows, mosStore, (window, correction) => {
     const scenario = lambdaForMosWindow(metaStore, window, correction);
     return scenario * leadTimeGain(Date.parse(window.start), nowMs);
@@ -285,6 +324,7 @@ export async function resolveHarbor(
             expectedPeakMs: match.expectedPeakMs,
             expectedMaxMs: match.expectedMaxMs,
             horizonMinutes: match.horizonMinutes,
+            calib: match.calib,
           }
         : null,
     },

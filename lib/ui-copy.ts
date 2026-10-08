@@ -115,10 +115,21 @@ export function formatPatternMatchNote(input: {
   expectedPeakMs: number;
   expectedMaxMs: number;
   horizonMinutes: number;
+  calib?: {
+    caseCount: number;
+    calibrated: boolean;
+    note: string;
+  };
 }): PatternDisplay {
   const pct = Math.round(input.score * 100);
-  const headline = `過去の急上昇に近い前兆です（一致 ${pct}%）`;
-  const detail = `${input.note.trim()} 類似イベントをいまの実況に当てはめた目安です（校正済み予報ではありません）。`;
+  const headline = input.calib?.calibrated
+    ? `過去の急上昇に近い前兆です（一致 ${pct}% · 事後校正あり）`
+    : `過去の急上昇に近い前兆です（一致 ${pct}%）`;
+  const detail = [
+    input.note.trim(),
+    input.calib?.note?.trim() ||
+      "類似イベントをいまの実況に当てはめた目安です。マッチ後の実測で校正が厚くなります。",
+  ].join(" ");
   return {
     headline,
     detail,

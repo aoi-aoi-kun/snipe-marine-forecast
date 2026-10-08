@@ -41,17 +41,25 @@ export type PatternMatch = {
   expectedMaxMs: number;
   /** Minutes over which the historical rise typically unfolded. */
   horizonMinutes: number;
+  /** Post-match verification status for the quantitative estimate. */
+  calib?: {
+    caseCount: number;
+    calibrated: boolean;
+    note: string;
+  };
 };
 
-/** Map a matched historical ramp onto the current harbor mean. */
+/** Map a matched historical ramp onto the current harbor mean (pre-calibration). */
 export function estimateFromMatchedEvent(
   currentMeanMs: number,
   event: PatternEvent,
   score: number,
+  _calib: null = null,
 ): Pick<
   PatternMatch,
   "expectedRiseMs" | "expectedPeakMs" | "expectedMaxMs" | "horizonMinutes"
 > {
+  void _calib;
   const confidence = clamp(score, 0.5, 1);
   // Weaker matches → milder rise (still based on the analog event).
   const riseScale = 0.55 + 0.45 * confidence;
@@ -68,6 +76,34 @@ export function estimateFromMatchedEvent(
     expectedMaxMs: Math.round(expectedMaxMs * 10) / 10,
     horizonMinutes,
   };
+}
+
+export type AnalogQuery = {
+  hourBucket: number;
+  dirSector: number | null;
+  beforeMeanMs: number;
+  riseRate: number;
+};
+
+/** Best historical ramp analog for a pre-rise harbor state. */
+export function findAnalogEvent(
+  current: AnalogQuery,
+  events: PatternEvent[],
+  options: { requireRising?: boolean } = {},
+): { event: PatternEvent; score: number } | null {
+  if (events.length === 0) return null;
+  let best: { event: PatternEvent; score: number } | null = null;
+  for (const event of events) {
+    const score = scoreMatch(current, event);
+    if (!best || score > best.score) best = { event, score };
+  }
+  if (!best || best.score < MATCH_SCORE_MIN) return null;
+  if (options.requireRising !== false) {
+    if (current.riseRate < 1.5 && best.event.riseMs < 3 && best.score < 0.75) {
+      return null;
+    }
+  }
+  return best;
 }
 
 function hourBucket(atMs: number): number {
@@ -203,6 +239,16 @@ export function matchPattern(
   store: PatternStore,
   nowMs: number,
   riseRateMsPerHour: number | null,
+  calibrate?: (
+    raw: Pick<
+      PatternMatch,
+      "expectedRiseMs" | "expectedPeakMs" | "expectedMaxMs" | "horizonMinutes"
+    >,
+    currentMeanMs: number,
+  ) => Pick<
+    PatternMatch,
+    "expectedRiseMs" | "expectedPeakMs" | "expectedMaxMs" | "horizonMinutes"
+  >,
 ): PatternMatch | null {
   if (samples.length === 0 || store.events.length === 0) return null;
   const latest = samples[samples.length - 1];
@@ -216,19 +262,12 @@ export function matchPattern(
     riseRate: riseRateMsPerHour ?? 0,
   };
 
-  let best: { event: PatternEvent; score: number } | null = null;
-  for (const event of store.events) {
-    const score = scoreMatch(current, event);
-    if (!best || score > best.score) best = { event, score };
-  }
-  if (!best || best.score < MATCH_SCORE_MIN) return null;
-  if ((riseRateMsPerHour ?? 0) < 1.5 && best.event.riseMs < 3) {
-    // Require some rising signal unless the historical event was strong and score is high
-    if (best.score < 0.75) return null;
-  }
+  const best = findAnalogEvent(current, store.events);
+  if (!best) return null;
 
   const parts = jstParts(best.event.atMs);
-  const estimate = estimateFromMatchedEvent(latest.meanMs, best.event, best.score);
+  const raw = estimateFromMatchedEvent(latest.meanMs, best.event, best.score);
+  const estimate = calibrate ? calibrate(raw, latest.meanMs) : raw;
   return {
     score: best.score,
     boostFactor: best.event.boostFactor,

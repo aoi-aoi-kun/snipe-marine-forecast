@@ -38,7 +38,7 @@ export function ForecastGuide() {
           <li>
             <span className="font-medium text-ink/75">急上昇</span>
             {" — "}
-            立ち上がりのアラートに加え、似た過去イベントから上昇幅・ピーク・所要時間の目安を出します（アナロジー推定）。裏では沖モデルとの突合も続けます。
+            立ち上がりのアラートに加え、似た過去イベントから上昇幅・ピーク・所要時間の目安を出します。マッチ後の実測で目安を校正し、使うほど精度が上がります。
           </li>
           <li>
             <span className="font-medium text-ink/75">10 m/s の目安</span>

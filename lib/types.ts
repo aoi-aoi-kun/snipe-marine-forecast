@@ -84,6 +84,11 @@ export type HarborBundle = {
       expectedPeakMs: number;
       expectedMaxMs: number;
       horizonMinutes: number;
+      calib?: {
+        caseCount: number;
+        calibrated: boolean;
+        note: string;
+      };
     } | null;
   };
   mos: {
