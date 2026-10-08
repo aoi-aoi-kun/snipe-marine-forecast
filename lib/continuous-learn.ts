@@ -6,7 +6,8 @@ import {
 } from "./continuous-learn-state";
 
 const TICK_MS = 10 * 60 * 1000;
-const START_DELAY_MS = 15_000;
+/** Wait until the HTTP server is accepting traffic before heavy work. */
+const START_DELAY_MS = 90_000;
 /** Every 3rd tick (~30 min) force refresh so harbor/IFS caches do not stall learning. */
 const REFRESH_EVERY_N_TICKS = 3;
 
@@ -21,7 +22,10 @@ async function tick(reason: string) {
   }
   setContinuousLearnTicking(true);
   tickCount += 1;
-  const refresh = reason === "startup" || tickCount % REFRESH_EVERY_N_TICKS === 0;
+  // Free-tier OOM risk: never pull all 46 IFS steps on the first tick.
+  // Startup / early ticks only refresh harbor; full IFS comes later.
+  const refresh =
+    reason !== "startup" && tickCount >= 2 && tickCount % REFRESH_EVERY_N_TICKS === 0;
   try {
     console.info(`continuous-learn: tick (${reason}) refresh=${refresh}`);
     const { getForecast } = await import("./forecast");

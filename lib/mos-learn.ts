@@ -20,8 +20,8 @@ const BACKFILL_COOLDOWN_MS = 2 * 60 * 60 * 1000;
 const MIN_PAIRS_BEFORE_SKIP_BACKFILL = 120;
 /** Harbor history for MOS pairs — longer lookback is the cheapest way to thicken bins. */
 const HARBOR_LOOKBACK_DAYS = 30;
-/** 00/12 UTC cycles with short-lead steps for offshore pairing (open-data). */
-const ARCHIVE_CYCLES = 30;
+/** Open-data cycles for MOS (keep small — each cycle downloads many GRIB steps). */
+const ARCHIVE_CYCLES = 8;
 /** Open-Meteo historical IFS fills the gap when open-data retention is short. */
 const OPEN_METEO_PAST_DAYS = 31;
 

@@ -277,7 +277,9 @@ export async function fetchCycleSamples(
   const missing = steps.filter((step) => !Number.isFinite(already.get(step)?.gustMs));
   const { ymd, hh } = formatCycle(initMs);
   console.info(`ECMWF IFS ${ymd} ${hh}z: ${missing.length} steps`);
-  const downloaded = await mapPool(missing, 6, (step) => downloadStep(initMs, step));
+  // Keep concurrency low for Render free (512MB) — grib_ls + buffers OOM easily at 6.
+  const concurrency = Math.max(1, Number(process.env.ECMWF_CONCURRENCY || 2) || 2);
+  const downloaded = await mapPool(missing, concurrency, (step) => downloadStep(initMs, step));
   const merged = new Map(already);
   for (const sample of downloaded) {
     if (!sample) continue;

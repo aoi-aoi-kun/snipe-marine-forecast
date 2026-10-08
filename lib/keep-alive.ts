@@ -52,9 +52,10 @@ export function startKeepAlive() {
     Number(process.env.KEEP_ALIVE_MINUTES || DEFAULT_MINUTES) || DEFAULT_MINUTES,
   );
   console.info(`keep-alive: every ${minutes} min → ${url}`);
+  // Delay first self-ping until after cold start / first learn tick settle.
   const delay = setTimeout(() => {
     void ping(url);
-  }, 30_000);
+  }, 3 * 60_000);
   delay.unref?.();
   timer = setInterval(() => {
     void ping(url);

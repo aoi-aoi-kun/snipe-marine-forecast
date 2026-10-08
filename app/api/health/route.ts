@@ -6,8 +6,8 @@ import { NextResponse } from "next/server";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-/** Every Nth warm also refreshes IFS so archive/MOS do not stall on free-tier cron. */
-const FULL_REFRESH_EVERY = 6;
+/** Every Nth warm also refreshes IFS. Kept sparse so free-tier RAM stays stable. */
+const FULL_REFRESH_EVERY = 12;
 let processWarmCount = 0;
 
 /** Liveness + learning health. Use ?warm=1 from an external cron to wake and train. */
@@ -22,7 +22,7 @@ export async function GET(request: Request) {
     processWarmCount += 1;
     ops = await touchOps("warm");
     const refresh = full || processWarmCount % FULL_REFRESH_EVERY === 0;
-    // Fire-and-forget so cron stays fast but learning still moves.
+    // Fire-and-forget harbor (or rare full) refresh — never block the health response.
     void import("@/lib/forecast").then(({ getForecast }) =>
       getForecast(refresh ? { refresh: true } : { refreshHarbor: true }),
     );
