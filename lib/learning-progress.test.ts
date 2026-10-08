@@ -33,4 +33,10 @@ describe("learning progress", () => {
     assert.equal(progress.improving, null);
     assert.match(progress.note, /使うほど検証が増え/);
   });
+
+  it("stays neutral with a single snapshot even when MAE is present", () => {
+    const current = snap({ atMs: 1, nowcastCases: 100, nowcastMae15: 0.5 });
+    const progress = summarizeLearningProgress({ snapshots: [current] }, current);
+    assert.equal(progress.improving, null);
+  });
 });
