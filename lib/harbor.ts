@@ -8,6 +8,10 @@ import {
 } from "./enowin";
 import { learnMos } from "./mos-learn";
 import { applyMosCorrection, summarizeMos } from "./mos";
+import {
+  learnMetaCalibration,
+  summarizeMetaCalib,
+} from "./meta-calib";
 import { buildNowcast } from "./nowcast";
 import {
   learnNowcastCalibration,
@@ -137,22 +141,31 @@ export async function resolveHarbor(
   const nowcastSkill = summarizeNowcastCalib(calibStore);
   const nowcast = buildNowcast(resolved.samples, nowMs, calibStore);
 
+  const harborForLearn =
+    learningHarbor.length >= resolved.samples.length ? learningHarbor : resolved.samples;
   const mosStore = await learnMos({
     nowMs,
-    harbor: learningHarbor.length >= resolved.samples.length ? learningHarbor : resolved.samples,
+    harbor: harborForLearn,
     ifsHours,
     refresh,
   });
   const mosSummary = summarizeMos(mosStore);
   const patternStore = await learnFromSamples(learningHarbor, windows);
+  const metaStore = await learnMetaCalibration({
+    harbor: harborForLearn,
+    windows,
+    mosStore,
+    nowMs,
+  });
+  const metaSummary = summarizeMetaCalib(metaStore);
   const match: PatternMatch | null = matchPattern(
     resolved.samples,
     patternStore,
     nowMs,
     nowcast.riseRateMsPerHour,
   );
-  let adjusted = applyMosCorrection(windows, mosStore);
-  adjusted = applyHarborBoost(adjusted, match);
+  let adjusted = applyMosCorrection(windows, mosStore, metaStore.mosLambda);
+  adjusted = applyHarborBoost(adjusted, match, metaStore.patternLambda);
 
   const latest = resolved.samples[resolved.samples.length - 1];
   const recent = resolved.samples.filter((sample) => nowMs - sample.atMs <= 2 * 60 * 60 * 1000);
@@ -195,6 +208,8 @@ export async function resolveHarbor(
     },
     mos: {
       ...mosSummary,
+      note: `${mosSummary.note} ${metaSummary.note}`,
+      meta: metaSummary,
       continuous: {
         started: false,
         intervalMinutes: 15,

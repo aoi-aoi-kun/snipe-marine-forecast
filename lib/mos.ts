@@ -342,7 +342,9 @@ export function correctionForWindow(
 export function applyMosCorrection(
   windows: WindowForecast[],
   store: MosStore,
+  lambda = 1,
 ): WindowForecast[] {
+  const gain = Math.max(0, Math.min(1, lambda));
   return windows.map((window) => {
     const correction = correctionForWindow(store, window);
     if (!correction || window.windMeanMs === null) {
@@ -352,11 +354,23 @@ export function applyMosCorrection(
         mosAdjustNote: null,
       };
     }
-    const mean = window.windMeanMs * correction.factor;
+    const factor = 1 + gain * (correction.factor - 1);
+    if (Math.abs(factor - 1) < NEUTRAL_BAND) {
+      return {
+        ...window,
+        mosAdjusted: false,
+        mosAdjustNote: null,
+      };
+    }
+    const mean = window.windMeanMs * factor;
     const gust =
-      window.windGustMs === null ? null : window.windGustMs * correction.factor;
+      window.windGustMs === null ? null : window.windGustMs * factor;
     const max =
-      window.windMaxMs === null ? null : window.windMaxMs * correction.factor;
+      window.windMaxMs === null ? null : window.windMaxMs * factor;
+    const note =
+      gain < 0.999
+        ? `${correction.note} 補正の補正 λ=${gain.toFixed(2)} → ×${factor.toFixed(2)}。`
+        : correction.note;
     return {
       ...window,
       windMeanMs: mean,
@@ -364,7 +378,7 @@ export function applyMosCorrection(
       windMaxMs: max,
       noDeparture: departureBlocked(mean, gust ?? 0),
       mosAdjusted: true,
-      mosAdjustNote: correction.note,
+      mosAdjustNote: note,
       harborAdjusted: window.harborAdjusted,
       harborAdjustNote: window.harborAdjustNote,
     };

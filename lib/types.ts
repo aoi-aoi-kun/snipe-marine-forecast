@@ -84,6 +84,15 @@ export type HarborBundle = {
     activeBins: number;
     lastBackfillAt: string | null;
     note: string;
+    meta?: {
+      mosLambda: number;
+      patternLambda: number;
+      mosCases: number;
+      patternCases: number;
+      mosReady: boolean;
+      patternReady: boolean;
+      note: string;
+    };
     continuous: {
       started: boolean;
       intervalMinutes: number;

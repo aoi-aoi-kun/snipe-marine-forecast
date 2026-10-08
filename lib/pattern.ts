@@ -204,8 +204,19 @@ export function matchPattern(
 export function applyHarborBoost(
   windows: WindowForecast[],
   match: PatternMatch | null,
+  lambda = 1,
 ): WindowForecast[] {
   if (!match) {
+    return windows.map((window) => ({
+      ...window,
+      harborAdjusted: false,
+      harborAdjustNote: null,
+    }));
+  }
+
+  const gain = clamp(lambda, 0, 1);
+  const factor = 1 + gain * (match.boostFactor - 1);
+  if (Math.abs(factor - 1) < 0.02) {
     return windows.map((window) => ({
       ...window,
       harborAdjusted: false,
@@ -219,19 +230,23 @@ export function applyHarborBoost(
       return { ...window, harborAdjusted: false, harborAdjustNote: null };
     }
     applied += 1;
-    const mean = window.windMeanMs * match.boostFactor;
+    const mean = window.windMeanMs * factor;
     const gust =
-      window.windGustMs === null ? null : window.windGustMs * match.boostFactor;
+      window.windGustMs === null ? null : window.windGustMs * factor;
     const noDeparture = mean >= 10 || (gust !== null && gust >= 13);
     const mosNote = window.mosAdjustNote;
+    const boostNote =
+      gain < 0.999
+        ? `${match.note} 補正の補正 λ=${gain.toFixed(2)} → ×${factor.toFixed(2)}。`
+        : match.note;
     return {
       ...window,
       windMeanMs: mean,
-      windMaxMs: window.windMaxMs === null ? null : window.windMaxMs * match.boostFactor,
+      windMaxMs: window.windMaxMs === null ? null : window.windMaxMs * factor,
       windGustMs: gust,
       noDeparture,
       harborAdjusted: true,
-      harborAdjustNote: mosNote ? `${match.note} ${mosNote}` : match.note,
+      harborAdjustNote: mosNote ? `${boostNote} ${mosNote}` : boostNote,
     };
   });
 }

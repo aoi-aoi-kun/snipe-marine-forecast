@@ -575,7 +575,7 @@ function HarborPanel({ harbor }: { harbor: HarborBundle }) {
                   {harbor.nowcastSkill.calibrated
                     ? `校正済み（検証 ${harbor.nowcastSkill.caseCount} 件）。`
                     : `検証 ${harbor.nowcastSkill.caseCount} 件を蓄積中。`}
-                  沖予報のMOSと急上昇パターン（{harbor.pattern.storedEvents} 件）も更新中。
+                  沖予報のMOSと急上昇パターン（{harbor.pattern.storedEvents} 件）、補正の補正も更新中。
                   {harbor.mos ? ` ${harbor.mos.note}` : ""}
                 </p>
               </div>

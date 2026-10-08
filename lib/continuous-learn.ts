@@ -28,16 +28,19 @@ async function tick(reason: string) {
     const { loadMosStore, summarizeMos } = await import("./mos");
     const { loadNowcastCalib, summarizeNowcastCalib } = await import("./nowcast-learn");
     const { loadPatternStore } = await import("./pattern");
+    const { loadMetaCalib, summarizeMetaCalib } = await import("./meta-calib");
 
     const forecast = await getForecast(refresh);
     const mos = summarizeMos(await loadMosStore());
     const nowcast = summarizeNowcastCalib(await loadNowcastCalib());
     const patterns = await loadPatternStore();
+    const meta = summarizeMetaCalib(await loadMetaCalib());
 
     setContinuousLearnTickResult(forecast.errors[0] ?? null);
     console.info(
       `continuous-learn: done mosPairs=${mos.pairCount} nowcastCases=${nowcast.caseCount} ` +
-        `rampPatterns=${patterns.events.length}` +
+        `rampPatterns=${patterns.events.length} ` +
+        `metaλ mos=${meta.mosLambda.toFixed(2)}/${meta.mosCases} pattern=${meta.patternLambda.toFixed(2)}/${meta.patternCases}` +
         (forecast.errors[0] ? ` error=${forecast.errors[0]}` : ""),
     );
   } catch (error) {
@@ -58,7 +61,7 @@ export function startContinuousLearning() {
   }
   setContinuousLearnStarted(true, TICK_MS / 60_000);
   console.info(
-    `continuous-learn: MOS + nowcast + ramp patterns every ${TICK_MS / 60_000} min ` +
+    `continuous-learn: MOS + nowcast + ramp + meta-λ every ${TICK_MS / 60_000} min ` +
       `(first tick in ${START_DELAY_MS / 1000}s)`,
   );
   const delay = setTimeout(() => {
