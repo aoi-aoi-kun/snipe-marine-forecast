@@ -30,6 +30,8 @@ export type WindowForecast = {
   harborAdjustNote?: string | null;
   mosAdjusted?: boolean;
   mosAdjustNote?: string | null;
+  /** |wind| difference vs previous ECMWF cycle at the same valid time, if available. */
+  cycleSpreadMs?: number | null;
 };
 
 const CALM_MS = 0.3;
@@ -60,7 +62,8 @@ function stepPrecip(hours: HourSample[]): Map<number, number> {
 }
 
 function weatherOf(precipMm: number, cloudPct: number): "晴れ" | "くもり" | "雨" {
-  if (precipMm >= 1) return "雨";
+  if (precipMm >= 0.5) return "雨";
+  if (precipMm >= 0.1 && cloudPct >= 90) return "雨";
   if (cloudPct >= 80) return "くもり";
   return "晴れ";
 }
@@ -120,6 +123,7 @@ export function buildWindows(hours: HourSample[], nowMs: number): WindowForecast
       windMaxMs,
       windGustMs,
       noDeparture: departureBlocked(windMeanMs, windGustMs),
+      cycleSpreadMs: null,
     });
   }
   return windows;

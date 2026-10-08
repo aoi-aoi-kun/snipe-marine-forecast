@@ -40,7 +40,7 @@ test("aggregates the single 3-hour sample in each window", () => {
       tempC: 20,
       u: -1,
       v: -1,
-      cloudPct: 90,
+      cloudPct: 85,
       precipRunMm: precip,
       gustMs: 4,
     });

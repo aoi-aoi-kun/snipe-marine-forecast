@@ -55,13 +55,30 @@ export type MosSummary = {
   note: string;
 };
 
+export type MosTier = "exact" | "hour" | "neighbor" | "global";
+
 export type MosCorrection = {
   factor: number;
   binKey: string;
   count: number;
   meanBiasMs: number;
+  tier: MosTier;
   note: string;
 };
+
+/** How much of the learned λ to keep for offshore display (harbor≠offshore). */
+export function mosTierGain(tier: MosTier): number {
+  switch (tier) {
+    case "exact":
+      return 1;
+    case "hour":
+      return 0.55;
+    case "neighbor":
+      return 0.3;
+    case "global":
+      return 0;
+  }
+}
 
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
@@ -322,11 +339,26 @@ export function correctionForWindow(
   );
   const hourBins = hourOnlyBins(store.pairs);
   const hourBin = hourBins.get(hour);
-  const chosen =
-    exact ??
-    (hourBin && hourBin.count >= MIN_HOUR_PAIRS ? hourBin : null) ??
-    neighborHourBlend(hourBins, hour) ??
-    globalRatioBin(store.pairs);
+  let chosen = exact;
+  let tier: MosTier = "exact";
+  if (!chosen && hourBin && hourBin.count >= MIN_HOUR_PAIRS) {
+    chosen = hourBin;
+    tier = "hour";
+  }
+  if (!chosen) {
+    const neighbor = neighborHourBlend(hourBins, hour);
+    if (neighbor) {
+      chosen = neighbor;
+      tier = "neighbor";
+    }
+  }
+  if (!chosen) {
+    const global = globalRatioBin(store.pairs);
+    if (global) {
+      chosen = global;
+      tier = "global";
+    }
+  }
   if (!chosen) return null;
   if (Math.abs(chosen.meanRatio - 1) < NEUTRAL_BAND) return null;
 
@@ -335,6 +367,7 @@ export function correctionForWindow(
     binKey: chosen.key,
     count: chosen.count,
     meanBiasMs: chosen.meanBiasMs,
+    tier,
     note: `局地補正（MOS）: 過去 ${chosen.count} 枠のハーバー÷沖予報 = ${chosen.meanRatio.toFixed(2)}（${binLabel(chosen, hour)}、差 ${chosen.meanBiasMs >= 0 ? "+" : ""}${chosen.meanBiasMs.toFixed(1)} m/s）。`,
   };
 }
@@ -342,9 +375,8 @@ export function correctionForWindow(
 export function applyMosCorrection(
   windows: WindowForecast[],
   store: MosStore,
-  lambda = 1,
+  lambdaForWindow: number | ((window: WindowForecast, correction: MosCorrection) => number) = 1,
 ): WindowForecast[] {
-  const gain = Math.max(0, Math.min(1, lambda));
   return windows.map((window) => {
     const correction = correctionForWindow(store, window);
     if (!correction || window.windMeanMs === null) {
@@ -354,6 +386,20 @@ export function applyMosCorrection(
         mosAdjustNote: null,
       };
     }
+    // Global mean is for learning fallback only — do not drag every offshore window toward the harbor.
+    const tierGain = mosTierGain(correction.tier);
+    if (tierGain <= 0) {
+      return {
+        ...window,
+        mosAdjusted: false,
+        mosAdjustNote: null,
+      };
+    }
+    const baseLambda =
+      typeof lambdaForWindow === "function"
+        ? lambdaForWindow(window, correction)
+        : lambdaForWindow;
+    const gain = Math.max(0, Math.min(1, baseLambda)) * tierGain;
     const factor = 1 + gain * (correction.factor - 1);
     if (Math.abs(factor - 1) < NEUTRAL_BAND) {
       return {
@@ -369,7 +415,7 @@ export function applyMosCorrection(
       window.windMaxMs === null ? null : window.windMaxMs * factor;
     const note =
       gain < 0.999
-        ? `${correction.note} 補正の補正 λ=${gain.toFixed(2)} → ×${factor.toFixed(2)}。`
+        ? `${correction.note} 補正の補正 λ=${gain.toFixed(2)}（${correction.tier}）→ ×${factor.toFixed(2)}。`
         : correction.note;
     return {
       ...window,

@@ -17,6 +17,7 @@ export type WindowForecast = {
   harborAdjustNote?: string | null;
   mosAdjusted?: boolean;
   mosAdjustNote?: string | null;
+  cycleSpreadMs?: number | null;
 };
 
 export type HarborObservation = {
@@ -91,6 +92,7 @@ export type HarborBundle = {
       patternCases: number;
       mosReady: boolean;
       patternReady: boolean;
+      mosBins?: number;
       note: string;
     };
     continuous: {

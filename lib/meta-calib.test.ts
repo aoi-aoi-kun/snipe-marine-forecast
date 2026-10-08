@@ -4,9 +4,14 @@ import {
   collectMosMetaCases,
   dampenFactor,
   fitLambda,
+  lambdaForMosWindow,
+  rebuildMosLambdaBins,
+  speedBandOf,
   type MetaCase,
+  type MetaCalibStore,
 } from "./meta-calib";
 import { ingestMosPairs, type MosStore } from "./mos";
+import type { WindowForecast } from "./aggregate";
 
 describe("meta calibration", () => {
   it("dampenFactor shrinks the gain toward 1", () => {
@@ -17,12 +22,13 @@ describe("meta calibration", () => {
   });
 
   it("fitLambda prefers partial gain when full factor overshoots", () => {
-    // Offshore 4, full f=1.5 → 6, but harbor stayed near 5 → best λ around 0.5
     const cases: MetaCase[] = Array.from({ length: 16 }, (_, index) => ({
       atMs: 1_000_000 + index * 3 * 3600_000,
       baseMs: 4,
       rawFactor: 1.5,
       actualMs: 5,
+      hourBucket: 0,
+      speedBand: "mod" as const,
     }));
     const fit = fitLambda(cases);
     assert.ok(fit.lambda > 0.3 && fit.lambda < 0.7);
@@ -49,5 +55,47 @@ describe("meta calibration", () => {
     const cases = collectMosMetaCases(store);
     assert.ok(cases.length >= 4);
     assert.ok(cases.every((item) => item.rawFactor > 1));
+    assert.ok(cases.every((item) => item.speedBand === speedBandOf(4)));
+  });
+
+  it("resolves scenario lambda bins by hour and speed band", () => {
+    const cases: MetaCase[] = Array.from({ length: 10 }, (_, index) => ({
+      atMs: Date.parse("2026-10-06T00:00:00+09:00") + index * 24 * 3600_000,
+      baseMs: 9,
+      rawFactor: 1.5,
+      actualMs: 10.5,
+      hourBucket: 0,
+      speedBand: "strong" as const,
+    }));
+    const bins = rebuildMosLambdaBins(cases);
+    assert.ok(bins.some((bin) => bin.key === "h0:sstrong"));
+    const store: MetaCalibStore = {
+      updatedAt: 0,
+      mosCases: cases,
+      patternCases: [],
+      mosLambda: 1,
+      patternLambda: 1,
+      mosMae: 0,
+      patternMae: 0,
+      mosBins: bins,
+    };
+    const window: WindowForecast = {
+      start: new Date(Date.parse("2026-10-06T00:00:00+09:00")).toISOString(),
+      end: new Date(Date.parse("2026-10-06T03:00:00+09:00")).toISOString(),
+      partialFrom: null,
+      available: true,
+      weather: "晴れ",
+      precipMm: 0,
+      tempMinC: 20,
+      tempMaxC: 21,
+      windFromDeg: 180,
+      windFromLabel: "南",
+      windMeanMs: 9,
+      windMaxMs: 9,
+      windGustMs: 11,
+      noDeparture: false,
+    };
+    const lambda = lambdaForMosWindow(store, window);
+    assert.ok(lambda < 1);
   });
 });

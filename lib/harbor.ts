@@ -9,6 +9,7 @@ import {
 import { learnMos } from "./mos-learn";
 import { applyMosCorrection, summarizeMos } from "./mos";
 import {
+  lambdaForMosWindow,
   learnMetaCalibration,
   summarizeMetaCalib,
 } from "./meta-calib";
@@ -139,7 +140,23 @@ export async function resolveHarbor(
     calibStore = await learnNowcastCalibration(learningHarbor, { deep: true });
   }
   const nowcastSkill = summarizeNowcastCalib(calibStore);
-  const nowcast = buildNowcast(resolved.samples, nowMs, calibStore);
+  const latest = resolved.samples[resolved.samples.length - 1];
+  const lagMinutes = Math.floor((nowMs - latest.atMs) / 60_000);
+  const sourceStale = lagMinutes >= 20;
+  const rawNowcast = buildNowcast(resolved.samples, nowMs, calibStore);
+  // Stale enowin: keep the last observation, but do not extend a frozen series.
+  const nowcast = sourceStale
+    ? {
+        ...rawNowcast,
+        riseRateMsPerHour: null,
+        nowcast: [],
+        alerts: rawNowcast.alerts.filter((alert) => {
+          if (alert.kind === "stale") return true;
+          // Keep harbor-threshold warnings; drop nowcast projections built on frozen data.
+          return alert.kind === "threshold" && !alert.message.includes("ナウキャスト");
+        }),
+      }
+    : rawNowcast;
 
   const harborForLearn =
     learningHarbor.length >= resolved.samples.length ? learningHarbor : resolved.samples;
@@ -158,22 +175,27 @@ export async function resolveHarbor(
     nowMs,
   });
   const metaSummary = summarizeMetaCalib(metaStore);
-  const match: PatternMatch | null = matchPattern(
-    resolved.samples,
-    patternStore,
-    nowMs,
-    nowcast.riseRateMsPerHour,
+  const match: PatternMatch | null = sourceStale
+    ? null
+    : matchPattern(
+        resolved.samples,
+        patternStore,
+        nowMs,
+        nowcast.riseRateMsPerHour,
+      );
+  let adjusted = applyMosCorrection(windows, mosStore, (window, correction) =>
+    lambdaForMosWindow(metaStore, window, correction),
   );
-  let adjusted = applyMosCorrection(windows, mosStore, metaStore.mosLambda);
   adjusted = applyHarborBoost(adjusted, match, metaStore.patternLambda);
 
-  const latest = resolved.samples[resolved.samples.length - 1];
   const recent = resolved.samples.filter((sample) => nowMs - sample.atMs <= 2 * 60 * 60 * 1000);
 
   const harbor: HarborBundle = {
     source: ENOWIN_SOURCE,
     pointName: "江の島ヨットハーバー",
-    note: "5分ごとの実況です。沖の予報とは地点が異なります。",
+    note: sourceStale
+      ? "5分ごとの実況です。公開が止まっているため短時間予測は出していません。"
+      : "5分ごとの実況です。沖の予報とは地点が異なります。いま〜1時間はここ、数時間先は沖予報を参照。",
     fetchedAt: new Date(resolved.fetchedAt).toISOString(),
     degraded: resolved.degraded,
     latest: toObservation(latest),
@@ -184,7 +206,9 @@ export async function resolveHarbor(
     nowcastSkill: {
       caseCount: nowcastSkill.caseCount,
       calibrated: nowcast.calibrated,
-      note: nowcastSkill.note,
+      note: sourceStale
+        ? "実況の公開停止中のため、ナウキャストは抑制しています。"
+        : nowcastSkill.note,
       horizons: nowcastSkill.horizons.map((item) => ({
         minutesAhead: item.minutesAhead,
         count: item.count,

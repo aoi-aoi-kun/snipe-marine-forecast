@@ -553,6 +553,10 @@ function HarborPanel({ harbor }: { harbor: HarborBundle }) {
                   <p>{harbor.nowcastSkill.note}</p>
                 </div>
               </details>
+            ) : latest && sourceStale ? (
+              <p className="text-[11px] text-muted">
+                実況の公開停止中のため、短時間予測は出していません。
+              </p>
             ) : latest ? (
               <p className="text-[11px] text-muted">直近の傾きが足りず、ナウキャストを出せません。</p>
             ) : null}
@@ -638,6 +642,11 @@ function WindowCard({ window, scale }: { window: WindowForecast; scale: number }
           ) : null}
           {window.harborAdjusted ? (
             <p className="text-[9px] font-medium tracking-wide text-sea">急上昇補正</p>
+          ) : null}
+          {window.cycleSpreadMs != null && window.cycleSpreadMs >= 1.5 ? (
+            <p className="text-[9px] font-medium tracking-wide text-muted">
+              初期値差 {window.cycleSpreadMs.toFixed(1)}
+            </p>
           ) : null}
         </div>
       </div>
@@ -803,9 +812,10 @@ export function ForecastBoard() {
                       : "数値予報はまだありません。"}
                   </li>
                 ) : null}
-                <li>棒は地上10mの平均、うすい部分は最大瞬間（目盛の上端は {scale} m/s）。</li>
+                <li>棒は地上10mの平均、うすい部分は最大瞬間（目盛の上端は {scale} m/s）。沖の数値です。</li>
                 <li>平均 10 m/s 以上、または瞬間 13 m/s 以上は出艇不可能。</li>
                 <li>瞬間は初期値から90時間先までが枠末1時間、それ以降は3時間の最大。</li>
+                <li>「初期値差」は前後のECMWF初期値で風速がどれだけ違うかの目安です。</li>
               </ul>
             </details>
             <Button

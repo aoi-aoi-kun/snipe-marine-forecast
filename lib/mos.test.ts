@@ -178,11 +178,15 @@ describe("MOS pairing", () => {
       noDeparture: false,
     };
     // hourBucket(12 JST)=4; pairs are at 06 JST (bucket 2). Neighbors of 4 are 3,4,5 — empty.
-    // Global fallback should apply.
+    // Global lookup still exists for learning, but is not applied to offshore windows.
     const correction = correctionForWindow(store, window);
     assert.ok(correction);
     assert.equal(correction.binKey, "h*:g");
+    assert.equal(correction.tier, "global");
     assert.ok(Math.abs(correction.factor - 1.25) < 0.01);
     assert.match(correction.note, /全体平均/);
+    const adjusted = applyMosCorrection([window], store, 1);
+    assert.equal(adjusted[0].mosAdjusted, false);
+    assert.equal(adjusted[0].windMeanMs, 4);
   });
 });

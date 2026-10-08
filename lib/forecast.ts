@@ -1,6 +1,7 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { buildWindows, type HourSample } from "./aggregate";
+import { attachCycleSpread } from "./cycle-spread";
 import {
   fetchCycleSamples,
   ifsCycleCandidates,
@@ -17,6 +18,7 @@ import type { ForecastResponse } from "./types";
 
 const CACHE_DIR = path.join(process.cwd(), ".cache");
 const IFS_CACHE = path.join(CACHE_DIR, "ifs.json");
+const IFS_PREV_CACHE = path.join(CACHE_DIR, "ifs-prev.json");
 const JMA_CACHE = path.join(CACHE_DIR, "jma.json");
 const USER_AGENT = "shichirigahama-forecast/1.0 (local coastal forecast)";
 const IFS_FRESH_MS = 30 * 60 * 1000;
@@ -35,6 +37,7 @@ type JmaCache = {
 };
 
 let ifsMemory: IfsCache | null = null;
+let ifsPrevMemory: IfsCache | null = null;
 let jmaMemory: JmaCache | null = null;
 let pending: { key: string; promise: Promise<ForecastResponse> } | null = null;
 
@@ -69,6 +72,18 @@ async function loadIfsCache(): Promise<IfsCache | null> {
 async function saveIfsCache(cache: IfsCache) {
   ifsMemory = cache;
   await writeJson(IFS_CACHE, cache);
+}
+
+async function loadIfsPrevCache(): Promise<IfsCache | null> {
+  if (ifsPrevMemory) return ifsPrevMemory;
+  const stored = await readJson<IfsCache>(IFS_PREV_CACHE);
+  ifsPrevMemory = isIfsCache(stored) ? stored : null;
+  return ifsPrevMemory;
+}
+
+async function saveIfsPrevCache(cache: IfsCache) {
+  ifsPrevMemory = cache;
+  await writeJson(IFS_PREV_CACHE, cache);
 }
 
 async function loadJmaCache(): Promise<JmaCache | null> {
@@ -138,9 +153,11 @@ async function resolveIfs(nowMs: number, refresh: boolean): Promise<{
     };
     if (!covers(cache, nowMs)) {
       if (existing && covers(existing, nowMs)) return { cache: existing, degraded: true };
+      if (existing && existing.initMs !== cache.initMs) await saveIfsPrevCache(existing);
       await saveIfsCache(cache);
       return { cache, degraded: true };
     }
+    if (existing && existing.initMs !== cache.initMs) await saveIfsPrevCache(existing);
     await saveIfsCache(cache);
     return { cache, degraded: false };
   }
@@ -239,7 +256,10 @@ async function buildForecast(options: Required<ForecastFetchOptions>): Promise<F
   if (warnings.error) errors.push(warnings.error);
 
   const ifsHours = model.resolved?.cache.hours ?? [];
-  const baseWindows = model.resolved ? buildWindows(ifsHours, nowMs) : [];
+  const prevIfs = await loadIfsPrevCache();
+  const baseWindows = model.resolved
+    ? attachCycleSpread(buildWindows(ifsHours, nowMs), ifsHours, prevIfs?.hours ?? null)
+    : [];
   const harborResolved = await resolveHarbor(
     nowMs,
     baseWindows,

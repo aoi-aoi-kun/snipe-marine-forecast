@@ -21,11 +21,15 @@ export function ForecastGuide() {
         <ul className="space-y-1.5">
           <li>
             <span className="font-medium text-ink/75">使い分け</span>
-            {" — "}数時間〜数日は沖予報、いま〜1時間はナウキャスト。
+            {" — "}いま〜1時間はハーバー実況とナウキャスト。数時間〜数日は沖予報（出艇海域の参考）。
           </li>
           <li>
             <span className="font-medium text-ink/75">補正</span>
-            {" — "}ナウキャストは傾きの過大を抑え、沖予報は時間帯・風向の型で倍率調整。
+            {" — "}沖予報への局地補正は控えめ（確かな型だけ）。全体平均では沖をハーバーに寄せません。
+          </li>
+          <li>
+            <span className="font-medium text-ink/75">実況停止</span>
+            {" — "}enowin の更新が止まっているあいだは、短時間予測を出しません。
           </li>
           <li>
             <span className="font-medium text-ink/75">出艇不可能</span>
@@ -33,7 +37,7 @@ export function ForecastGuide() {
           </li>
           <li>
             <span className="font-medium text-ink/75">限界</span>
-            {" — "}前兆のない突風は見えません。
+            {" — "}前兆のない突風は見えません。初期値差が大きい枠はモデルのぶれが大きい合図です。
           </li>
         </ul>
       </div>
