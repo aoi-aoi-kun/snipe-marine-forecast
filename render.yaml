@@ -1,3 +1,5 @@
+# Free tier: no persistent disk. Learning in /app/.cache resets on redeploy.
+# For durable MOS/nowcast learning, upgrade the service and attach a Disk at /app/.cache.
 services:
   - type: web
     name: shichirigahama-forecast
@@ -14,7 +16,3 @@ services:
       - key: KEEP_ALIVE_MINUTES
         value: "8"
       # RENDER_EXTERNAL_URL is set by Render and enables in-process keep-alive pings.
-    disk:
-      name: forecast-cache
-      mountPath: /app/.cache
-      sizeGB: 1

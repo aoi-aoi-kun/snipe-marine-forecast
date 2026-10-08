@@ -38,11 +38,11 @@
 1. [https://render.com/](https://render.com/) にログインする
 2. **New +** → **Blueprint**
 3. GitHub を接続し、このリポジトリを選ぶ
-4. `render.yaml` が読み込まれます（Docker・Singapore・Free・`/app/.cache` Disk・`/api/health`）
+4. `render.yaml` が読み込まれます（Docker・Singapore・Free・`/api/health`）
 5. **Apply** してデプロイを待つ（初回ビルドは数分）
 6. 完了後の URL（例: `https://shichirigahama-forecast.onrender.com`）を控える
 
-手動で **Web Service** を作る場合も、Runtime は Docker、Branch は `main`、Disk を `/app/.cache` に 1GB 付けてください。ポートは `3847` です。
+補足: **Free プランでは Disk（永続ディスク）が使えません**。学習キャッシュは再デプロイで消えることがあります。溜め続けたいときは、後から有料プランにして `/app/.cache` に Disk を付けてください。ポートは `3847` です。
 
 ### C. スリープ対策（無料枠では必須）
 
