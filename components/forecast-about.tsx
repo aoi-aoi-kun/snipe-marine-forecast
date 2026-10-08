@@ -95,12 +95,12 @@ export function ForecastAbout({ harbor }: { harbor: HarborBundle | null }) {
 
   return (
     <section className="about-panel anim-rise" aria-labelledby="about-heading">
-      <div className="mb-4">
-        <p className="eyebrow mb-0.5">About</p>
+      <div className="mb-5 sm:mb-6">
+        <p className="eyebrow mb-1">案内</p>
         <h2 id="about-heading" className="section-title">
           このアプリについて
         </h2>
-        <p className="prose-muted mt-1.5 max-w-prose">
+        <p className="prose-muted mt-2 max-w-prose">
           江の島ヨットハーバーの実況と、そこから見る約1時間先までの目安です。七里ヶ浜沖の格子点とは約{" "}
           {HARBOR_TO_OFFSHORE_KM.toFixed(1)} km 離れており、数値はそのまま比べられません。
         </p>
@@ -110,7 +110,7 @@ export function ForecastAbout({ harbor }: { harbor: HarborBundle | null }) {
         <article className="about-block">
           <h3>アプリの見方</h3>
           <p>
-            画面の主役は江の島ハーバーの実況とナウキャストです。気象庁の警報・注意報は、発表があるときだけ実況見出しの直下に強く出します。ないときは見出し横の「発表なし」だけに留めます。
+            上から実況・ナウキャスト・急上昇マッチの順です。気象庁の警報・注意報は、発表があるときだけ見出し直下に強く出します。ないときは「発表なし」一行に留めます。
           </p>
           <p>
             短時間の判断はナウキャストの15・30・60分を見てください。平均 10 m/s 超、瞬間 13 m/s 超は強調表示します。急上昇マッチは類似の有無と見込みの目安で、数値はナウキャストに織り込みます。

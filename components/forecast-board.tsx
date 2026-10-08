@@ -34,11 +34,11 @@ function InfoDisclosure({
   className?: string;
 }) {
   return (
-    <details className={cn("info-disclosure group", className)}>
-      <summary className="cursor-pointer list-none text-[11px] marker:content-none">
-        <span className="soft-link group-open:text-ink">{title}</span>
+    <details className={cn("info-disclosure", className)}>
+      <summary>
+        <span className="soft-link">{title}</span>
       </summary>
-      <div className="prose-muted mt-1.5 space-y-1.5">{children}</div>
+      <div className="info-disclosure-body prose-muted">{children}</div>
     </details>
   );
 }
@@ -210,12 +210,12 @@ function HarborPanel({
   const hasWarnings = warningList.length > 0;
 
   return (
-    <section className="anim-rise space-y-3">
-      <div className="flex flex-wrap items-end justify-between gap-x-3 gap-y-1">
-        <div>
-          <p className="eyebrow mb-0.5">Live</p>
+    <section className="anim-rise">
+      <div className="section-head">
+        <div className="section-head-copy">
+          <p className="eyebrow mb-1">いまの風</p>
           <h2 className="section-title">江の島ヨットハーバー</h2>
-          <p className="jma-meta mt-1">
+          <p className="jma-meta mt-1.5">
             {jmaLoaded === false ? (
               <span>気象庁の発表を確認中…</span>
             ) : hasWarnings ? (
@@ -249,39 +249,82 @@ function HarborPanel({
       {hasWarnings ? <JmaAlert warnings={warningList} /> : null}
 
       <div className="panel-stack">
-        <article className="wind-panel anim-rise">
-          <div className="flex flex-wrap items-start justify-between gap-2">
-            <div>
-              <p className="panel-kicker">急上昇マッチ</p>
-              <p className="panel-sub">
-                {match
-                  ? harbor.nowcastSkill.patternBlended
-                    ? "類似の過去あり · ナウキャストに反映"
-                    : "類似の過去イベントあり"
-                  : "いまは該当する前兆がありません"}
-              </p>
+        {latest ? (
+          <article
+            className={cn(
+              "wind-panel anim-rise",
+              (liveHot || sourceStale) && "wind-panel-warn",
+            )}
+          >
+            <div className="panel-head">
+              <div>
+                <p className={cn("panel-kicker", liveHot && "panel-kicker-warn")}>実況 · いま</p>
+                <p
+                  className={cn(
+                    "panel-sub",
+                    sourceStale && "font-medium text-warn",
+                  )}
+                >
+                  {formatHarborObsTime(latest.at)}
+                  {lagMinutes !== null ? ` · ${lagMinutes}分前` : ""}
+                  {latest.fromLabel ? ` · ${latest.fromLabel}` : ""}
+                </p>
+              </div>
+              <WindArrow
+                degrees={latest.fromDeg}
+                blocked={liveHot}
+                label={latest.fromLabel}
+                size="lg"
+              />
             </div>
-            {match && matchFormatted ? (
-              <InfoDisclosure title="説明">
-                <p>{matchFormatted.detail}</p>
-                {harbor.nowcastSkill.patternBlended ? (
-                  <p>短時間の数値は下のナウキャストを見てください。</p>
-                ) : null}
-              </InfoDisclosure>
-            ) : null}
-          </div>
 
-          {match && matchFormatted ? (
-            <div className="mt-2.5 space-y-1.5">
-              <p className="panel-body">{matchFormatted.headline}</p>
-              {outlookLine ? <p className="panel-body text-warn/90">{outlookLine}</p> : null}
+            <div className="mt-2.5">
+              <ThresholdBadges meanMs={latest.meanMs} gustMs={latest.maxMs} />
             </div>
-          ) : (
-            <p className="panel-body text-muted">
-              立ち上がりがはっきりしたとき、過去の急上昇との一致をここに出します。数値はナウキャスト側に反映します。
-            </p>
-          )}
-        </article>
+
+            {liveHot ? (
+              <p className="threshold-banner mt-2.5">
+                {liveMeanHot && liveGustHot
+                  ? `平均 ${MEAN_LIMIT_MS} m/s・瞬間 ${GUST_LIMIT_MS} m/s を超えています。出艇判断を慎重に。`
+                  : liveMeanHot
+                    ? `平均風速が ${MEAN_LIMIT_MS} m/s を超えています。出艇判断を慎重に。`
+                    : `瞬間風速が ${GUST_LIMIT_MS} m/s を超えています。出艇判断を慎重に。`}
+              </p>
+            ) : null}
+
+            <dl className="metric-rail metric-rail-2 not-prose mt-3">
+              <div className={cn("metric-tile", liveMeanHot && "metric-tile-warn")}>
+                <dt>平均</dt>
+                <dd>
+                  {latest.meanMs.toFixed(1)}
+                  <span className="metric-unit">m/s</span>
+                </dd>
+              </div>
+              <div className={cn("metric-tile", liveGustHot && "metric-tile-warn")}>
+                <dt>瞬間</dt>
+                <dd>
+                  {latest.maxMs.toFixed(1)}
+                  <span className="metric-unit">m/s</span>
+                </dd>
+              </div>
+            </dl>
+
+            {sourceStale ? (
+              <p className="panel-body font-medium text-warn">
+                公開側の更新が止まっています。新しい観測が来るまで短時間予測は出しません。
+              </p>
+            ) : rising && !liveHot ? (
+              <p className="panel-body text-warn/90">
+                立ち上がり気味です。ナウキャストと急上昇マッチも確認してください。
+              </p>
+            ) : null}
+          </article>
+        ) : (
+          <article className="wind-panel anim-rise">
+            <p className="panel-kicker">実況 · いま</p>
+            <p className="panel-body text-muted">実況データはまだありません。</p>
+          </article>
+        )}
 
         <article
           className={cn(
@@ -289,7 +332,7 @@ function HarborPanel({
             nowcastHot && "wind-panel-warn",
           )}
         >
-          <div className="flex flex-wrap items-start justify-between gap-2">
+          <div className="panel-head">
             <div>
               <p className={cn("panel-kicker", nowcastHot && "panel-kicker-warn")}>
                 ナウキャスト
@@ -382,92 +425,49 @@ function HarborPanel({
           )}
         </article>
 
-        {latest ? (
-          <article
-            className={cn(
-              "wind-panel anim-rise anim-rise-delay-2",
-              (liveHot || sourceStale) && "wind-panel-warn",
-            )}
-          >
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div>
-                <p className={cn("panel-kicker", liveHot && "panel-kicker-warn")}>実況 · いま</p>
-                <p
-                  className={cn(
-                    "panel-sub",
-                    sourceStale && "font-medium text-warn",
-                  )}
-                >
-                  {formatHarborObsTime(latest.at)}
-                  {lagMinutes !== null ? ` · ${lagMinutes}分前` : ""}
-                  {latest.fromLabel ? ` · ${latest.fromLabel}` : ""}
-                </p>
-              </div>
-              <WindArrow
-                degrees={latest.fromDeg}
-                blocked={liveHot}
-                label={latest.fromLabel}
-                size="lg"
-              />
+        <article className="wind-panel anim-rise anim-rise-delay-2">
+          <div className="panel-head">
+            <div>
+              <p className="panel-kicker">急上昇マッチ</p>
+              <p className="panel-sub">
+                {match
+                  ? harbor.nowcastSkill.patternBlended
+                    ? "類似の過去あり · ナウキャストに反映"
+                    : "類似の過去イベントあり"
+                  : "いまは該当する前兆がありません"}
+              </p>
             </div>
+            {match && matchFormatted ? (
+              <InfoDisclosure title="説明">
+                <p>{matchFormatted.detail}</p>
+                {harbor.nowcastSkill.patternBlended ? (
+                  <p>短時間の数値は上のナウキャストを見てください。</p>
+                ) : null}
+              </InfoDisclosure>
+            ) : null}
+          </div>
 
-            <div className="mt-2.5">
-              <ThresholdBadges meanMs={latest.meanMs} gustMs={latest.maxMs} />
+          {match && matchFormatted ? (
+            <div className="mt-2.5 space-y-1.5">
+              <p className="panel-body">{matchFormatted.headline}</p>
+              {outlookLine ? <p className="panel-body text-warn/90">{outlookLine}</p> : null}
             </div>
-
-            {liveHot ? (
-              <p className="threshold-banner mt-2.5">
-                {liveMeanHot && liveGustHot
-                  ? `平均 ${MEAN_LIMIT_MS} m/s・瞬間 ${GUST_LIMIT_MS} m/s を超えています。出艇判断を慎重に。`
-                  : liveMeanHot
-                    ? `平均風速が ${MEAN_LIMIT_MS} m/s を超えています。出艇判断を慎重に。`
-                    : `瞬間風速が ${GUST_LIMIT_MS} m/s を超えています。出艇判断を慎重に。`}
-              </p>
-            ) : null}
-
-            <dl className="metric-rail metric-rail-2 not-prose mt-3">
-              <div className={cn("metric-tile", liveMeanHot && "metric-tile-warn")}>
-                <dt>平均</dt>
-                <dd>
-                  {latest.meanMs.toFixed(1)}
-                  <span className="metric-unit">m/s</span>
-                </dd>
-              </div>
-              <div className={cn("metric-tile", liveGustHot && "metric-tile-warn")}>
-                <dt>瞬間</dt>
-                <dd>
-                  {latest.maxMs.toFixed(1)}
-                  <span className="metric-unit">m/s</span>
-                </dd>
-              </div>
-            </dl>
-
-            {sourceStale ? (
-              <p className="panel-body font-medium text-warn">
-                公開側の更新が止まっています。新しい観測が来るまで短時間予測は出しません。
-              </p>
-            ) : rising && !liveHot ? (
-              <p className="panel-body text-warn/90">
-                立ち上がり気味です。急上昇マッチとナウキャストも確認してください。
-              </p>
-            ) : null}
-          </article>
-        ) : (
-          <p className="panel-body text-muted">実況データはまだありません。</p>
-        )}
+          ) : (
+            <p className="panel-body text-muted">
+              立ち上がりがはっきりしたとき、過去の急上昇との一致をここに出します。数値はナウキャスト側に反映します。
+            </p>
+          )}
+        </article>
       </div>
 
       {harbor.alerts.some((alert) => alert.kind !== "stale") ? (
-        <div className="space-y-1.5">
+        <div className="alert-stack mt-3">
           {harbor.alerts
             .filter((alert) => alert.kind !== "stale")
             .map((alert) => (
               <div
                 key={`${alert.kind}-${alert.message}`}
-                className={cn(
-                  "rounded-lg py-1.5 pl-3 text-[12px] leading-4",
-                  alert.level === "watch" ? "callout" : "callout-sea",
-                )}
+                className={alert.level === "watch" ? "callout" : "callout-sea"}
               >
                 {alert.message}
               </div>
@@ -476,7 +476,7 @@ function HarborPanel({
       ) : null}
 
       {harbor.degraded ? (
-        <p className="text-[11px] text-muted">
+        <p className="prose-muted mt-3">
           取得に失敗したため、保存してある直近の実況を表示しています。
         </p>
       ) : null}
@@ -487,11 +487,11 @@ function HarborPanel({
 /** Full alert block — only rendered when JMA has active warnings. */
 function JmaAlert({ warnings }: { warnings: ActiveWarning[] }) {
   return (
-    <aside className="jma-alert anim-rise" aria-label="気象庁 鎌倉市の警報・注意報">
-      <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+    <aside className="jma-alert anim-rise mb-3" aria-label="気象庁 鎌倉市の警報・注意報">
+      <div className="panel-head">
         <p className="jma-alert-title">気象庁 · 鎌倉市の警報・注意報</p>
         <a
-          className="soft-link text-[10px]"
+          className="soft-link jma-alert-link"
           href="https://www.jma.go.jp/bosai/warning/#lang=ja&area_type=class20s&area_code=1420400"
           target="_blank"
           rel="noreferrer"
@@ -499,21 +499,24 @@ function JmaAlert({ warnings }: { warnings: ActiveWarning[] }) {
           発表一覧
         </a>
       </div>
-      <ul className="mt-1.5 space-y-1 text-[12px] leading-5">
+      <ul className="jma-alert-list">
         {warnings.map((warning) => (
           <li
             key={warning.code}
-            className={cn(warning.severe ? "font-medium text-warn" : "text-warn/90")}
+            className={cn(
+              "jma-alert-item",
+              warning.severe && "jma-alert-item-severe",
+            )}
           >
             {warning.name}
-            <span className="text-warn/75">
+            <span>
               （{warning.status}
               {warning.notes.length > 0 ? ` · ${warning.notes.join(" · ")}` : ""}）
             </span>
           </li>
         ))}
       </ul>
-      <p className="mt-1.5 text-[11px] leading-4 text-warn/80">
+      <p className="jma-alert-note">
         出艇の最終判断は、この発表と現場の状況を優先してください。
       </p>
     </aside>
@@ -590,8 +593,8 @@ export function ForecastBoard() {
   }, [load]);
 
   return (
-    <section className="anim-rise space-y-4 sm:space-y-5" aria-live="polite">
-      {error ? <p className="callout py-2 text-xs">{error}</p> : null}
+    <section className="anim-rise space-y-5 sm:space-y-6" aria-live="polite">
+      {error ? <p className="callout">{error}</p> : null}
 
       {data?.harbor ? (
         <HarborPanel
@@ -600,28 +603,37 @@ export function ForecastBoard() {
           jmaLoaded={Boolean(data.jma) || !loading}
         />
       ) : (
-        <div className="space-y-2">
-          <p className="eyebrow">Live</p>
-          <h2 className="section-title">江の島ヨットハーバー</h2>
+        <div>
+          <div className="section-head">
+            <div className="section-head-copy">
+              <p className="eyebrow mb-1">いまの風</p>
+              <h2 className="section-title">江の島ヨットハーバー</h2>
+              <p className="jma-meta mt-1.5">
+                {data?.jma?.warnings && data.jma.warnings.length > 0
+                  ? null
+                  : data?.jma
+                    ? "気象庁 · 発表なし"
+                    : loading
+                      ? "気象庁の発表を確認中…"
+                      : "気象庁 · 確認待ち"}
+              </p>
+            </div>
+          </div>
           {data?.jma?.warnings && data.jma.warnings.length > 0 ? (
             <JmaAlert warnings={data.jma.warnings} />
-          ) : (
-            <p className="jma-meta">
-              {data?.jma
-                ? "気象庁 · 発表なし"
-                : loading
-                  ? "気象庁の発表を確認中…"
-                  : "気象庁 · 確認待ち"}
-            </p>
-          )}
-          <div className="skeleton-pulse h-36 bg-sand/70" />
+          ) : null}
+          <div className="panel-stack">
+            <div className="skeleton-panel skeleton-pulse" />
+            <div className="skeleton-panel skeleton-pulse anim-rise-delay-1" />
+            <div className="skeleton-panel skeleton-pulse anim-rise-delay-2" />
+          </div>
           {loading ? null : (
-            <p className="text-[11px] text-muted">実況データはまだありません。</p>
+            <p className="prose-muted mt-3">実況データはまだありません。</p>
           )}
         </div>
       )}
 
-      <div className="windy-strip flex flex-wrap items-center justify-between gap-2">
+      <div className="utility-strip">
         <p className="prose-muted max-w-md">
           {windyBlurb()}{" "}
           <a className="soft-link" href={WINDY_URL} target="_blank" rel="noreferrer">
@@ -631,7 +643,7 @@ export function ForecastBoard() {
         <Button
           variant="outline"
           size="sm"
-          className="h-7 shrink-0 border-line/80 bg-white/60 px-2.5 text-[11px]"
+          className="shrink-0"
           onClick={() => void load("page")}
           disabled={loading}
         >
@@ -639,9 +651,7 @@ export function ForecastBoard() {
         </Button>
       </div>
 
-      <div className="mt-2 sm:mt-4">
-        <ForecastAbout harbor={data?.harbor ?? null} />
-      </div>
+      <ForecastAbout harbor={data?.harbor ?? null} />
     </section>
   );
 }
