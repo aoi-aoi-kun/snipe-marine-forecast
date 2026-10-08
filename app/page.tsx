@@ -1,15 +1,10 @@
 import { ForecastBoard } from "@/components/forecast-board";
-import { ForecastGuide } from "@/components/forecast-guide";
 import { WINDY_URL, windyBlurb } from "@/lib/ui-copy";
 
 export default function Page() {
   return (
     <main className="mx-auto w-full max-w-5xl px-4 pb-[max(3.75rem,env(safe-area-inset-bottom))] pt-[max(0.75rem,env(safe-area-inset-top))] sm:px-8 sm:pb-24 sm:pt-4">
       <ForecastBoard />
-
-      <div className="mt-8 sm:mt-10">
-        <ForecastGuide />
-      </div>
 
       <footer className="anim-rise prose-muted mt-8 space-y-2 border-t border-line/60 pt-5 sm:mt-10">
         <p>

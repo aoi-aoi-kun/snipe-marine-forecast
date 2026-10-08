@@ -399,6 +399,80 @@ a {
   opacity: 0.86;
 }
 
+.jma-banner {
+  border-radius: 0.85rem;
+  padding: 0.7rem 0.9rem;
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-sea) 14%, transparent);
+  background: color-mix(in srgb, white 82%, var(--color-sand));
+}
+
+.jma-banner-active {
+  background: color-mix(in srgb, var(--color-warn-bg) 78%, white);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-warn) 36%, transparent);
+}
+
+.jma-banner-clear {
+  background:
+    linear-gradient(
+      120deg,
+      color-mix(in srgb, white 88%, var(--color-sand)),
+      color-mix(in srgb, var(--color-mist) 35%, white)
+    );
+}
+
+.jma-banner-title {
+  font-size: 0.68rem;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  color: color-mix(in srgb, var(--color-muted) 70%, var(--color-sea));
+}
+
+.jma-banner-active .jma-banner-title {
+  color: var(--color-warn);
+}
+
+.about-panel {
+  border-top: 1px solid color-mix(in srgb, var(--color-line) 70%, transparent);
+  padding-top: 1.35rem;
+}
+
+.about-grid {
+  display: grid;
+  gap: 1.1rem;
+}
+
+@media (min-width: 768px) {
+  .about-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1.25rem 1.5rem;
+  }
+}
+
+.about-block h3 {
+  font-family: var(--font-serif);
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: color-mix(in srgb, var(--color-ink) 88%, var(--color-sea));
+  margin-bottom: 0.45rem;
+}
+
+.about-block p {
+  font-size: 0.78rem;
+  line-height: 1.7;
+  color: color-mix(in srgb, var(--color-muted) 88%, var(--color-ink));
+  margin-top: 0.45rem;
+}
+
+.about-block p:first-of-type {
+  margin-top: 0;
+}
+
+.about-block .stat-row {
+  margin-top: 0.65rem;
+  margin-bottom: 0.35rem;
+}
+
 .eyebrow {
   font-size: 0.65rem;
   font-weight: 500;

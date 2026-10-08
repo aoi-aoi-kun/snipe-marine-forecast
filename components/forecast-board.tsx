@@ -6,17 +6,14 @@ import type { ForecastResponse, HarborBundle } from "@/lib/types";
 import {
   HARBOR_SOURCE_LABEL,
   WINDY_URL,
-  formatContinuousLine,
-  formatLearnLead,
-  formatLearnMetrics,
-  formatLearningTrend,
   formatPatternMatchNote,
-  shortenLearningNote,
   windyBlurb,
 } from "@/lib/ui-copy";
 import { formatRampOutlookLine } from "@/lib/ramp-outlook";
 import { JST_OFFSET_MS } from "@/lib/time";
 import { cn } from "@/lib/utils";
+import type { ActiveWarning } from "@/lib/types";
+import { ForecastAbout } from "@/components/forecast-about";
 
 function formatHarborObsTime(iso: string): string {
   const shifted = new Date(Date.parse(iso) + JST_OFFSET_MS);
@@ -85,16 +82,39 @@ function WindArrow({
       role={label ? "img" : undefined}
     >
       <svg viewBox="0 0 32 32" className="size-[72%]" overflow="visible">
-        {/* Fixed compass ring — does not rotate with the pointer */}
+        {/* Fixed 16-point compass ring */}
         <circle
           cx="16"
           cy="16"
           r="14.6"
           fill="none"
           stroke="currentColor"
-          strokeOpacity="0.18"
-          strokeWidth="1.2"
+          strokeOpacity="0.16"
+          strokeWidth="1.1"
         />
+        {Array.from({ length: 16 }, (_, index) => {
+          const angle = (index * 22.5 * Math.PI) / 180;
+          const major = index % 4 === 0;
+          const inner = major ? 11.2 : 12.2;
+          const outer = 14.4;
+          const x1 = 16 + inner * Math.sin(angle);
+          const y1 = 16 - inner * Math.cos(angle);
+          const x2 = 16 + outer * Math.sin(angle);
+          const y2 = 16 - outer * Math.cos(angle);
+          return (
+            <line
+              key={index}
+              x1={x1}
+              y1={y1}
+              x2={x2}
+              y2={y2}
+              stroke="currentColor"
+              strokeOpacity={major ? 0.42 : 0.22}
+              strokeWidth={major ? 1.15 : 0.85}
+              strokeLinecap="round"
+            />
+          );
+        })}
         <g
           style={{
             transform: `rotate(${degrees + 180}deg)`,
@@ -102,7 +122,6 @@ function WindArrow({
             transition: "transform 0.5s cubic-bezier(0.22, 1, 0.36, 1)",
           }}
         >
-          {/* Soft stem shadow for depth */}
           <path
             d="M16 4.4 10.6 14.6h2.55v11.4c0 .75.62 1.35 1.38 1.35h1.94c.76 0 1.38-.6 1.38-1.35V14.6H21.4L16 4.4Z"
             fill="currentColor"
@@ -113,71 +132,10 @@ function WindArrow({
             d="M16 4.4 10.6 14.6h2.55v11.4c0 .75.62 1.35 1.38 1.35h1.94c.76 0 1.38-.6 1.38-1.35V14.6H21.4L16 4.4Z"
             fill="currentColor"
           />
-          {/* Nose highlight */}
           <path d="M16 5.6 13.2 11.2h5.6L16 5.6Z" fill="white" fillOpacity="0.28" />
         </g>
       </svg>
     </span>
-  );
-}
-
-function LearnStatusPanel({ harbor }: { harbor: HarborBundle }) {
-  const input = {
-    tip: harbor.learnOps?.tip,
-    intervalMinutes: harbor.mos?.continuous.intervalMinutes ?? 10,
-    continuousStarted: harbor.mos?.continuous.started ?? false,
-    ticking: harbor.learnOps?.ticking ?? false,
-    lastTickAt: harbor.mos?.continuous.lastTickAt ?? null,
-    cacheWritable: harbor.learnOps?.cacheWritable,
-    learningDays: harbor.learnOps?.learningDays ?? 0,
-    warmCount: harbor.learnOps?.warmCount ?? 0,
-    nowcastCases: harbor.learnOps?.nowcastCases ?? harbor.nowcastSkill.caseCount,
-    nowcastCalibrated: harbor.nowcastSkill.calibrated,
-    mosPairs: harbor.learnOps?.mosPairs ?? harbor.mos?.pairCount ?? 0,
-    mosActiveBins: harbor.mos?.activeBins ?? 0,
-    patternEvents: harbor.learnOps?.patternEvents ?? harbor.pattern.storedEvents,
-    metaMosReady: Boolean(harbor.learnOps?.metaMosReady || harbor.mos?.meta?.mosReady),
-    metaPatternReady: Boolean(
-      harbor.learnOps?.metaPatternReady || harbor.mos?.meta?.patternReady,
-    ),
-    learningNote: harbor.learning?.note,
-    improving: harbor.learning?.improving,
-  };
-  const metrics = formatLearnMetrics(input);
-  const trend = formatLearningTrend(input.improving);
-
-  return (
-    <InfoDisclosure title="学習の状態">
-      <p className="text-ink/80">{formatLearnLead(input)}</p>
-      <p>{formatContinuousLine(input)}</p>
-      <dl className="stat-row not-prose">
-        {metrics.map((item) => (
-          <div key={item.label} className="stat-pill">
-            <dt>{item.label}</dt>
-            <dd>
-              {item.value}
-              {item.hint ? <span className="stat-hint">{item.hint}</span> : null}
-            </dd>
-          </div>
-        ))}
-      </dl>
-      {harbor.learning ? (
-        <>
-          <p>{shortenLearningNote(harbor.learning.note)}</p>
-          {trend ? <p>{trend}</p> : null}
-        </>
-      ) : (
-        <p>
-          {harbor.nowcastSkill.calibrated
-            ? "ナウキャストは過去実況で校正済みです。"
-            : "ナウキャストは検証データを蓄積中です。"}
-          {harbor.mos?.note ? ` ${harbor.mos.note}` : ""}
-        </p>
-      )}
-      {harbor.mos?.meta?.note ? (
-        <p className="text-[0.625rem] leading-relaxed opacity-90">{harbor.mos.meta.note}</p>
-      ) : null}
-    </InfoDisclosure>
   );
 }
 
@@ -485,15 +443,64 @@ function HarborPanel({ harbor }: { harbor: HarborBundle }) {
         </div>
       ) : null}
 
-      <div className="secondary-zone border-t border-line/35 pt-2">
-        <LearnStatusPanel harbor={harbor} />
-      </div>
-
       {harbor.degraded ? (
         <p className="text-[11px] text-muted">
           取得に失敗したため、保存してある直近の実況を表示しています。
         </p>
       ) : null}
+    </section>
+  );
+}
+
+function JmaBanner({
+  warnings,
+  loaded,
+}: {
+  warnings: ActiveWarning[] | null | undefined;
+  loaded: boolean;
+}) {
+  const list = warnings ?? [];
+  return (
+    <section
+      className={cn(
+        "jma-banner anim-rise",
+        list.length > 0 ? "jma-banner-active" : "jma-banner-clear",
+      )}
+      aria-label="気象庁 鎌倉市の警報・注意報"
+    >
+      <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+        <p className="jma-banner-title">気象庁 · 鎌倉市</p>
+        <a
+          className="soft-link text-[10px]"
+          href="https://www.jma.go.jp/bosai/warning/#lang=ja&area_type=class20s&area_code=1420400"
+          target="_blank"
+          rel="noreferrer"
+        >
+          発表一覧
+        </a>
+      </div>
+      {!loaded ? (
+        <p className="mt-1 text-[12px] text-muted">警報・注意報を確認しています…</p>
+      ) : list.length === 0 ? (
+        <p className="mt-1 text-[12px] leading-5 text-ink/70">
+          発表中の警報・注意報はありません。
+        </p>
+      ) : (
+        <ul className="mt-1.5 space-y-1 text-[12px] leading-5">
+          {list.map((warning) => (
+            <li
+              key={warning.code}
+              className={cn(warning.severe ? "font-medium text-warn" : "text-warn/90")}
+            >
+              {warning.name}
+              <span className="text-warn/75">
+                （{warning.status}
+                {warning.notes.length > 0 ? ` · ${warning.notes.join(" · ")}` : ""}）
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
     </section>
   );
 }
@@ -569,21 +576,9 @@ export function ForecastBoard() {
 
   return (
     <section className="anim-rise space-y-4 sm:space-y-5" aria-live="polite">
-      {error ? <p className="callout py-2 text-xs">{error}</p> : null}
+      <JmaBanner warnings={data?.jma?.warnings} loaded={Boolean(data?.jma) || !loading} />
 
-      {data?.jma && data.jma.warnings.length > 0 ? (
-        <div className="callout py-2 text-xs leading-5">
-          <p className="font-medium tracking-wide">鎌倉市 · 警報・注意報</p>
-          <ul className="mt-1 space-y-0.5 text-warn/90">
-            {data.jma.warnings.map((warning) => (
-              <li key={warning.code} className={warning.severe ? "font-medium" : undefined}>
-                {warning.name}（{warning.status}
-                {warning.notes.length > 0 ? ` · ${warning.notes.join(" · ")}` : ""}）
-              </li>
-            ))}
-          </ul>
-        </div>
-      ) : null}
+      {error ? <p className="callout py-2 text-xs">{error}</p> : null}
 
       {data?.harbor ? (
         <HarborPanel harbor={data.harbor} />
@@ -614,6 +609,10 @@ export function ForecastBoard() {
         >
           {loading ? "更新中" : "実況を更新"}
         </Button>
+      </div>
+
+      <div className="mt-2 sm:mt-4">
+        <ForecastAbout harbor={data?.harbor ?? null} />
       </div>
     </section>
   );
