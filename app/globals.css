@@ -562,6 +562,8 @@ a {
 }
 
 .about-item summary {
+  position: relative;
+  z-index: 1;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -591,6 +593,7 @@ a {
   font-weight: 600;
   letter-spacing: 0.01em;
   color: var(--color-ink);
+  pointer-events: none;
 }
 
 .about-item-mark {
@@ -601,6 +604,7 @@ a {
   border-bottom: 1.5px solid color-mix(in srgb, var(--color-sea) 50%, var(--color-muted));
   transform: rotate(45deg) translateY(-0.1rem);
   transition: transform 0.18s ease;
+  pointer-events: none;
 }
 
 .about-item[open] .about-item-mark {

@@ -1,4 +1,6 @@
-import type { ReactNode } from "react";
+"use client";
+
+import { useState, type ReactNode } from "react";
 import type { HarborBundle } from "@/lib/types";
 import {
   formatContinuousLine,
@@ -109,9 +111,21 @@ function AboutDisclosure({
   title: string;
   children: ReactNode;
 }) {
+  const [open, setOpen] = useState(false);
   return (
-    <details className="about-item">
-      <summary>
+    <details
+      className="about-item"
+      open={open}
+      onToggle={(event) => {
+        setOpen(event.currentTarget.open);
+      }}
+    >
+      <summary
+        onClick={(event) => {
+          event.preventDefault();
+          setOpen((value) => !value);
+        }}
+      >
         <span className="about-item-title">{title}</span>
         <span className="about-item-mark" aria-hidden="true" />
       </summary>

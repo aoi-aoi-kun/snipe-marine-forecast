@@ -561,48 +561,50 @@ export function ForecastBoard() {
   }, [load]);
 
   return (
-    <section className="anim-rise space-y-3 sm:space-y-3.5" aria-live="polite">
-      {error ? <p className="callout">{error}</p> : null}
+    <div className="anim-rise space-y-3 sm:space-y-3.5">
+      <section aria-live="polite">
+        {error ? <p className="callout">{error}</p> : null}
 
-      {data?.harbor ? (
-        <HarborPanel
-          harbor={data.harbor}
-          warnings={data.jma?.warnings}
-          jmaLoaded={Boolean(data.jma) || !loading}
-          loading={loading}
-          onRefresh={() => void load("page")}
-        />
-      ) : (
-        <div>
-          <div className="section-head">
-            <div className="section-head-copy">
-              <h2 className="section-title">江の島ヨットハーバー</h2>
-              <p className="jma-meta mt-1">
-                {data?.jma?.warnings && data.jma.warnings.length > 0
-                  ? null
-                  : data?.jma
-                    ? "気象庁 · 発表なし"
-                    : loading
-                      ? "気象庁の発表を確認中…"
-                      : "気象庁 · 確認待ち"}
-              </p>
+        {data?.harbor ? (
+          <HarborPanel
+            harbor={data.harbor}
+            warnings={data.jma?.warnings}
+            jmaLoaded={Boolean(data.jma) || !loading}
+            loading={loading}
+            onRefresh={() => void load("page")}
+          />
+        ) : (
+          <div>
+            <div className="section-head">
+              <div className="section-head-copy">
+                <h2 className="section-title">江の島ヨットハーバー</h2>
+                <p className="jma-meta mt-1">
+                  {data?.jma?.warnings && data.jma.warnings.length > 0
+                    ? null
+                    : data?.jma
+                      ? "気象庁 · 発表なし"
+                      : loading
+                        ? "気象庁の発表を確認中…"
+                        : "気象庁 · 確認待ち"}
+                </p>
+              </div>
+              <SectionTools loading={loading} onRefresh={() => void load("page")} />
             </div>
-            <SectionTools loading={loading} onRefresh={() => void load("page")} />
+            {data?.jma?.warnings && data.jma.warnings.length > 0 ? (
+              <JmaAlert warnings={data.jma.warnings} />
+            ) : null}
+            <div className="primary-panels">
+              <div className="skeleton-panel skeleton-pulse" />
+              <div className="skeleton-panel skeleton-pulse anim-rise-delay-1" />
+            </div>
+            {loading ? null : (
+              <p className="prose-muted mt-3">実況データはまだありません。</p>
+            )}
           </div>
-          {data?.jma?.warnings && data.jma.warnings.length > 0 ? (
-            <JmaAlert warnings={data.jma.warnings} />
-          ) : null}
-          <div className="primary-panels">
-            <div className="skeleton-panel skeleton-pulse" />
-            <div className="skeleton-panel skeleton-pulse anim-rise-delay-1" />
-          </div>
-          {loading ? null : (
-            <p className="prose-muted mt-3">実況データはまだありません。</p>
-          )}
-        </div>
-      )}
+        )}
+      </section>
 
       <ForecastAbout harbor={data?.harbor ?? null} />
-    </section>
+    </div>
   );
 }
