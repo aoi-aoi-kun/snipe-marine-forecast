@@ -220,24 +220,18 @@ a {
   color: var(--color-warn);
 }
 
-.live-speed {
-  font-family: var(--font-serif);
-  font-size: clamp(3.6rem, 13vw, 5.25rem);
-  line-height: 0.88;
-  letter-spacing: -0.05em;
-  font-variant-numeric: tabular-nums;
-  color: var(--color-ink);
-  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.45);
+.panel-sub {
+  margin-top: 0.25rem;
+  font-size: 0.8125rem;
+  line-height: 1.35;
+  color: var(--color-muted);
 }
 
-.live-speed-unit {
-  margin-left: 0.35rem;
-  font-family: var(--font-sans);
-  font-size: clamp(0.95rem, 2.8vw, 1.1rem);
-  font-weight: 500;
-  letter-spacing: 0.06em;
-  color: var(--color-muted);
-  vertical-align: 0.65em;
+.panel-body {
+  margin-top: 0.65rem;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: color-mix(in srgb, var(--color-ink) 88%, transparent);
 }
 
 .threshold-row {
@@ -271,6 +265,7 @@ a {
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-warn) 36%, transparent);
 }
 
+.metric-rail,
 .nowcast-rail {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -278,106 +273,91 @@ a {
 }
 
 @media (min-width: 640px) {
+  .metric-rail,
   .nowcast-rail {
     gap: 0.7rem;
   }
 }
 
+.metric-tile,
 .nowcast-tile {
   position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-height: 9rem;
-  border-radius: 1rem;
-  padding: 0.9rem 0.45rem 1rem;
+  min-height: 7.75rem;
+  border-radius: 0.95rem;
+  padding: 0.85rem 0.5rem 0.95rem;
   text-align: center;
   background: color-mix(in srgb, white 82%, var(--color-paper));
   box-shadow:
-    0 0 0 1px color-mix(in srgb, var(--color-sea) 16%, transparent),
-    0 8px 20px color-mix(in srgb, var(--color-sea-deep) 8%, transparent);
+    0 0 0 1px color-mix(in srgb, var(--color-sea) 15%, transparent),
+    0 8px 18px color-mix(in srgb, var(--color-sea-deep) 7%, transparent);
   animation: rise-in 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 @media (min-width: 640px) {
+  .metric-tile,
   .nowcast-tile {
-    min-height: 10.25rem;
-    padding: 1.05rem 0.6rem 1.15rem;
+    min-height: 8.5rem;
+    padding: 0.95rem 0.55rem 1.05rem;
   }
 }
 
+.metric-tile-warn,
 .nowcast-tile-warn {
   background: color-mix(in srgb, var(--color-warn-bg) 84%, white);
   box-shadow:
-    0 0 0 1.5px color-mix(in srgb, var(--color-warn) 48%, transparent),
-    0 10px 22px color-mix(in srgb, var(--color-warn) 12%, transparent);
+    0 0 0 1.5px color-mix(in srgb, var(--color-warn) 46%, transparent),
+    0 10px 20px color-mix(in srgb, var(--color-warn) 11%, transparent);
 }
 
-.nowcast-speed {
-  font-family: var(--font-serif);
-  font-size: clamp(2.1rem, 7vw, 2.9rem);
-  line-height: 0.95;
-  letter-spacing: -0.04em;
-  font-variant-numeric: tabular-nums;
-}
-
-.nowcast-speed-unit {
-  margin-left: 0.2rem;
-  font-family: var(--font-sans);
-  font-size: 0.72rem;
-  font-weight: 500;
-  letter-spacing: 0.04em;
-  color: var(--color-muted);
-  vertical-align: 0.45em;
-}
-
-.metric-rail {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0.55rem;
-}
-
-.metric-tile {
-  border-radius: 0.9rem;
-  padding: 0.75rem 0.55rem 0.85rem;
-  text-align: center;
-  background: color-mix(in srgb, white 82%, var(--color-paper));
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-sea) 14%, transparent);
-}
-
-.metric-tile-warn {
-  background: color-mix(in srgb, var(--color-warn-bg) 84%, white);
-  box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--color-warn) 46%, transparent);
-}
-
-.metric-tile dt {
+.metric-tile dt,
+.nowcast-tile .tile-label {
   font-size: 0.6875rem;
   font-weight: 500;
   letter-spacing: 0.06em;
   color: var(--color-muted);
 }
 
-.metric-tile dd {
-  margin-top: 0.35rem;
+.metric-tile dd,
+.nowcast-speed {
+  margin-top: 0.4rem;
   font-family: var(--font-serif);
-  font-size: clamp(1.45rem, 5vw, 1.95rem);
+  font-size: clamp(1.55rem, 5.2vw, 1.95rem);
   line-height: 1;
   letter-spacing: -0.03em;
   font-variant-numeric: tabular-nums;
   color: var(--color-ink);
 }
 
-.metric-tile .metric-hint {
+.metric-tile .metric-hint,
+.nowcast-tile .tile-hint {
   display: block;
-  margin-top: 0.35rem;
+  margin-top: 0.4rem;
   font-family: var(--font-sans);
-  font-size: 0.625rem;
+  font-size: 0.6875rem;
+  font-weight: 500;
   color: var(--color-muted);
 }
 
+.metric-unit,
+.nowcast-speed-unit {
+  margin-left: 0.2rem;
+  font-family: var(--font-sans);
+  font-size: 0.6875rem;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  color: var(--color-muted);
+  vertical-align: 0.35em;
+}
+
 .metric-tile-warn dd,
-.metric-tile-warn .metric-hint {
+.metric-tile-warn .metric-hint,
+.metric-tile-warn .metric-unit,
+.nowcast-tile-warn .nowcast-speed,
+.nowcast-tile-warn .tile-hint {
   color: var(--color-warn);
 }
 
