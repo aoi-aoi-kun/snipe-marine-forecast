@@ -41,7 +41,13 @@ type JmaCache = {
 let ifsMemory: IfsCache | null = null;
 let ifsPrevMemory: IfsCache | null = null;
 let jmaMemory: JmaCache | null = null;
-let pending: { key: string; promise: Promise<ForecastResponse> } | null = null;
+let pending: {
+  key: string;
+  promise: Promise<ForecastResponse>;
+  startedAt: number;
+} | null = null;
+const PENDING_MAX_MS = 25_000;
+const BUILD_BUDGET_MS = 22_000;
 
 async function readJson<T>(file: string): Promise<T | null> {
   try {
@@ -279,18 +285,77 @@ function normalizeForecastOptions(
   };
 }
 
+async function forecastFromCaches(
+  nowMs: number,
+  errors: string[],
+): Promise<ForecastResponse> {
+  const ifs = await loadIfsCache();
+  const warnings = await resolveJma(false);
+  if (warnings.error) errors.push(warnings.error);
+  const ifsHours = ifs?.hours ?? [];
+  const prevIfs = await loadIfsPrevCache();
+  const baseWindows = ifs
+    ? attachCycleSpread(buildWindows(ifsHours, nowMs), ifsHours, prevIfs?.hours ?? null)
+    : [];
+  const harborResolved = await resolveHarbor(nowMs, baseWindows, false, ifsHours, false, {
+    ifsDegraded: true,
+  });
+  if (harborResolved.error) errors.push(harborResolved.error);
+  if (!ifs) {
+    errors.push("ECMWF の公開データを取得しています。20〜40秒後に再読み込みしてください。");
+  }
+  return {
+    point: POINT,
+    generatedAt: new Date(nowMs).toISOString(),
+    ifs: ifs
+      ? {
+          initTime: new Date(ifs.initMs).toISOString(),
+          ageHours: (nowMs - ifs.initMs) / HOUR_MS,
+          fetchedAt: new Date(ifs.fetchedAt).toISOString(),
+          degraded: true,
+          windows: harborResolved.windows,
+        }
+      : null,
+    jma: warnings.jma,
+    harbor: harborResolved.harbor
+      ? {
+          ...harborResolved.harbor,
+          mos: {
+            ...harborResolved.harbor.mos,
+            continuous: getContinuousLearnStatus(),
+          },
+        }
+      : null,
+    errors,
+  };
+}
+
 export function getForecast(
   options: boolean | ForecastFetchOptions = false,
 ): Promise<ForecastResponse> {
   const opts = normalizeForecastOptions(options);
-  const key = `${opts.refresh ? 1 : 0}:${opts.refreshHarbor ? 1 : 0}`;
-  if (!pending || pending.key !== key) {
-    const promise = buildForecast(opts).finally(() => {
-      if (pending?.promise === promise) pending = null;
-    });
-    pending = { key, promise };
+  // Keep page traffic off the continuous-learn in-flight promise.
+  const key = opts.refresh
+    ? "full"
+    : opts.refreshHarbor
+      ? "page"
+      : "cache";
+  if (pending && pending.key === key && Date.now() - pending.startedAt < PENDING_MAX_MS) {
+    return pending.promise;
   }
-  return pending.promise;
+  const startedAt = Date.now();
+  const promise = Promise.race([
+    buildForecast(opts),
+    sleep(BUILD_BUDGET_MS).then(() =>
+      forecastFromCaches(Date.now(), [
+        "取得に時間がかかっているため、キャッシュまたは取得中の状態を返しています。",
+      ]),
+    ),
+  ]).finally(() => {
+    if (pending?.promise === promise) pending = null;
+  });
+  pending = { key, promise, startedAt };
+  return promise;
 }
 
 async function buildForecast(options: Required<ForecastFetchOptions>): Promise<ForecastResponse> {
