@@ -15,6 +15,7 @@ import { resolveHarbor } from "./harbor";
 import { getBytes } from "./http";
 import { parseWarnings } from "./jma";
 import { getLearnStatus } from "./learn-status";
+import { fetchOpenMeteoIfsForecast } from "./open-meteo-forecast";
 import { HOUR_MS } from "./time";
 import type { ForecastResponse } from "./types";
 
@@ -126,8 +127,10 @@ async function fetchJma(): Promise<JmaCache> {
 }
 
 let ifsFillPromise: Promise<void> | null = null;
-const IFS_WAIT_MS = 8_000;
-const IFS_NEAR_HOURS = 18;
+/** Free-tier: keep first paint short; extend later in small chunks. */
+const IFS_NEAR_HOURS = Number(process.env.IFS_NEAR_HOURS || 36) || 36;
+const IFS_FILL_CHUNK = 2;
+const IFS_FILL_PAUSE_MS = 750;
 
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -150,6 +153,23 @@ async function saveHours(initMs: number, hours: Map<number, HourSample>) {
   return cache;
 }
 
+async function resolveOpenMeteoBridge(nowMs: number): Promise<IfsCache> {
+  const hours = await fetchOpenMeteoIfsForecast(nowMs, 7_000);
+  if (hours.length < 3) {
+    throw new Error("Open-Meteo ECMWF の応答が不足しています");
+  }
+  const initMs = ifsCycleCandidates(nowMs)[0] ?? Math.floor(nowMs / (12 * HOUR_MS)) * 12 * HOUR_MS;
+  const cache: IfsCache = {
+    source: "ecmwf-ifs-0p25-10fg",
+    initMs,
+    fetchedAt: Date.now(),
+    hours,
+  };
+  await saveIfsCache(cache);
+  console.info(`Open-Meteo IFS bridge: ${hours.length} hours`);
+  return cache;
+}
+
 /** Download IFS off the request thread; save near-term chunks first for fast page paint. */
 function startIfsFill(nowMs: number) {
   if (ifsFillPromise) return ifsFillPromise;
@@ -164,18 +184,28 @@ function startIfsFill(nowMs: number) {
         const existing = await loadIfsCache();
         if (existing && existing.initMs !== initMs) await saveIfsPrevCache(existing);
         let map =
-          existing?.initMs === initMs ? hoursToMap(initMs, existing.hours) : new Map<number, HourSample>();
+          existing?.initMs === initMs
+            ? hoursToMap(initMs, existing.hours)
+            : new Map<number, HourSample>();
 
-        // Save every few steps so waiting requests can return mid-download.
-        for (let i = 0; i < near.length; i += 3) {
-          const chunk = near.slice(i, i + 3);
+        // Tiny chunks + pause: Render free (512MB) OOMs if many grib_ls run together.
+        for (let i = 0; i < near.length; i += IFS_FILL_CHUNK) {
+          const chunk = near.slice(i, i + IFS_FILL_CHUNK);
           map = await fetchCycleSamples(initMs, chunk, map);
           await saveHours(initMs, map);
-          console.info(`IFS near chunk saved: ${map.size} hours (init ${new Date(initMs).toISOString()})`);
+          console.info(
+            `IFS near chunk saved: ${map.size} hours (init ${new Date(initMs).toISOString()})`,
+          );
+          await sleep(IFS_FILL_PAUSE_MS);
         }
 
-        const rest = neededSteps(initMs, nowMs);
-        map = await fetchCycleSamples(initMs, rest, map);
+        const rest = neededSteps(initMs, nowMs).filter((step) => !map.has(step));
+        for (let i = 0; i < rest.length; i += IFS_FILL_CHUNK) {
+          const chunk = rest.slice(i, i + IFS_FILL_CHUNK);
+          map = await fetchCycleSamples(initMs, chunk, map);
+          await saveHours(initMs, map);
+          await sleep(IFS_FILL_PAUSE_MS);
+        }
         const done = await saveHours(initMs, map);
         console.info(
           `IFS fill done: ${done.hours.length} hours covers=${covers(done, nowMs)}`,
@@ -201,33 +231,24 @@ async function resolveIfs(nowMs: number, refresh: boolean): Promise<{
     existing && Date.now() - existing.fetchedAt < IFS_FRESH_MS && covers(existing, nowMs);
   if (fresh && !refresh && existing) return { cache: existing, degraded: false };
 
-  // Any usable cache: return now, refresh in background.
-  if (existing && existing.hours.length >= 3 && !refresh) {
-    startIfsFill(nowMs);
+  // Never block the request on GRIB downloads (Render ~30s + free-tier OOM).
+  startIfsFill(nowMs);
+
+  if (existing && existing.hours.length >= 3) {
     return { cache: existing, degraded: !covers(existing, nowMs) };
   }
 
-  startIfsFill(nowMs);
-
-  const deadline = Date.now() + IFS_WAIT_MS;
-  while (Date.now() < deadline) {
-    const current = await loadIfsCache();
-    if (current && current.hours.length >= 3) {
-      return { cache: current, degraded: !covers(current, nowMs) };
+  try {
+    const bridge = await resolveOpenMeteoBridge(nowMs);
+    return { cache: bridge, degraded: true };
+  } catch (error) {
+    if (existing && existing.hours.length > 0) {
+      return { cache: existing, degraded: true };
     }
-    await sleep(1_500);
+    throw error instanceof Error
+      ? error
+      : new Error("ECMWF の公開データを取得しています。自動で再読み込みします。");
   }
-
-  const late = await loadIfsCache();
-  if (late && late.hours.length > 0) {
-    return { cache: late, degraded: true };
-  }
-  if (existing && existing.hours.length > 0) {
-    return { cache: existing, degraded: true };
-  }
-  throw new Error(
-    "ECMWF の公開データを取得しています。20〜40秒後に再読み込みしてください。",
-  );
 }
 
 async function resolveJma(refresh: boolean): Promise<{
@@ -290,8 +311,16 @@ async function forecastFromCaches(
   nowMs: number,
   errors: string[],
 ): Promise<ForecastResponse> {
-  // Network-free fallback so we can always answer inside Render's request window.
-  const ifs = await loadIfsCache();
+  // Prefer already-cached bytes; if empty, still try Open-Meteo before giving up.
+  startIfsFill(nowMs);
+  let ifs = await loadIfsCache();
+  if (!ifs || ifs.hours.length === 0) {
+    try {
+      ifs = await resolveOpenMeteoBridge(nowMs);
+    } catch {
+      ifs = null;
+    }
+  }
   const jmaCache = await loadJmaCache();
   const ifsHours = ifs?.hours ?? [];
   const prevIfs = await loadIfsPrevCache();
@@ -299,11 +328,10 @@ async function forecastFromCaches(
     ? attachCycleSpread(buildWindows(ifsHours, nowMs), ifsHours, prevIfs?.hours ?? null)
     : [];
   if (!ifs) {
-    errors.push("ECMWF の公開データを取得しています。20〜40秒後に再読み込みしてください。");
-  } else {
-    errors.push("取得中の暫定表示です。まもなく最新に更新されます。");
+    errors.push("ECMWF の公開データを取得しています。自動で再読み込みします。");
+  } else if (!covers(ifs, nowMs)) {
+    errors.push("暫定表示です。ECMWF 公開データをバックグラウンドで補完しています。");
   }
-  startIfsFill(nowMs);
   return {
     point: POINT,
     generatedAt: new Date(nowMs).toISOString(),
@@ -337,7 +365,9 @@ async function resolveIfsCacheOnly(nowMs: number): Promise<{
   if (existing && existing.hours.length > 0) {
     return { cache: existing, degraded: !covers(existing, nowMs) };
   }
-  throw new Error("ECMWF の公開データを取得しています。自動で再読み込みします。");
+  // Cold start: Open-Meteo JSON is seconds, open-data GRIB is minutes.
+  const bridge = await resolveOpenMeteoBridge(nowMs);
+  return { cache: bridge, degraded: true };
 }
 
 export function getForecast(

@@ -12,8 +12,10 @@ export async function GET(request: Request) {
   const refresh = url.searchParams.get("refresh") === "1";
   const refreshHarbor = url.searchParams.get("refreshHarbor") === "1";
   const forecast = await getForecast({ refresh, refreshHarbor });
+  // Harbor-only or IFS-only is still a usable page; reserve 503 for total failure.
+  const usable = Boolean(forecast.ifs || forecast.harbor || forecast.jma);
   return NextResponse.json(forecast, {
-    status: forecast.ifs ? 200 : 503,
+    status: usable ? 200 : 503,
     headers: { "Cache-Control": "no-store" },
   });
 }

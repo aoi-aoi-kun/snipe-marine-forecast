@@ -8,11 +8,8 @@ import {
 const TICK_MS = 10 * 60 * 1000;
 /** Wait until the HTTP server is accepting traffic before heavy work. */
 const START_DELAY_MS = 90_000;
-/** Every 3rd tick (~30 min) force refresh so harbor/IFS caches do not stall learning. */
-const REFRESH_EVERY_N_TICKS = 3;
 
 let timer: ReturnType<typeof setInterval> | null = null;
-let tickCount = 0;
 
 async function tick(reason: string) {
   const status = getContinuousLearnStatus();
@@ -21,21 +18,16 @@ async function tick(reason: string) {
     return;
   }
   setContinuousLearnTicking(true);
-  tickCount += 1;
-  // Free-tier OOM risk: never pull all 46 IFS steps on the first tick.
-  // Startup / early ticks only refresh harbor; full IFS comes later.
-  const refresh =
-    reason !== "startup" && tickCount >= 2 && tickCount % REFRESH_EVERY_N_TICKS === 0;
   try {
-    console.info(`continuous-learn: tick (${reason}) refresh=${refresh}`);
+    // Harbor refresh only — IFS GRIB fill runs in the background via startIfsFill.
+    console.info(`continuous-learn: tick (${reason}) refreshHarbor=true`);
     const { getForecast } = await import("./forecast");
     const { loadMosStore, summarizeMos } = await import("./mos");
     const { loadNowcastCalib, summarizeNowcastCalib } = await import("./nowcast-learn");
     const { loadPatternStore } = await import("./pattern");
     const { loadMetaCalib, summarizeMetaCalib } = await import("./meta-calib");
 
-    // Always refresh harbor so 5-minute observations keep feeding MOS / nowcast / meta.
-    const forecast = await getForecast({ refresh, refreshHarbor: true });
+    const forecast = await getForecast({ refresh: false, refreshHarbor: true });
     const mos = summarizeMos(await loadMosStore());
     const nowcast = summarizeNowcastCalib(await loadNowcastCalib());
     const patterns = await loadPatternStore();

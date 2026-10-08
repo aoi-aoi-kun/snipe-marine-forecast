@@ -762,7 +762,7 @@ export function ForecastBoard() {
           : "/api/forecast?refreshHarbor=1";
       const response = await fetch(path, {
         cache: "no-store",
-        signal: AbortSignal.timeout(mode === "full" ? 90_000 : 20_000),
+        signal: AbortSignal.timeout(mode === "full" ? 60_000 : 28_000),
       });
       const body = (await response.json()) as ForecastResponse;
       if (!body.ifs && !body.harbor && !body.jma) {
