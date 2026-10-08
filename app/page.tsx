@@ -3,12 +3,7 @@ import { WINDY_URL, windyBlurb } from "@/lib/ui-copy";
 
 export default function Page() {
   return (
-    <main className="mx-auto w-full max-w-3xl px-4 pb-[max(3.5rem,env(safe-area-inset-bottom))] pt-[max(0.55rem,env(safe-area-inset-top))] sm:px-6 sm:pb-20 sm:pt-3">
-      <header className="site-masthead anim-rise">
-        <p className="brand">七里ヶ浜</p>
-        <p className="brand-meta">ハーバー実況 · 約1時間</p>
-      </header>
-
+    <main className="mx-auto w-full max-w-3xl px-4 pb-[max(3.5rem,env(safe-area-inset-bottom))] pt-[max(0.45rem,env(safe-area-inset-top))] sm:px-6 sm:pb-20 sm:pt-2.5">
       <ForecastBoard />
 
       <footer className="site-footer anim-rise">
