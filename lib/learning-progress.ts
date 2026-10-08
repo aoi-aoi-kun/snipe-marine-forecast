@@ -71,15 +71,19 @@ export function summarizeLearningProgress(
   const earlier =
     history.snapshots.length >= 4
       ? history.snapshots[Math.max(0, history.snapshots.length - 8)]
-      : history.snapshots[0] ?? null;
+      : history.snapshots.length >= 2
+        ? history.snapshots[0]
+        : null;
+  const comparable =
+    earlier != null &&
+    earlier.atMs !== current.atMs &&
+    earlier.nowcastMae15 != null &&
+    current.nowcastMae15 != null &&
+    current.nowcastCases >= 48;
 
   let improving: boolean | null = null;
-  if (
-    earlier?.nowcastMae15 != null &&
-    current.nowcastMae15 != null &&
-    current.nowcastCases >= 48
-  ) {
-    improving = current.nowcastMae15 + 0.02 < earlier.nowcastMae15;
+  if (comparable) {
+    improving = (current.nowcastMae15 as number) + 0.02 < (earlier!.nowcastMae15 as number);
   }
 
   const parts = [
