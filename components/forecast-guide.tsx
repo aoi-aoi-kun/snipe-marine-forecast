@@ -38,7 +38,7 @@ export function ForecastGuide() {
           <li>
             <span className="font-medium text-ink/75">急上昇</span>
             {" — "}
-            立ち上がりのアラートに加え、似た過去イベントから上昇幅・ピーク・所要時間の目安を出します。マッチ後の実測で目安を校正し、使うほど精度が上がります。
+            似た過去イベントから上昇幅・ピーク・所要時間の目安を出し、マッチ中はナウキャストの15・30・60分にも織り込みます。マッチ後の実測で目安を校正します。
           </li>
           <li>
             <span className="font-medium text-ink/75">強調の目安</span>

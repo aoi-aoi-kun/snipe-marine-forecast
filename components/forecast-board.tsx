@@ -339,13 +339,20 @@ function HarborPanel({ harbor }: { harbor: HarborBundle }) {
               <p className={cn("panel-kicker", nowcastHot && "panel-kicker-warn")}>
                 ナウキャスト
               </p>
-              <p className="panel-sub">15 / 30 / 60 分先の目安</p>
+              <p className="panel-sub">
+                {harbor.nowcastSkill.patternBlended
+                  ? "15 / 30 / 60 分先 · 急上昇を反映"
+                  : "15 / 30 / 60 分先の目安"}
+              </p>
             </div>
             <InfoDisclosure title="説明">
               <p>
                 {harbor.nowcastSkill.calibrated
                   ? "直近30分の傾きを延長し、過去の実況との突合で風速・風向を整えています。"
                   : "直近30分の傾きが続くと仮定した、15・30・60分先の目安です。"}
+                {harbor.nowcastSkill.patternBlended
+                  ? " 急上昇マッチがあるときは、ピーク目安に向けて短時間予測を寄せています。"
+                  : ""}
               </p>
               <p>{harbor.nowcastSkill.note}</p>
             </InfoDisclosure>

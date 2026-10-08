@@ -25,6 +25,10 @@ import {
   summarizeNowcastCalib,
 } from "./nowcast-learn";
 import {
+  blendNowcastWithPatternMatch,
+  withNowcastThresholdAlerts,
+} from "./nowcast-pattern-blend";
+import {
   applyHarborBoost,
   learnFromSamples,
   matchPattern,
@@ -241,6 +245,18 @@ export async function resolveHarbor(
       raw: pendingRaw.raw,
     });
   }
+  const patternBlend =
+    match && !sourceStale
+      ? blendNowcastWithPatternMatch(nowcast.nowcast, latest.meanMs, {
+          score: match.score,
+          expectedPeakMs: match.expectedPeakMs,
+          horizonMinutes: match.horizonMinutes,
+        })
+      : { points: nowcast.nowcast, blended: false, note: null as string | null };
+  const fusedNowcast = patternBlend.points;
+  const fusedAlerts = patternBlend.blended
+    ? withNowcastThresholdAlerts(nowcast.alerts, fusedNowcast)
+    : nowcast.alerts;
   const mosOnly = applyMosCorrection(windows, mosStore, (window, correction) => {
     const scenario = lambdaForMosWindow(metaStore, window, correction);
     return scenario * leadTimeGain(Date.parse(window.start), nowMs);
@@ -295,13 +311,16 @@ export async function resolveHarbor(
     recent: recent.map(toObservation),
     riseRateMsPerHour: nowcast.riseRateMsPerHour,
     directionChangeDeg: nowcast.directionChangeDeg,
-    nowcast: nowcast.nowcast,
+    nowcast: fusedNowcast,
     nowcastSkill: {
       caseCount: nowcastSkill.caseCount,
       calibrated: nowcast.calibrated,
+      patternBlended: patternBlend.blended,
       note: sourceStale
         ? "実況の公開停止中のため、ナウキャストは抑制しています。"
-        : nowcastSkill.note,
+        : patternBlend.note
+          ? `${nowcastSkill.note} ${patternBlend.note}`
+          : nowcastSkill.note,
       horizons: nowcastSkill.horizons.map((item) => ({
         minutesAhead: item.minutesAhead,
         count: item.count,
@@ -311,7 +330,7 @@ export async function resolveHarbor(
         skillVsPersistence: item.skillVsPersistence,
       })),
     },
-    alerts: nowcast.alerts,
+    alerts: fusedAlerts,
     pattern: {
       storedEvents: patternStore.events.length,
       match: match

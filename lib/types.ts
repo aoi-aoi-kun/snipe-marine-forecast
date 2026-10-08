@@ -43,6 +43,8 @@ export type HarborNowcastPoint = {
 export type NowcastSkill = {
   caseCount: number;
   calibrated: boolean;
+  /** True when an active ramp match was blended into the 15/30/60 tiles. */
+  patternBlended?: boolean;
   note: string;
   horizons: {
     minutesAhead: number;
