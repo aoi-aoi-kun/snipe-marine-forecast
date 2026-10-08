@@ -13,6 +13,7 @@ import { getContinuousLearnStatus } from "./continuous-learn-state";
 import { resolveHarbor } from "./harbor";
 import { getBytes } from "./http";
 import { parseWarnings } from "./jma";
+import { getLearnStatus } from "./learn-status";
 import { HOUR_MS } from "./time";
 import type { ForecastResponse } from "./types";
 
@@ -270,12 +271,23 @@ async function buildForecast(options: Required<ForecastFetchOptions>): Promise<F
   );
   if (harborResolved.error) errors.push(harborResolved.error);
 
+  const learnStatus = await getLearnStatus();
   const harbor = harborResolved.harbor
     ? {
         ...harborResolved.harbor,
         mos: {
           ...harborResolved.harbor.mos,
           continuous: getContinuousLearnStatus(),
+        },
+        learnOps: {
+          tip: learnStatus.tip,
+          cacheWritable: learnStatus.cache.writable,
+          ticking: learnStatus.continuous.ticking,
+          mosPairs: learnStatus.mos.pairCount,
+          nowcastCases: learnStatus.nowcast.caseCount,
+          patternEvents: learnStatus.pattern.storedEvents,
+          metaMosReady: learnStatus.meta.mosReady,
+          metaPatternReady: learnStatus.meta.patternReady,
         },
       }
     : null;

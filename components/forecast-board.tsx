@@ -565,15 +565,42 @@ function HarborPanel({ harbor }: { harbor: HarborBundle }) {
                 <span className="soft-link group-open:text-ink">学習の状態</span>
               </summary>
               <div className="mt-1.5 space-y-1.5 text-[11px] leading-4 text-muted">
+                {harbor.learnOps ? (
+                  <p className="text-ink/80">{harbor.learnOps.tip}</p>
+                ) : null}
                 <p>
-                  ページを開くたびに実況を取り込み、約{" "}
-                  {harbor.mos?.continuous.intervalMinutes ?? 15}{" "}
-                  分ごとにも学習を続けます
-                  {harbor.mos?.continuous.started ? "（稼働中）" : "（次の取得で開始）"}
+                  継続学習は約 {harbor.mos?.continuous.intervalMinutes ?? 15}{" "}
+                  分ごと
+                  {harbor.mos?.continuous.started
+                    ? harbor.learnOps?.ticking
+                      ? "（いま学習中）"
+                      : "（稼働中）"
+                    : "（次の取得で開始）"}
                   {harbor.mos?.continuous.lastTickAt
                     ? ` · 前回 ${formatStamp(harbor.mos.continuous.lastTickAt)}`
                     : ""}
-                  。新しい検証ほど補正に強く効きます。
+                  。ページを開くたびにも実況を取り込みます。キャッシュ
+                  {harbor.learnOps
+                    ? harbor.learnOps.cacheWritable
+                      ? "は書き込み可"
+                      : "に書けません"
+                    : "の状態は取得中"}
+                  。
+                </p>
+                <p>
+                  検証件数 · ナウキャスト{" "}
+                  {harbor.learnOps?.nowcastCases ?? harbor.nowcastSkill.caseCount} ·
+                  MOS {harbor.learnOps?.mosPairs ?? harbor.mos?.pairCount ?? 0} ·
+                  急上昇{" "}
+                  {harbor.learnOps?.patternEvents ?? harbor.pattern.storedEvents} ·
+                  補正の補正{" "}
+                  {harbor.learnOps?.metaMosReady || harbor.mos?.meta?.mosReady
+                    ? "MOS側あり"
+                    : "MOS側蓄積中"}
+                  /
+                  {harbor.learnOps?.metaPatternReady || harbor.mos?.meta?.patternReady
+                    ? "急上昇側あり"
+                    : "急上昇側蓄積中"}
                 </p>
                 {harbor.learning ? (
                   <p>
@@ -588,8 +615,6 @@ function HarborPanel({ harbor }: { harbor: HarborBundle }) {
                     {harbor.nowcastSkill.calibrated
                       ? `校正済み（検証 ${harbor.nowcastSkill.caseCount} 件）。`
                       : `検証 ${harbor.nowcastSkill.caseCount} 件を蓄積中。`}
-                    沖予報のMOSと急上昇パターン（{harbor.pattern.storedEvents}{" "}
-                    件）、補正の補正も更新中。
                     {harbor.mos ? ` ${harbor.mos.note}` : ""}
                   </p>
                 )}

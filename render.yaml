@@ -3,12 +3,13 @@ services:
     name: shichirigahama-forecast
     runtime: docker
     plan: free
-    healthCheckPath: /
+    healthCheckPath: /api/health
     envVars:
       - key: PORT
         value: "3847"
       - key: HOSTNAME
         value: "0.0.0.0"
+      # RENDER_EXTERNAL_URL is set by Render and enables in-process keep-alive pings.
     disk:
       name: forecast-cache
       mountPath: /app/.cache

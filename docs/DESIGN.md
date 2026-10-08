@@ -169,8 +169,11 @@ JSON を返す（Cache-Control: no-store）
 | 約6時間ごと | ナウキャストの広域再学習（ハーバー最大約30日） |
 
 - 起動は `instrumentation.ts` と API 呼び出しの両方から行います（Node ランタイムのみ）
+- 各ティックでハーバー実況を再取得し、MOS / ナウキャスト / 急上昇 / λ を更新します
 - `DISABLE_CONTINUOUS_LEARN=1` で止められます
 - Docker / Render では `.cache` をボリュームに載せ、再起動後も学習が残ります
+- `/api/health` でキャッシュ書き込み可否と学習件数を返す。`?warm=1` は外部 cron 向けのウォームアップ
+- プロセス内 keep-alive（`KEEP_ALIVE_URL` / `RENDER_EXTERNAL_URL`）は起動中のスリープ抑制用。眠ったあとは外部 ping が必要
 
 ---
 
@@ -232,6 +235,8 @@ JSON を返す（Cache-Control: no-store）
 | `lib/pattern.ts` | 急上昇パターン |
 | `lib/jma.ts` | 気象庁警報 |
 | `lib/continuous-learn.ts` | バックグラウンド学習 |
+| `lib/learn-status.ts` | 学習健全性・運用ヒント |
+| `lib/keep-alive.ts` | プロセス内ウォーム ping |
 | `lib/geo.ts` | 地点定義・距離 |
 
 ### キャッシュファイル（`.cache/`）
@@ -244,6 +249,8 @@ JSON を返す（Cache-Control: no-store）
 | `mos.json` | MOS 学習 |
 | `nowcast-calib.json` | ナウキャスト校正 |
 | `harbor-patterns.json` | 急上昇パターン |
+| `meta-calib.json` | 補正の補正（λ） |
+| `skill-history.json` | 学習進捗スナップショット |
 
 取得に失敗したときは、保存済みがあればそれを出して `degraded` 扱いにします。
 
@@ -252,7 +259,8 @@ JSON を返す（Cache-Control: no-store）
 ## 9. デプロイ上の注意
 
 - `grib_ls` が必要なため、**サーバレス（例: Vercel の短い関数）より Docker 常時起動**が前提です。
-- 推奨の公開先は Render（`render.yaml` あり）。無料枠はスリープすることがあります。
+- 推奨の公開先は Render（`render.yaml` あり。`healthCheckPath: /api/health`、Disk で `.cache`）。
+- 無料枠はスリープします。精度を保つなら外部から `/api/health?warm=1` を定期 GET してください（README 参照）。
 - 学習を残すには `.cache` の永続ディスク／ボリュームが必要です。
 
 ---

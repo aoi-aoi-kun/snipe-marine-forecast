@@ -30,7 +30,8 @@ async function tick(reason: string) {
     const { loadPatternStore } = await import("./pattern");
     const { loadMetaCalib, summarizeMetaCalib } = await import("./meta-calib");
 
-    const forecast = await getForecast(refresh);
+    // Always refresh harbor so 5-minute observations keep feeding MOS / nowcast / meta.
+    const forecast = await getForecast({ refresh, refreshHarbor: true });
     const mos = summarizeMos(await loadMosStore());
     const nowcast = summarizeNowcastCalib(await loadNowcastCalib());
     const patterns = await loadPatternStore();

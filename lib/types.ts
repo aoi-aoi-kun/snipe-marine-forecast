@@ -116,6 +116,17 @@ export type HarborBundle = {
     earlierNowcastMae15: number | null;
     note: string;
   };
+  /** Always-on / cache health tip for the 「学習の状態」 panel. */
+  learnOps?: {
+    tip: string;
+    cacheWritable: boolean;
+    ticking: boolean;
+    mosPairs: number;
+    nowcastCases: number;
+    patternEvents: number;
+    metaMosReady: boolean;
+    metaPatternReady: boolean;
+  };
 };
 
 export type ActiveWarning = {
