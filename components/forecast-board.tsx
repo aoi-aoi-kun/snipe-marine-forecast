@@ -235,9 +235,6 @@ function HarborPanel({ harbor }: { harbor: HarborBundle }) {
   const liveHot = liveMeanHot || liveGustHot;
   const nowcastHot = harbor.nowcast.some((point) => meanHot(point.meanMs));
   const match = harbor.pattern.match;
-  const matchMeanHot = meanHot(match?.expectedPeakMs);
-  const matchGustHot = gustHot(match?.expectedMaxMs);
-  const matchHot = matchMeanHot || matchGustHot;
   const matchFormatted = match ? formatPatternMatchNote(match) : null;
 
   return (
@@ -258,72 +255,33 @@ function HarborPanel({ harbor }: { harbor: HarborBundle }) {
       </div>
 
       <div className="panel-stack">
-        <article
-          className={cn(
-            "wind-panel anim-rise",
-            match && matchHot && "wind-panel-warn",
-          )}
-        >
+        <article className="wind-panel anim-rise">
           <div className="flex flex-wrap items-start justify-between gap-2">
             <div>
-              <p className={cn("panel-kicker", match && matchHot && "panel-kicker-warn")}>
-                急上昇マッチ
-              </p>
+              <p className="panel-kicker">急上昇マッチ</p>
               <p className="panel-sub">
                 {match
-                  ? "類似イベントから見た上昇の目安"
+                  ? harbor.nowcastSkill.patternBlended
+                    ? "類似の過去あり · ナウキャストに反映"
+                    : "類似の過去イベントあり"
                   : "いまは該当する前兆がありません"}
               </p>
             </div>
-            {match ? (
+            {match && matchFormatted ? (
               <InfoDisclosure title="説明">
-                <p>{matchFormatted?.detail}</p>
+                <p>{matchFormatted.detail}</p>
+                {harbor.nowcastSkill.patternBlended ? (
+                  <p>短時間の数値は下のナウキャストを見てください。</p>
+                ) : null}
               </InfoDisclosure>
             ) : null}
           </div>
 
           {match && matchFormatted ? (
-            <>
-              <div className="mt-2.5">
-                <ThresholdBadges
-                  meanMs={match.expectedPeakMs}
-                  gustMs={match.expectedMaxMs}
-                  meanLabel="ピーク"
-                  gustLabel="瞬間"
-                />
-              </div>
-              {matchHot ? (
-                <p className="threshold-banner mt-2.5">
-                  {matchMeanHot && matchGustHot
-                    ? `ピーク平均 ${MEAN_LIMIT_MS} m/s・瞬間 ${GUST_LIMIT_MS} m/s を超える見込みです。`
-                    : matchMeanHot
-                      ? `ピーク平均が ${MEAN_LIMIT_MS} m/s を超える見込みです。`
-                      : `瞬間が ${GUST_LIMIT_MS} m/s を超える見込みです。`}
-                </p>
-              ) : null}
-              <p className="panel-body">{matchFormatted.headline}</p>
-              <dl className="metric-rail not-prose mt-3">
-                {matchFormatted.metrics.map((item) => {
-                  const warn =
-                    (item.label === "ピーク目安" && matchMeanHot) ||
-                    (item.label === "瞬間目安" && matchGustHot) ||
-                    (item.label === "上昇目安" &&
-                      meanHot((latest?.meanMs ?? 0) + match.expectedRiseMs));
-                  return (
-                    <div key={item.label} className={cn("metric-tile", warn && "metric-tile-warn")}>
-                      <dt>{item.label}</dt>
-                      <dd>
-                        {item.value}
-                        {item.hint ? <span className="metric-hint">{item.hint}</span> : null}
-                      </dd>
-                    </div>
-                  );
-                })}
-              </dl>
-            </>
+            <p className="panel-body mt-2.5">{matchFormatted.headline}</p>
           ) : (
             <p className="panel-body text-muted">
-              立ち上がりがはっきりしたとき、過去の急上昇パターンとの一致と定量目安をここに出します。
+              立ち上がりがはっきりしたとき、過去の急上昇との一致をここに出します。数値はナウキャスト側に反映します。
             </p>
           )}
         </article>

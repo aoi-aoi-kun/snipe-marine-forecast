@@ -127,12 +127,14 @@ export function formatPatternMatchNote(input: {
     : `過去の急上昇に近い前兆です（一致 ${pct}%）`;
   const detail = [
     input.note.trim(),
-    input.calib?.note?.trim() ||
-      "類似イベントをいまの実況に当てはめた目安です。マッチ後の実測で校正が厚くなります。",
+    input.calib?.note?.trim() || "マッチ後の実測で校正が厚くなります。",
+    "類似イベントをいまの実況に当てはめ、ナウキャストへ織り込みます。",
+    `上昇の目安は約 ${input.horizonMinutes} 分で +${input.expectedRiseMs.toFixed(1)} m/s（ピーク平均 ${input.expectedPeakMs.toFixed(1)} · 瞬間 ${input.expectedMaxMs.toFixed(1)}）。`,
   ].join(" ");
   return {
     headline,
     detail,
+    // Kept for tests / disclosure context; the match panel no longer shows metric tiles.
     metrics: [
       {
         label: "上昇目安",
