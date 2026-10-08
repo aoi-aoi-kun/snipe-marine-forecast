@@ -19,12 +19,12 @@ const mincho = Shippori_Mincho({
 });
 
 export const metadata: Metadata = {
-  title: "七里ヶ浜沖の予報",
+  title: "七里ヶ浜 · ハーバー実況",
   description:
-    "七里ヶ浜沖の ECMWF 3時間予報と、江の島ヨットハーバー実況。スナイプ出艇の参考画面です。",
+    "江の島ヨットハーバー実況とナウキャスト・急上昇マッチ。スナイプ出艇の参考画面です。3時間予報は Windy を参照。",
   appleWebApp: {
     capable: true,
-    title: "七里ヶ浜沖",
+    title: "ハーバー実況",
     statusBarStyle: "default",
   },
   formatDetection: {

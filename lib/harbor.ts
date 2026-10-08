@@ -249,7 +249,7 @@ export async function resolveHarbor(
     pointName: "江の島ヨットハーバー",
     note: sourceStale
       ? "5分ごとの実況です。公開が止まっているため短時間予測は出していません。"
-      : "5分ごとの実況です。沖の予報とは地点が異なります。いま〜1時間はここ、近い3時間枠は実況も混ぜ、それより先は沖予報を参照。",
+      : "5分ごとの実況です。いま〜1時間はここを見てください。数時間〜数日の沖の見通しは Windy を参照。",
     fetchedAt: new Date(resolved.fetchedAt).toISOString(),
     degraded: resolved.degraded,
     latest: toObservation(latest),

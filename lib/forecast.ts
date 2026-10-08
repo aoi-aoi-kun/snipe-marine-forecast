@@ -360,14 +360,14 @@ async function resolveIfsCacheOnly(nowMs: number): Promise<{
   cache: IfsCache;
   degraded: boolean;
 }> {
+  // Page path must stay harbor-first. Kick GRIB fill for MOS / pattern learning,
+  // but never wait on Open-Meteo or open-data for the response.
   startIfsFill(nowMs);
   const existing = await loadIfsCache();
   if (existing && existing.hours.length > 0) {
     return { cache: existing, degraded: !covers(existing, nowMs) };
   }
-  // Cold start: Open-Meteo JSON is seconds, open-data GRIB is minutes.
-  const bridge = await resolveOpenMeteoBridge(nowMs);
-  return { cache: bridge, degraded: true };
+  throw new Error("学習用の沖データを取得中です。");
 }
 
 export function getForecast(
