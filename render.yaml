@@ -18,7 +18,3 @@ services:
       - key: ECMWF_CONCURRENCY
         value: "2"
       # RENDER_EXTERNAL_URL is set by Render and enables in-process keep-alive pings.
-<<<<<<< HEAD
-=======
-  
->>>>>>> github/main
