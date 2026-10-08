@@ -164,6 +164,77 @@ a {
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-warn) 38%, transparent);
 }
 
+.live-hero {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  border-radius: 1.1rem;
+  padding: 1.1rem 1.15rem 1.2rem;
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.88) 0%, rgba(226, 240, 242, 0.95) 55%, rgba(210, 229, 232, 0.98) 100%);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--color-sea) 28%, transparent),
+    0 14px 36px color-mix(in srgb, var(--color-sea-deep) 10%, transparent);
+}
+
+.live-hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background:
+    radial-gradient(90% 70% at 0% 0%, color-mix(in srgb, var(--color-sea) 16%, transparent), transparent 55%),
+    radial-gradient(70% 55% at 100% 100%, color-mix(in srgb, var(--color-sun) 12%, transparent), transparent 50%);
+  animation: horizon-drift 18s ease-in-out infinite alternate;
+}
+
+.live-hero-warn {
+  background:
+    linear-gradient(145deg, color-mix(in srgb, var(--color-warn-bg) 70%, white) 0%, #f3e4e0 100%);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--color-warn) 36%, transparent),
+    0 14px 36px color-mix(in srgb, var(--color-warn) 12%, transparent);
+}
+
+.live-hero-warn::before {
+  background: radial-gradient(
+    80% 60% at 10% 0%,
+    color-mix(in srgb, var(--color-warn) 18%, transparent),
+    transparent 55%
+  );
+}
+
+.live-speed {
+  font-family: var(--font-serif);
+  font-size: clamp(3.4rem, 12vw, 4.75rem);
+  line-height: 0.92;
+  letter-spacing: -0.04em;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-ink);
+}
+
+.live-speed-unit {
+  margin-left: 0.35rem;
+  font-family: var(--font-sans);
+  font-size: 0.95rem;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  color: var(--color-muted);
+  vertical-align: 0.55em;
+}
+
+.nowcast-rail {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+@media (min-width: 640px) {
+  .nowcast-rail {
+    gap: 0.65rem;
+  }
+}
+
 .eyebrow {
   font-size: 0.65rem;
   font-weight: 500;
