@@ -257,6 +257,7 @@ JSON を返す（Cache-Control: no-store）
 | `harbor-patterns.json` | 急上昇パターン |
 | `meta-calib.json` | 補正の補正（λ） |
 | `skill-history.json` | 学習進捗スナップショット |
+| `ops.json` | 初回起動・warm 回数・蓄積日数 |
 
 取得に失敗したときは、保存済みがあればそれを出して `degraded` 扱いにします。
 
