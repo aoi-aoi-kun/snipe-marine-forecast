@@ -47,7 +47,8 @@ test("aggregates the single 3-hour sample in each window", () => {
   }
 
   const windows = buildWindows(hours, now);
-  assert.equal(windows.length, 2);
+  // Complete 3h pairs yield 2 windows; the trailing partial sample also renders.
+  assert.equal(windows.length, 3);
   assert.equal(windows[0].available, true);
   assert.equal(windows[0].weather, "くもり");
   assert.equal(windows[0].windFromLabel, "北東");
