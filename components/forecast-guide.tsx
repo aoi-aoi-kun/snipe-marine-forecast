@@ -38,7 +38,7 @@ export function ForecastGuide() {
           <li>
             <span className="font-medium text-ink/75">急上昇</span>
             {" — "}
-            似た過去があるときは一致度だけ示し、数値はナウキャストの15・30・60分に織り込みます。マッチ後の実測で校正します。
+            似た過去があるときは一致度と「急上昇／平均10超」の見込み％を示し、数値はナウキャストに織り込みます。立ち上がり時は別校正を使います。
           </li>
           <li>
             <span className="font-medium text-ink/75">強調の目安</span>

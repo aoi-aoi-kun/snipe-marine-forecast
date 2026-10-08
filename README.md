@@ -103,12 +103,12 @@ Render 無料枠はアクセスが無いと眠ります。学習を続けるた�
 
 [enowin](http://enowin.japaneast.cloudapp.azure.com/) の江の島ヨットハーバー実況を使い、次を出します。
 
-- **ナウキャスト**: 直近30分の傾きを15・30・60分先へ延長し、過去実況との突合で減衰・バイアスを校正（`.cache/nowcast-calib.json`）
+- **ナウキャスト**: 直近30分の傾きを15・30・60分先へ延長。平常時と立ち上がり時で別校正し、マッチ時はピーク目安へ融合（`.cache/nowcast-calib.json`）
 - **立ち上がり検知**: 急勾配や閾値超えをアラート
-- **急上昇パターン**: 過去の急上昇を `.cache/harbor-patterns.json` に溜め、似た前兆のときマッチを表示（補正係数も保持）
+- **急上昇パターン**: 過去の急上昇を `.cache/harbor-patterns.json` に溜め、一致度と急上昇／平均10超の見込み％を表示。数値はナウキャストへ反映（事後校正は `.cache/pattern-forecast-calib.json`）
 - **MOS / メタ学習（裏）**: ECMWF との突合で倍率を学習（`.cache/mos.json` / `.cache/meta-calib.json`）。画面の3時間予報表示には使いません
 - **過去突合の厚み**: ECMWF 公開初期値に加え、Open-Meteo の historical IFS（約30日）で欠けた枠を補う
 - **実況停止**: enowin が止まっているあいだはナウキャストを出さない
-- **継続学習**: ページを開くたびに実況を取り込み、サーバ起動中は約10分ごとにも更新。進捗は UI の「学習の状態」と `/api/health`、`.cache/skill-history.json` に残ります
+- **継続学習**: ページを開くたびに実況を取り込み、サーバ起動中は約10分ごとにも更新。進捗は UI の「学習の状態」と `/api/health`、`.cache/skill-history.json` に残ります。キャッシュ根は `CACHE_DIR`（既定 `.cache`）
 
 出艇の判断は、現場の状況と気象庁の警報・注意報によります。この画面は気象庁の予報ではありません。

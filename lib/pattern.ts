@@ -1,12 +1,13 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { getCacheDir } from "./cache-dir";
 import type { WindowForecast } from "./aggregate";
 import type { HarborSample } from "./enowin";
 import { detectRampEvents, type RampEvent } from "./nowcast";
 import { jstParts } from "./time";
 import { windSector8 } from "./wind";
 
-const CACHE_DIR = path.join(process.cwd(), ".cache");
+const CACHE_DIR = getCacheDir();
 const PATTERN_CACHE = path.join(CACHE_DIR, "harbor-patterns.json");
 const MAX_EVENTS = 200;
 const MATCH_SCORE_MIN = 0.5;
@@ -83,6 +84,8 @@ export type AnalogQuery = {
   dirSector: number | null;
   beforeMeanMs: number;
   riseRate: number;
+  /** Nearest offshore IFS mean (m/s), when available. */
+  offshoreMeanMs?: number | null;
 };
 
 /** Best historical ramp analog for a pre-rise harbor state. */
@@ -205,32 +208,42 @@ export async function learnFromSamples(
   return next;
 }
 
-function scoreMatch(
-  current: { hourBucket: number; dirSector: number | null; beforeMeanMs: number; riseRate: number },
-  event: PatternEvent,
-): number {
+function scoreMatch(current: AnalogQuery, event: PatternEvent): number {
   let score = 0;
-  if (current.hourBucket === event.hourBucket) score += 0.35;
-  else if (Math.abs(current.hourBucket - event.hourBucket) === 1) score += 0.15;
+  if (current.hourBucket === event.hourBucket) score += 0.32;
+  else if (Math.abs(current.hourBucket - event.hourBucket) === 1) score += 0.14;
 
   if (current.dirSector !== null && event.dirSector !== null) {
     const diff = Math.min(
       Math.abs(current.dirSector - event.dirSector),
       8 - Math.abs(current.dirSector - event.dirSector),
     );
-    if (diff === 0) score += 0.35;
-    else if (diff === 1) score += 0.18;
+    if (diff === 0) score += 0.32;
+    else if (diff === 1) score += 0.16;
   } else {
     score += 0.1;
   }
 
   const speedGap = Math.abs(current.beforeMeanMs - event.beforeMeanMs);
-  if (speedGap <= 1.5) score += 0.2;
-  else if (speedGap <= 3) score += 0.1;
+  if (speedGap <= 1.5) score += 0.18;
+  else if (speedGap <= 3) score += 0.09;
 
   if (current.riseRate > 0 && event.riseMs / Math.max(event.riseMinutes / 60, 0.25) > 2) {
-    score += 0.1;
+    score += 0.08;
   }
+
+  const offshore = current.offshoreMeanMs;
+  if (
+    offshore != null &&
+    Number.isFinite(offshore) &&
+    event.offshoreMeanMs != null &&
+    Number.isFinite(event.offshoreMeanMs)
+  ) {
+    const gap = Math.abs(offshore - event.offshoreMeanMs);
+    if (gap <= 1.5) score += 0.12;
+    else if (gap <= 3) score += 0.06;
+  }
+
   return score;
 }
 
@@ -249,17 +262,19 @@ export function matchPattern(
     PatternMatch,
     "expectedRiseMs" | "expectedPeakMs" | "expectedMaxMs" | "horizonMinutes"
   >,
+  offshoreMeanMs: number | null = null,
 ): PatternMatch | null {
   if (samples.length === 0 || store.events.length === 0) return null;
   const latest = samples[samples.length - 1];
   const recent = samples.filter((sample) => nowMs - sample.atMs <= 40 * 60 * 1000);
   const before =
     recent.length >= 2 ? recent[0].meanMs : latest.meanMs;
-  const current = {
+  const current: AnalogQuery = {
     hourBucket: hourBucket(latest.atMs),
     dirSector: latest.fromDeg === null ? null : windSector8(latest.fromDeg),
     beforeMeanMs: before,
     riseRate: riseRateMsPerHour ?? 0,
+    offshoreMeanMs,
   };
 
   const best = findAnalogEvent(current, store.events);

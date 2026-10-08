@@ -1,8 +1,10 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { getCacheDir } from "./cache-dir";
 import type { HarborSample } from "./enowin";
 import {
   HORIZONS,
+  RISING_REGIME_MS_PER_HOUR,
   TREND_MS,
   circularDeltaDeg,
   estimateDirectionAt,
@@ -12,10 +14,14 @@ import {
 } from "./nowcast";
 import { recencyWeights, weightedMae, weightedMean } from "./recency";
 
-const CACHE_DIR = path.join(process.cwd(), ".cache");
+const CACHE_DIR = getCacheDir();
 const STORE_PATH = path.join(CACHE_DIR, "nowcast-calib.json");
 const MAX_CASES = 4000;
 const MIN_CASES = 24;
+/** Rising-regime fits can start with fewer cases (ramps are rare). */
+const MIN_RISING_CASES = 16;
+/** Floor so rising-regime search cannot collapse to pure persistence. */
+const RISING_DAMPEN_FLOOR = 0.35;
 const SAMPLE_STRIDE_MS = 15 * 60 * 1000;
 const ACTUAL_TOLERANCE_MS = 4 * 60 * 1000;
 
@@ -48,7 +54,10 @@ export type NowcastCalibStore = {
   updatedAt: number;
   lastDeepLearnAt: number;
   cases: NowcastCase[];
+  /** Default / calm-dominated fit (all cases). */
   horizons: NowcastHorizonCalib[];
+  /** Fit on rising cases only; empty until enough ramp-like samples exist. */
+  risingHorizons: NowcastHorizonCalib[];
 };
 
 /** Visit-triggered deep relearn cadence (shorter = learns while the app is used). */
@@ -59,7 +68,19 @@ function clamp(value: number, min: number, max: number): number {
 }
 
 function emptyStore(): NowcastCalibStore {
-  return { updatedAt: 0, lastDeepLearnAt: 0, cases: [], horizons: [] };
+  return {
+    updatedAt: 0,
+    lastDeepLearnAt: 0,
+    cases: [],
+    horizons: [],
+    risingHorizons: [],
+  };
+}
+
+export function isRisingNowcastCase(item: NowcastCase): boolean {
+  return (
+    item.riseRateMsPerHour >= RISING_REGIME_MS_PER_HOUR || item.trendDeltaMs >= 0.4
+  );
 }
 
 function normalizeHorizon(item: Partial<NowcastHorizonCalib>): NowcastHorizonCalib | null {
@@ -105,14 +126,20 @@ export async function loadNowcastCalib(): Promise<NowcastCalibStore> {
     let horizons = rawHorizons
       .map((item) => normalizeHorizon(item))
       .filter((item): item is NowcastHorizonCalib => item !== null);
-    if (horizons.length < HORIZONS.length || needsDirRefit) {
-      horizons = rebuildCalib(cases);
+    let risingHorizons = (Array.isArray(raw.risingHorizons) ? raw.risingHorizons : [])
+      .map((item) => normalizeHorizon(item))
+      .filter((item): item is NowcastHorizonCalib => item !== null);
+    if (horizons.length < HORIZONS.length || needsDirRefit || risingHorizons.length === 0) {
+      const rebuilt = rebuildCalib(cases);
+      horizons = rebuilt.horizons;
+      risingHorizons = rebuilt.risingHorizons;
     }
     return {
       updatedAt: raw.updatedAt ?? 0,
       lastDeepLearnAt: raw.lastDeepLearnAt ?? 0,
       cases,
       horizons,
+      risingHorizons,
     };
   } catch {
     return emptyStore();
@@ -184,18 +211,22 @@ export function mergeNowcastCases(
 export function fitHorizon(
   cases: NowcastCase[],
   nowMs = Date.now(),
+  options: { minCases?: number; minDampen?: number } = {},
 ): NowcastHorizonCalib | null {
-  if (cases.length < MIN_CASES) return null;
+  const minCases = options.minCases ?? MIN_CASES;
+  const minDampen = options.minDampen ?? 0;
+  if (cases.length < minCases) return null;
   const minutesAhead = cases[0].minutesAhead;
   const weights = recencyWeights(
     cases.map((item) => item.atMs),
     nowMs,
   );
 
-  // Grid-search dampen in [0, 1]; coastal trends usually overshoot so dampen < 1.
-  let bestDampen = 0.55;
+  // Grid-search dampen in [minDampen, 1]; coastal trends usually overshoot so dampen < 1.
+  let bestDampen = Math.max(0.55, minDampen);
   let bestMae = Infinity;
-  for (let step = 0; step <= 20; step++) {
+  const startStep = Math.round(minDampen / 0.05);
+  for (let step = startStep; step <= 20; step++) {
     const dampen = step * 0.05;
     const errors = cases.map((item) => {
       const predicted = item.currentMs + dampen * item.trendDeltaMs;
@@ -304,14 +335,22 @@ export function fitHorizon(
 export function rebuildCalib(
   cases: NowcastCase[],
   nowMs = Date.now(),
-): NowcastHorizonCalib[] {
+): { horizons: NowcastHorizonCalib[]; risingHorizons: NowcastHorizonCalib[] } {
   const horizons: NowcastHorizonCalib[] = [];
+  const risingHorizons: NowcastHorizonCalib[] = [];
   for (const minutes of HORIZONS) {
     const subset = cases.filter((item) => item.minutesAhead === minutes);
     const fitted = fitHorizon(subset, nowMs);
     if (fitted) horizons.push(fitted);
+
+    const risingSubset = subset.filter(isRisingNowcastCase);
+    const risingFitted = fitHorizon(risingSubset, nowMs, {
+      minCases: MIN_RISING_CASES,
+      minDampen: RISING_DAMPEN_FLOOR,
+    });
+    if (risingFitted) risingHorizons.push(risingFitted);
   }
-  return horizons;
+  return { horizons, risingHorizons };
 }
 
 export async function learnNowcastCalibration(
@@ -323,11 +362,13 @@ export async function learnNowcastCalibration(
   if (incoming.length === 0 && !options.deep) return store;
   const cases = mergeNowcastCases(store.cases, incoming);
   const nowMs = Date.now();
+  const rebuilt = rebuildCalib(cases, nowMs);
   const next: NowcastCalibStore = {
     updatedAt: nowMs,
     lastDeepLearnAt: options.deep ? nowMs : store.lastDeepLearnAt,
     cases,
-    horizons: rebuildCalib(cases, nowMs),
+    horizons: rebuilt.horizons,
+    risingHorizons: rebuilt.risingHorizons,
   };
   await saveNowcastCalib(next);
   return next;
@@ -336,12 +377,14 @@ export async function learnNowcastCalibration(
 export function summarizeNowcastCalib(store: NowcastCalibStore): {
   caseCount: number;
   horizons: NowcastHorizonCalib[];
+  risingHorizons: NowcastHorizonCalib[];
   note: string;
 } {
   if (store.horizons.length === 0) {
     return {
       caseCount: store.cases.length,
       horizons: [],
+      risingHorizons: [],
       note: "検証データが少ないため、傾きの延長をそのまま使っています。実況が増えると自動で校正されます。",
     };
   }
@@ -354,9 +397,17 @@ export function summarizeNowcastCalib(store: NowcastCalibStore): {
       : "学習中";
     return `${item.minutesAhead}分 風速±${speed} / 風向±${dir}`;
   });
+  const risingCount = store.cases.filter(isRisingNowcastCase).length;
+  const risingNote =
+    store.risingHorizons.length >= HORIZONS.length
+      ? ` 立ち上がり時は別校正（${risingCount} 件 · 傾き残存）。`
+      : risingCount > 0
+        ? ` 立ち上がり事例 ${risingCount} 件を蓄積中。`
+        : "";
   return {
     caseCount: store.cases.length,
     horizons: store.horizons,
-    note: `${store.cases.length} 件の過去実況で校正。${parts.join(" · ")}`,
+    risingHorizons: store.risingHorizons ?? [],
+    note: `${store.cases.length} 件の過去実況で校正。${parts.join(" · ")}${risingNote}`,
   };
 }

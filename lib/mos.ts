@@ -1,5 +1,6 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { getCacheDir } from "./cache-dir";
 import type { HourSample, WindowForecast } from "./aggregate";
 import { departureBlocked } from "./aggregate";
 import type { HarborSample } from "./enowin";
@@ -7,7 +8,7 @@ import { recencyWeights, weightedMean } from "./recency";
 import { HOUR_MS, WINDOW_MS, floorBlockStart, jstParts } from "./time";
 import { windFromDegrees, windSector8 } from "./wind";
 
-const CACHE_DIR = path.join(process.cwd(), ".cache");
+const CACHE_DIR = getCacheDir();
 const MOS_CACHE = path.join(CACHE_DIR, "mos.json");
 const MAX_PAIRS = 1200;
 const MIN_HARBOR_SAMPLES = 4;

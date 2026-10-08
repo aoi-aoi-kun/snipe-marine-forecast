@@ -1,5 +1,6 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { getCacheDir } from "./cache-dir";
 import { buildWindows, type HourSample } from "./aggregate";
 import { attachCycleSpread } from "./cycle-spread";
 import {
@@ -19,7 +20,7 @@ import { fetchOpenMeteoIfsForecast } from "./open-meteo-forecast";
 import { HOUR_MS } from "./time";
 import type { ForecastResponse } from "./types";
 
-const CACHE_DIR = path.join(process.cwd(), ".cache");
+const CACHE_DIR = getCacheDir();
 const IFS_CACHE = path.join(CACHE_DIR, "ifs.json");
 const IFS_PREV_CACHE = path.join(CACHE_DIR, "ifs-prev.json");
 const JMA_CACHE = path.join(CACHE_DIR, "jma.json");

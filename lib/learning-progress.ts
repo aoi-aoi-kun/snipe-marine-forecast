@@ -1,9 +1,10 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { getCacheDir } from "./cache-dir";
 import type { MetaCalibSummary } from "./meta-calib";
 import type { MosSummary } from "./mos";
 
-const CACHE_DIR = path.join(process.cwd(), ".cache");
+const CACHE_DIR = getCacheDir();
 const STORE_PATH = path.join(CACHE_DIR, "skill-history.json");
 const MAX_SNAPSHOTS = 90;
 

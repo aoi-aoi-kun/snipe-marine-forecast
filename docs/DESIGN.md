@@ -134,8 +134,10 @@ JSON を返す（Cache-Control: no-store）
 
 1. 直近約30分の実況から風速・風向の傾きを推定  
 2. 15・30・60分先へ延長  
-3. 過去の「予測したあと本当はどうなったか」で減衰・バイアスを校正（過大評価を抑える）  
-4. 校正データは `.cache/nowcast-calib.json` に保存
+3. 過去の「予測したあと本当はどうなったか」で減衰・バイアスを校正  
+4. **平常時と立ち上がり時で別校正**（立ち上がり事例では傾きを残す下限あり）。急上昇マッチ中も立ち上がり校正を使う  
+5. マッチがあるときはピーク目安へ部分融合（`lib/nowcast-pattern-blend.ts`）  
+6. 校正データは `.cache/nowcast-calib.json` に保存（`CACHE_DIR` 環境変数でルート変更可）
 
 傾きが足りないときはナウキャストを出しません。
 
@@ -160,8 +162,11 @@ JSON を返す（Cache-Control: no-store）
 
 ### 6.5 急上昇パターン
 
-過去の急な立ち上がり（例: 30分で平均がはっきり上がる）を覚え、似た前兆のときに直近の沖予報2枠を上振れさせます。
+過去の急な立ち上がり（例: 30分で平均がはっきり上がる）を覚え、似た前兆のときにナウキャストへ織り込み、裏では直近の沖予報2枠も上振れさせます。
 
+- 画面では一致度と分類見込み（+2.5 m/s 急上昇／ピーク平均10超）を表示。数値タイルは出さない  
+- 事後検証はハードランプに加えソフト上昇（+1.5 m/s）で厚くする（`.cache/pattern-forecast-calib.json`）  
+- マッチ時は最寄り IFS 沖風速も類似度に使う  
 - 保存先: `.cache/harbor-patterns.json`
 
 ### 6.6 継続学習（サーバ起動中）
@@ -254,11 +259,14 @@ JSON を返す（Cache-Control: no-store）
 | `jma.json` | 警報・注意報 |
 | `harbor.json` | ハーバー実況 |
 | `mos.json` | MOS 学習 |
-| `nowcast-calib.json` | ナウキャスト校正 |
+| `nowcast-calib.json` | ナウキャスト校正（平常／立ち上がり） |
 | `harbor-patterns.json` | 急上昇パターン |
+| `pattern-forecast-calib.json` | 急上昇定量・分類の事後校正 |
 | `meta-calib.json` | 補正の補正（λ） |
 | `skill-history.json` | 学習進捗スナップショット |
 | `ops.json` | 初回起動・warm 回数・蓄積日数 |
+
+ルートは `CACHE_DIR`（未設定時は `.cache/`）。Render では Disk を `/app/.cache` に載せると再デプロイ後も学習が残ります。
 
 取得に失敗したときは、保存済みがあればそれを出して `degraded` 扱いにします。
 

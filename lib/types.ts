@@ -40,11 +40,29 @@ export type HarborNowcastPoint = {
   rawFromDeg?: number | null;
 };
 
+export type RampOutlookView = {
+  pRiseGe25: number | null;
+  pPeakGe10: number | null;
+  support: number;
+  note: string;
+};
+
 export type NowcastSkill = {
   caseCount: number;
   calibrated: boolean;
   /** True when an active ramp match was blended into the 15/30/60 tiles. */
   patternBlended?: boolean;
+  /** True when rising-regime calib (or match) drives the projection. */
+  risingRegime?: boolean;
+  risingHorizons?: {
+    minutesAhead: number;
+    count: number;
+    maeCalibrated: number;
+    maeRaw: number;
+    dampen: number;
+    skillVsPersistence: number;
+  }[];
+  rampOutlook?: RampOutlookView | null;
   note: string;
   horizons: {
     minutesAhead: number;
@@ -86,6 +104,7 @@ export type HarborBundle = {
       expectedPeakMs: number;
       expectedMaxMs: number;
       horizonMinutes: number;
+      outlook?: RampOutlookView | null;
       calib?: {
         caseCount: number;
         calibrated: boolean;

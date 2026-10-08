@@ -1,5 +1,6 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { getCacheDir } from "./cache-dir";
 import type { HourSample } from "./aggregate";
 import { fetchArchiveHoursForMos } from "./ecmwf";
 import { fetchHarborSamples, type HarborSample } from "./enowin";
@@ -13,7 +14,7 @@ import {
 } from "./mos";
 import { fetchOpenMeteoArchiveHours } from "./open-meteo-archive";
 
-const CACHE_DIR = path.join(process.cwd(), ".cache");
+const CACHE_DIR = getCacheDir();
 const ARCHIVE_HOURS = path.join(CACHE_DIR, "mos-offshore-hours.json");
 /** Page visits with refreshHarbor also trigger backfill; keep cooldown short. */
 const BACKFILL_COOLDOWN_MS = 2 * 60 * 60 * 1000;

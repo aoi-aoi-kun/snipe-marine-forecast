@@ -1,5 +1,6 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { getCacheDir } from "./cache-dir";
 import type { WindowForecast } from "./aggregate";
 import type { HarborSample } from "./enowin";
 import { correctionForWindow, type MosCorrection, type MosStore } from "./mos";
@@ -8,7 +9,7 @@ import { loadPatternStore } from "./pattern";
 import { recencyWeights, weightedMae } from "./recency";
 import { WINDOW_MS, floorBlockStart, jstParts } from "./time";
 
-const CACHE_DIR = path.join(process.cwd(), ".cache");
+const CACHE_DIR = getCacheDir();
 const STORE_PATH = path.join(CACHE_DIR, "meta-calib.json");
 const MAX_CASES = 900;
 const MIN_CASES = 12;

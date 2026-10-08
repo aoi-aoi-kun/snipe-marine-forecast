@@ -12,7 +12,18 @@ export type NowcastCalibView = {
     biasMs: number;
     dirDampen?: number;
   }[];
+  /** Fit on rising cases only; used when the harbor is ramping or a match is active. */
+  risingHorizons?: {
+    minutesAhead: NowcastHorizon;
+    count: number;
+    dampen: number;
+    biasMs: number;
+    dirDampen?: number;
+  }[];
 };
+
+/** Rise rate (m/s per hour) that selects the rising-regime calib. */
+export const RISING_REGIME_MS_PER_HOUR = 2;
 
 export type NowcastPoint = {
   minutesAhead: NowcastHorizon;
@@ -178,20 +189,38 @@ function projectDirection(
   return { fromDeg, rawFromDeg };
 }
 
+function pickCalibRow(
+  calib: NowcastCalibView | null,
+  minutesAhead: NowcastHorizon,
+  preferRising: boolean,
+) {
+  if (!calib) return null;
+  if (preferRising && calib.risingHorizons?.length) {
+    const rising = calib.risingHorizons.find(
+      (item) => item.minutesAhead === minutesAhead && item.count >= 16,
+    );
+    if (rising) return rising;
+  }
+  return (
+    calib.horizons.find(
+      (item) => item.minutesAhead === minutesAhead && item.count >= 24,
+    ) ?? null
+  );
+}
+
 /** Build short-range nowcast and ramp alerts from harbor samples. */
 function projectCalibrated(
   currentMs: number,
   riseRateMsPerHour: number,
   minutesAhead: NowcastHorizon,
   calib: NowcastCalibView | null,
+  preferRising: boolean,
 ): { meanMs: number; rawMeanMs: number } {
   const rawMeanMs = Math.max(
     0,
     Math.min(MAX_PROJECTED_MS, currentMs + (riseRateMsPerHour * minutesAhead) / 60),
   );
-  const row = calib?.horizons.find(
-    (item) => item.minutesAhead === minutesAhead && item.count >= 24,
-  );
+  const row = pickCalibRow(calib, minutesAhead, preferRising);
   if (!row) return { meanMs: rawMeanMs, rawMeanMs };
   const meanMs = Math.max(
     0,
@@ -203,10 +232,16 @@ function projectCalibrated(
   return { meanMs, rawMeanMs };
 }
 
+export type BuildNowcastOptions = {
+  /** Force rising-regime calib (e.g. active pattern match). */
+  preferRising?: boolean;
+};
+
 export function buildNowcast(
   samples: HarborSample[],
   nowMs = Date.now(),
   calib: NowcastCalibView | null = null,
+  options: BuildNowcastOptions = {},
 ): NowcastResult {
   if (samples.length === 0) {
     return {
@@ -236,6 +271,10 @@ export function buildNowcast(
       calib.horizons.some((item) => item.minutesAhead === minutes && item.count >= 24),
     );
 
+  const preferRising =
+    options.preferRising === true ||
+    (riseRateMsPerHour !== null && riseRateMsPerHour >= RISING_REGIME_MS_PER_HOUR);
+
   const direction = estimateDirectionAt(samples, latest.atMs);
 
   const nowcast: NowcastPoint[] = [];
@@ -246,6 +285,7 @@ export function buildNowcast(
         riseRateMsPerHour,
         minutes,
         calib,
+        preferRising,
       );
       const dir =
         direction === null
@@ -356,9 +396,14 @@ export type RampEvent = {
   fromDeg: number | null;
 };
 
-/** Detect sharp rises in harbor mean wind (≥2.5 m/s within 30 minutes). */
-export function detectRampEvents(samples: HarborSample[]): RampEvent[] {
+/** Detect sharp rises in harbor mean wind (default ≥2.5 m/s within 30 minutes). */
+export function detectRampEvents(
+  samples: HarborSample[],
+  options: { minRiseMs?: number; debounceMs?: number } = {},
+): RampEvent[] {
   if (samples.length < 3) return [];
+  const minRiseMs = options.minRiseMs ?? RAMP_30_MS;
+  const debounceMs = options.debounceMs ?? 45 * 60 * 1000;
   const events: RampEvent[] = [];
   const window = 30 * 60 * 1000;
   let lastEventMs = -Infinity;
@@ -371,8 +416,8 @@ export function detectRampEvents(samples: HarborSample[]): RampEvent[] {
     }
     const start = samples[startIndex];
     const rise = end.meanMs - start.meanMs;
-    if (rise < RAMP_30_MS) continue;
-    if (end.atMs - lastEventMs < 45 * 60 * 1000) continue;
+    if (rise < minRiseMs) continue;
+    if (end.atMs - lastEventMs < debounceMs) continue;
 
     let peak = end;
     for (let j = i; j < samples.length && samples[j].atMs - end.atMs <= 60 * 60 * 1000; j++) {

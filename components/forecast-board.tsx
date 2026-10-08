@@ -14,6 +14,7 @@ import {
   shortenLearningNote,
   windyBlurb,
 } from "@/lib/ui-copy";
+import { formatRampOutlookLine } from "@/lib/ramp-outlook";
 import { JST_OFFSET_MS } from "@/lib/time";
 import { cn } from "@/lib/utils";
 
@@ -236,6 +237,9 @@ function HarborPanel({ harbor }: { harbor: HarborBundle }) {
   const nowcastHot = harbor.nowcast.some((point) => meanHot(point.meanMs));
   const match = harbor.pattern.match;
   const matchFormatted = match ? formatPatternMatchNote(match) : null;
+  const outlookLine = harbor.nowcastSkill.rampOutlook
+    ? formatRampOutlookLine(harbor.nowcastSkill.rampOutlook)
+    : null;
 
   return (
     <section className="anim-rise space-y-3">
@@ -278,7 +282,10 @@ function HarborPanel({ harbor }: { harbor: HarborBundle }) {
           </div>
 
           {match && matchFormatted ? (
-            <p className="panel-body mt-2.5">{matchFormatted.headline}</p>
+            <div className="mt-2.5 space-y-1.5">
+              <p className="panel-body">{matchFormatted.headline}</p>
+              {outlookLine ? <p className="panel-body text-warn/90">{outlookLine}</p> : null}
+            </div>
           ) : (
             <p className="panel-body text-muted">
               立ち上がりがはっきりしたとき、過去の急上昇との一致をここに出します。数値はナウキャスト側に反映します。
@@ -300,18 +307,23 @@ function HarborPanel({ harbor }: { harbor: HarborBundle }) {
               <p className="panel-sub">
                 {harbor.nowcastSkill.patternBlended
                   ? "15 / 30 / 60 分先 · 急上昇を反映"
-                  : "15 / 30 / 60 分先の目安"}
+                  : harbor.nowcastSkill.risingRegime
+                    ? "15 / 30 / 60 分先 · 立ち上がり校正"
+                    : "15 / 30 / 60 分先の目安"}
               </p>
             </div>
             <InfoDisclosure title="説明">
               <p>
                 {harbor.nowcastSkill.calibrated
-                  ? "直近30分の傾きを延長し、過去の実況との突合で風速・風向を整えています。"
+                  ? "直近30分の傾きを延長し、過去の実況との突合で風速・風向を整えています。平常時と立ち上がり時で別の校正を使います。"
                   : "直近30分の傾きが続くと仮定した、15・30・60分先の目安です。"}
                 {harbor.nowcastSkill.patternBlended
                   ? " 急上昇マッチがあるときは、ピーク目安に向けて短時間予測を寄せています。"
                   : ""}
               </p>
+              {harbor.nowcastSkill.rampOutlook?.note ? (
+                <p>{harbor.nowcastSkill.rampOutlook.note}</p>
+              ) : null}
               <p>{harbor.nowcastSkill.note}</p>
             </InfoDisclosure>
           </div>

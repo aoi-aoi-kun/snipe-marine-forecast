@@ -1,6 +1,8 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { getCacheDir } from "./cache-dir";
 import type { HarborSample } from "./enowin";
+import { detectRampEvents } from "./nowcast";
 import {
   estimateFromMatchedEvent,
   findAnalogEvent,
@@ -8,12 +10,16 @@ import {
   type PatternMatch,
 } from "./pattern";
 import { recencyWeights, weightedMean } from "./recency";
+import { jstParts } from "./time";
+import { windSector8 } from "./wind";
 
-const CACHE_DIR = path.join(process.cwd(), ".cache");
+const CACHE_DIR = getCacheDir();
 const STORE_PATH = path.join(CACHE_DIR, "pattern-forecast-calib.json");
 const MAX_CASES = 400;
 const MAX_PENDING = 40;
 const MIN_CASES = 10;
+/** Softer rises used only to thicken retrospective verification. */
+const SOFT_RAMP_MS = 1.5;
 const PENDING_COOLDOWN_MS = 20 * 60 * 1000;
 const VERIFY_GRACE_MS = 5 * 60 * 1000;
 
@@ -292,6 +298,45 @@ export function verifyPendingForecasts(
   return { stillPending, newlyVerified };
 }
 
+function retrospectiveCaseFromTarget(
+  target: Pick<
+    PatternEvent,
+    "atMs" | "hourBucket" | "dirSector" | "beforeMeanMs" | "riseMs" | "riseMinutes" | "peakMeanMs"
+  >,
+  pool: PatternEvent[],
+  nowMs: number,
+): PatternForecastCase | null {
+  const analog = findAnalogEvent(
+    {
+      hourBucket: target.hourBucket,
+      dirSector: target.dirSector,
+      beforeMeanMs: target.beforeMeanMs,
+      riseRate: target.riseMs / Math.max(target.riseMinutes / 60, 0.25),
+    },
+    pool,
+    { requireRising: true },
+  );
+  if (!analog) return null;
+  const raw = estimateFromMatchedEvent(target.beforeMeanMs, analog.event, analog.score, null);
+  return {
+    atMs: target.atMs,
+    horizonMinutes: raw.horizonMinutes,
+    currentMeanMs: target.beforeMeanMs,
+    score: analog.score,
+    rawRiseMs: raw.expectedRiseMs,
+    rawPeakMs: raw.expectedPeakMs,
+    rawMaxMs: raw.expectedMaxMs,
+    expectedRiseMs: raw.expectedRiseMs,
+    expectedPeakMs: raw.expectedPeakMs,
+    expectedMaxMs: raw.expectedMaxMs,
+    actualRiseMs: Math.round(target.riseMs * 10) / 10,
+    actualPeakMs: Math.round(target.peakMeanMs * 10) / 10,
+    actualMaxMs: Math.round(Math.max(target.peakMeanMs, target.peakMeanMs + 0.5) * 10) / 10,
+    verifiedAtMs: nowMs,
+    source: "retrospective",
+  };
+}
+
 /**
  * Leave-one-out retrospective: for each stored ramp, pretend we matched another
  * event at the pre-rise state and compare the analog estimate to the real peak.
@@ -305,37 +350,50 @@ export function collectRetrospectiveForecastCases(
   for (let index = 0; index < events.length; index++) {
     const target = events[index];
     const others = events.filter((_, i) => i !== index);
-    const analog = findAnalogEvent(
-      {
-        hourBucket: target.hourBucket,
-        dirSector: target.dirSector,
-        beforeMeanMs: target.beforeMeanMs,
-        riseRate: target.riseMs / Math.max(target.riseMinutes / 60, 0.25),
-      },
-      others,
-      { requireRising: true },
-    );
-    if (!analog) continue;
-    const raw = estimateFromMatchedEvent(target.beforeMeanMs, analog.event, analog.score, null);
-    out.push({
-      atMs: target.atMs,
-      horizonMinutes: raw.horizonMinutes,
-      currentMeanMs: target.beforeMeanMs,
-      score: analog.score,
-      rawRiseMs: raw.expectedRiseMs,
-      rawPeakMs: raw.expectedPeakMs,
-      rawMaxMs: raw.expectedMaxMs,
-      expectedRiseMs: raw.expectedRiseMs,
-      expectedPeakMs: raw.expectedPeakMs,
-      expectedMaxMs: raw.expectedMaxMs,
-      actualRiseMs: Math.round(target.riseMs * 10) / 10,
-      actualPeakMs: Math.round(target.peakMeanMs * 10) / 10,
-      actualMaxMs: Math.round(Math.max(target.peakMeanMs, target.peakMeanMs + 0.5) * 10) / 10,
-      verifiedAtMs: nowMs,
-      source: "retrospective",
-    });
+    const item = retrospectiveCaseFromTarget(target, others, nowMs);
+    if (item) out.push(item);
   }
   return out;
+}
+
+/**
+ * Soft rises (+1.5 m/s / 30 min) matched against hard stored events.
+ * Thickens classification / peak-error learning without polluting the hard event store.
+ */
+export function collectSoftRetrospectiveForecastCases(
+  samples: HarborSample[],
+  hardEvents: PatternEvent[],
+  nowMs: number,
+): PatternForecastCase[] {
+  if (hardEvents.length < 2 || samples.length < 20) return [];
+  const soft = detectRampEvents(samples, {
+    minRiseMs: SOFT_RAMP_MS,
+    debounceMs: 30 * 60 * 1000,
+  });
+  const out: PatternForecastCase[] = [];
+  for (const event of soft) {
+    // Skip events already covered as hard ramps (same 20-min bucket).
+    if (hardEvents.some((hard) => Math.abs(hard.atMs - event.atMs) < 20 * 60_000)) {
+      continue;
+    }
+    const hourBucket = Math.floor(jstParts(event.atMs).hour / 3);
+    const dirSector = event.fromDeg === null ? null : windSector8(event.fromDeg);
+    const item = retrospectiveCaseFromTarget(
+      {
+        atMs: event.atMs,
+        hourBucket,
+        dirSector,
+        beforeMeanMs: event.beforeMeanMs,
+        riseMs: event.riseMs,
+        riseMinutes: event.riseMinutes,
+        peakMeanMs: event.peakMeanMs,
+      },
+      hardEvents,
+      nowMs,
+    );
+    if (item) out.push(item);
+  }
+  return out.slice(0, 120);
 }
 
 function mergeVerified(
@@ -386,7 +444,16 @@ export async function learnPatternForecastCalib(options: {
     options.nowMs,
   );
   const retrospective = collectRetrospectiveForecastCases(options.events, options.nowMs);
-  const cases = mergeVerified(store.cases, [...newlyVerified, ...retrospective]);
+  const softRetrospective = collectSoftRetrospectiveForecastCases(
+    options.harbor,
+    options.events,
+    options.nowMs,
+  );
+  const cases = mergeVerified(store.cases, [
+    ...newlyVerified,
+    ...retrospective,
+    ...softRetrospective,
+  ]);
   const fit = fitPatternForecastCalib(cases, options.nowMs);
   const next: PatternForecastCalibStore = {
     updatedAt: Date.now(),

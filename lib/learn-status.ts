@@ -1,5 +1,6 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { getCacheDir } from "./cache-dir";
 import { getContinuousLearnStatus } from "./continuous-learn-state";
 import { loadMetaCalib, summarizeMetaCalib } from "./meta-calib";
 import { loadMosStore, summarizeMos } from "./mos";
@@ -7,7 +8,7 @@ import { loadNowcastCalib, summarizeNowcastCalib } from "./nowcast-learn";
 import { getOpsUptime } from "./ops-uptime";
 import { loadPatternStore } from "./pattern";
 
-const CACHE_DIR = path.join(process.cwd(), ".cache");
+const CACHE_DIR = getCacheDir();
 
 export type LearnStatus = {
   generatedAt: string;

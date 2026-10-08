@@ -1,5 +1,6 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { getCacheDir } from "./cache-dir";
 import type { HourSample, WindowForecast } from "./aggregate";
 import {
   ENOWIN_SOURCE,
@@ -40,9 +41,25 @@ import {
   recordPatternForecastPending,
   summarizePatternForecastCalib,
 } from "./pattern-forecast-calib";
+import { estimateRampOutlook, formatRampOutlookLine } from "./ramp-outlook";
 import type { HarborBundle } from "./types";
 
-const CACHE_DIR = path.join(process.cwd(), ".cache");
+function nearestOffshoreMeanMs(
+  windows: WindowForecast[],
+  nowMs: number,
+): number | null {
+  let best: { gap: number; mean: number } | null = null;
+  for (const window of windows) {
+    if (window.windMeanMs == null) continue;
+    const start = Date.parse(window.start);
+    if (!Number.isFinite(start)) continue;
+    const gap = Math.abs(start - nowMs);
+    if (!best || gap < best.gap) best = { gap, mean: window.windMeanMs };
+  }
+  return best && best.gap <= 4 * 60 * 60_000 ? best.mean : null;
+}
+
+const CACHE_DIR = getCacheDir();
 const HARBOR_CACHE = path.join(CACHE_DIR, "harbor.json");
 const FRESH_MS = 3 * 60 * 1000;
 
@@ -160,21 +177,6 @@ export async function resolveHarbor(
   const latest = resolved.samples[resolved.samples.length - 1];
   const lagMinutes = Math.floor((nowMs - latest.atMs) / 60_000);
   const sourceStale = lagMinutes >= 20;
-  const rawNowcast = buildNowcast(resolved.samples, nowMs, calibStore);
-  // Stale enowin: keep the last observation, but do not extend a frozen series.
-  const nowcast = sourceStale
-    ? {
-        ...rawNowcast,
-        riseRateMsPerHour: null,
-        nowcast: [],
-        alerts: rawNowcast.alerts.filter((alert) => {
-          if (alert.kind === "stale") return true;
-          // Keep harbor-threshold warnings; drop nowcast projections built on frozen data.
-          return alert.kind === "threshold" && !alert.message.includes("ナウキャスト");
-        }),
-      }
-    : rawNowcast;
-
   const harborForLearn =
     learningHarbor.length >= resolved.samples.length ? learningHarbor : resolved.samples;
   // Full refresh deepens MOS archives; harbor-only page polls stay light on free tier.
@@ -210,23 +212,30 @@ export async function resolveHarbor(
     meta: metaSummary,
     patternEvents: patternStore.events.length,
   });
+
+  const seedNowcast = buildNowcast(resolved.samples, nowMs, calibStore);
   const pendingRaw: {
     raw: Parameters<typeof applyPatternForecastCalib>[0] | null;
     currentMeanMs: number | null;
   } = { raw: null, currentMeanMs: null };
+  const offshoreNow = nearestOffshoreMeanMs(windows, nowMs);
   const matchBase: PatternMatch | null = sourceStale
     ? null
     : matchPattern(
         resolved.samples,
         patternStore,
         nowMs,
-        nowcast.riseRateMsPerHour,
+        seedNowcast.riseRateMsPerHour,
         (raw, currentMeanMs) => {
           pendingRaw.raw = raw;
           pendingRaw.currentMeanMs = currentMeanMs;
           return applyPatternForecastCalib(raw, currentMeanMs, patternForecastCalib);
         },
+        offshoreNow,
       );
+  const rampOutlook = matchBase
+    ? estimateRampOutlook(matchBase.score, patternForecastCalib.cases)
+    : null;
   const match: PatternMatch | null = matchBase
     ? {
         ...matchBase,
@@ -245,6 +254,24 @@ export async function resolveHarbor(
       raw: pendingRaw.raw,
     });
   }
+
+  // Rising-regime calib when a match is active (even if the 30-min slope is flat).
+  const rawNowcast = buildNowcast(resolved.samples, nowMs, calibStore, {
+    preferRising: Boolean(match),
+  });
+  // Stale enowin: keep the last observation, but do not extend a frozen series.
+  const nowcast = sourceStale
+    ? {
+        ...rawNowcast,
+        riseRateMsPerHour: null,
+        nowcast: [],
+        alerts: rawNowcast.alerts.filter((alert) => {
+          if (alert.kind === "stale") return true;
+          return alert.kind === "threshold" && !alert.message.includes("ナウキャスト");
+        }),
+      }
+    : rawNowcast;
+
   const patternBlend =
     match && !sourceStale
       ? blendNowcastWithPatternMatch(nowcast.nowcast, latest.meanMs, {
@@ -257,6 +284,7 @@ export async function resolveHarbor(
   const fusedAlerts = patternBlend.blended
     ? withNowcastThresholdAlerts(nowcast.alerts, fusedNowcast)
     : nowcast.alerts;
+  const outlookLine = rampOutlook ? formatRampOutlookLine(rampOutlook) : null;
   const mosOnly = applyMosCorrection(windows, mosStore, (window, correction) => {
     const scenario = lambdaForMosWindow(metaStore, window, correction);
     return scenario * leadTimeGain(Date.parse(window.start), nowMs);
@@ -316,11 +344,26 @@ export async function resolveHarbor(
       caseCount: nowcastSkill.caseCount,
       calibrated: nowcast.calibrated,
       patternBlended: patternBlend.blended,
+      risingRegime: Boolean(match) || (nowcast.riseRateMsPerHour ?? 0) >= 2,
+      risingHorizons: (nowcastSkill.risingHorizons ?? []).map((item) => ({
+        minutesAhead: item.minutesAhead,
+        count: item.count,
+        maeCalibrated: item.maeCalibrated,
+        maeRaw: item.maeRaw,
+        dampen: item.dampen,
+        skillVsPersistence: item.skillVsPersistence,
+      })),
+      rampOutlook: rampOutlook
+        ? {
+            pRiseGe25: rampOutlook.pRiseGe25,
+            pPeakGe10: rampOutlook.pPeakGe10,
+            support: rampOutlook.support,
+            note: rampOutlook.note,
+          }
+        : null,
       note: sourceStale
         ? "実況の公開停止中のため、ナウキャストは抑制しています。"
-        : patternBlend.note
-          ? `${nowcastSkill.note} ${patternBlend.note}`
-          : nowcastSkill.note,
+        : [nowcastSkill.note, patternBlend.note, outlookLine].filter(Boolean).join(" "),
       horizons: nowcastSkill.horizons.map((item) => ({
         minutesAhead: item.minutesAhead,
         count: item.count,
@@ -343,6 +386,14 @@ export async function resolveHarbor(
             expectedPeakMs: match.expectedPeakMs,
             expectedMaxMs: match.expectedMaxMs,
             horizonMinutes: match.horizonMinutes,
+            outlook: rampOutlook
+              ? {
+                  pRiseGe25: rampOutlook.pRiseGe25,
+                  pPeakGe10: rampOutlook.pPeakGe10,
+                  support: rampOutlook.support,
+                  note: rampOutlook.note,
+                }
+              : null,
             calib: match.calib,
           }
         : null,

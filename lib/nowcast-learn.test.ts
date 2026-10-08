@@ -43,8 +43,8 @@ describe("nowcast learning", () => {
     const cases = collectNowcastCases(samples);
     assert.ok(cases.length > 50);
     const calib = rebuildCalib(cases);
-    assert.ok(calib.some((item) => item.minutesAhead === 60));
-    const h60 = calib.find((item) => item.minutesAhead === 60);
+    assert.ok(calib.horizons.some((item) => item.minutesAhead === 60));
+    const h60 = calib.horizons.find((item) => item.minutesAhead === 60);
     assert.ok(h60);
     assert.ok(h60.dampen >= 0 && h60.dampen <= 1);
     assert.ok(h60.count >= 24);
@@ -55,8 +55,14 @@ describe("nowcast learning", () => {
     const start = Date.parse("2026-10-05T00:00:00Z");
     const samples = series(36, start, 4, 0.2);
     const cases = collectNowcastCases(samples);
-    const horizons = rebuildCalib(cases);
-    const store = { updatedAt: Date.now(), lastDeepLearnAt: Date.now(), cases, horizons };
+    const rebuilt = rebuildCalib(cases);
+    const store = {
+      updatedAt: Date.now(),
+      lastDeepLearnAt: Date.now(),
+      cases,
+      horizons: rebuilt.horizons,
+      risingHorizons: rebuilt.risingHorizons,
+    };
     // Force a strong recent rise
     const rising = Array.from({ length: 8 }, (_, index) => ({
       atMs: start + 35 * 3600_000 + index * 5 * 60_000,
@@ -68,18 +74,44 @@ describe("nowcast learning", () => {
     const all = [...samples, ...rising];
     const raw = buildNowcast(rising, rising[rising.length - 1].atMs + 60_000, null);
     const cal = buildNowcast(rising, rising[rising.length - 1].atMs + 60_000, store);
-    assert.equal(cal.calibrated, horizons.length === 3);
+    assert.equal(cal.calibrated, rebuilt.horizons.length === 3);
     if (raw.nowcast.length && cal.nowcast.length) {
       const raw60 = raw.nowcast.find((point) => point.minutesAhead === 60);
       const cal60 = cal.nowcast.find((point) => point.minutesAhead === 60);
       assert.ok(raw60 && cal60);
       // With dampen < 1, calibrated 60-min should be closer to current than raw when rising fast
-      if (horizons.find((item) => item.minutesAhead === 60)!.dampen < 0.95) {
+      if (rebuilt.horizons.find((item) => item.minutesAhead === 60)!.dampen < 0.95) {
         assert.ok(cal60.meanMs <= raw60.meanMs + 0.05);
       }
     }
     void all;
     const fitted = fitHorizon(cases.filter((item) => item.minutesAhead === 30));
     assert.ok(fitted === null || fitted.count >= 24);
+  });
+
+  it("fits a rising regime that keeps some trend dampen", () => {
+    const start = Date.parse("2026-09-01T00:00:00Z");
+    const samples: HarborSample[] = [];
+    // Alternating quiet and ramp days so rising subset is large enough.
+    for (let day = 0; day < 10; day++) {
+      for (let i = 0; i < 24 * 12; i++) {
+        const hour = i / 12;
+        const ramp = hour >= 10 && hour <= 14;
+        const mean = ramp ? 3 + (hour - 10) * 1.4 : 2.5 + 0.05 * Math.sin(hour);
+        samples.push({
+          atMs: start + (day * 24 * 12 + i) * 5 * 60_000,
+          meanMs: Math.max(0.5, mean),
+          maxMs: Math.max(1, mean + 1),
+          fromLabel: "南",
+          fromDeg: 180,
+        });
+      }
+    }
+    const cases = collectNowcastCases(samples);
+    const rebuilt = rebuildCalib(cases);
+    assert.ok(rebuilt.risingHorizons.length >= 1);
+    for (const row of rebuilt.risingHorizons) {
+      assert.ok(row.dampen >= 0.35);
+    }
   });
 });
