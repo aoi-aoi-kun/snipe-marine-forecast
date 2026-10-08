@@ -272,11 +272,45 @@ a {
   gap: 0.55rem;
 }
 
+.metric-rail-2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 @media (min-width: 640px) {
   .metric-rail,
   .nowcast-rail {
     gap: 0.7rem;
   }
+}
+
+.wind-arrow {
+  flex-shrink: 0;
+  background:
+    radial-gradient(circle at 35% 28%, color-mix(in srgb, white 88%, transparent), transparent 55%),
+    color-mix(in srgb, white 78%, var(--color-sand));
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--color-sea) 18%, transparent),
+    0 4px 10px color-mix(in srgb, var(--color-sea-deep) 8%, transparent);
+}
+
+.wind-arrow-empty {
+  color: var(--color-muted);
+  background: color-mix(in srgb, white 70%, var(--color-sand));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-muted) 22%, transparent);
+}
+
+.wind-arrow-sea {
+  color: var(--color-sea);
+}
+
+.wind-arrow-warn {
+  color: var(--color-warn);
+  background:
+    radial-gradient(circle at 35% 28%, color-mix(in srgb, white 80%, transparent), transparent 55%),
+    color-mix(in srgb, var(--color-warn-bg) 78%, white);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--color-warn) 38%, transparent),
+    0 4px 10px color-mix(in srgb, var(--color-warn) 12%, transparent);
 }
 
 .metric-tile,

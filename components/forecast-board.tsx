@@ -45,7 +45,7 @@ function InfoDisclosure({
   );
 }
 
-/** Unified wind arrow: points to the direction the wind is going (fromDeg + 180). */
+/** Wind arrow: filled pointer shows where the wind is going (fromDeg + 180). */
 function WindArrow({
   degrees,
   blocked = false,
@@ -58,50 +58,65 @@ function WindArrow({
   size?: "sm" | "md" | "lg";
 }) {
   const sizeClass =
-    size === "sm" ? "size-5" : size === "lg" ? "size-10 sm:size-11" : "size-8 sm:size-9";
+    size === "sm" ? "size-7" : size === "lg" ? "size-11 sm:size-12" : "size-9 sm:size-10";
   if (degrees === null) {
     return (
       <span
         className={cn(
-          "mx-auto block rounded-full bg-muted/45",
-          size === "sm" ? "size-1.5" : "size-2",
+          "wind-arrow wind-arrow-empty mx-auto grid place-items-center rounded-full",
+          sizeClass,
         )}
         title="風向なし"
-      />
+      >
+        <span className="size-1.5 rounded-full bg-muted/50" />
+      </span>
     );
   }
   return (
-    <svg
-      viewBox="0 0 24 24"
+    <span
+      className={cn(
+        "wind-arrow mx-auto grid place-items-center rounded-full",
+        sizeClass,
+        blocked ? "wind-arrow-warn" : "wind-arrow-sea",
+      )}
       aria-hidden={label ? undefined : true}
       aria-label={label ?? undefined}
       role={label ? "img" : undefined}
-      className={cn("mx-auto block shrink-0", sizeClass, blocked ? "text-warn" : "text-sea")}
     >
-      <g
-        style={{
-          transform: `rotate(${degrees + 180}deg)`,
-          transformOrigin: "12px 12px",
-          transition: "transform 0.45s cubic-bezier(0.22, 1, 0.36, 1)",
-        }}
-      >
-        <path
-          d="M12 3.2v14.4"
+      <svg viewBox="0 0 32 32" className="size-[72%]" overflow="visible">
+        {/* Fixed compass ring — does not rotate with the pointer */}
+        <circle
+          cx="16"
+          cy="16"
+          r="14.6"
           fill="none"
           stroke="currentColor"
-          strokeWidth="2.2"
-          strokeLinecap="round"
+          strokeOpacity="0.18"
+          strokeWidth="1.2"
         />
-        <path
-          d="M12 3.1 7.2 8.8M12 3.1l4.8 5.7"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2.2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-      </g>
-    </svg>
+        <g
+          style={{
+            transform: `rotate(${degrees + 180}deg)`,
+            transformOrigin: "16px 16px",
+            transition: "transform 0.5s cubic-bezier(0.22, 1, 0.36, 1)",
+          }}
+        >
+          {/* Soft stem shadow for depth */}
+          <path
+            d="M16 4.4 10.6 14.6h2.55v11.4c0 .75.62 1.35 1.38 1.35h1.94c.76 0 1.38-.6 1.38-1.35V14.6H21.4L16 4.4Z"
+            fill="currentColor"
+            fillOpacity="0.14"
+            transform="translate(0.4 0.5)"
+          />
+          <path
+            d="M16 4.4 10.6 14.6h2.55v11.4c0 .75.62 1.35 1.38 1.35h1.94c.76 0 1.38-.6 1.38-1.35V14.6H21.4L16 4.4Z"
+            fill="currentColor"
+          />
+          {/* Nose highlight */}
+          <path d="M16 5.6 13.2 11.2h5.6L16 5.6Z" fill="white" fillOpacity="0.28" />
+        </g>
+      </svg>
+    </span>
   );
 }
 
@@ -223,10 +238,6 @@ function HarborPanel({ harbor }: { harbor: HarborBundle }) {
   const matchMeanHot = meanHot(match?.expectedPeakMs);
   const matchGustHot = gustHot(match?.expectedMaxMs);
   const matchHot = matchMeanHot || matchGustHot;
-  const riseLabel =
-    harbor.riseRateMsPerHour !== null
-      ? `${harbor.riseRateMsPerHour >= 0 ? "+" : ""}${harbor.riseRateMsPerHour.toFixed(1)}`
-      : null;
   const matchFormatted = match ? formatPatternMatchNote(match) : null;
 
   return (
@@ -317,92 +328,9 @@ function HarborPanel({ harbor }: { harbor: HarborBundle }) {
           )}
         </article>
 
-        {latest ? (
-          <article
-            className={cn(
-              "wind-panel anim-rise anim-rise-delay-1",
-              (liveHot || sourceStale) && "wind-panel-warn",
-            )}
-          >
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div>
-                <p className={cn("panel-kicker", liveHot && "panel-kicker-warn")}>実況 · いま</p>
-                <p
-                  className={cn(
-                    "panel-sub",
-                    sourceStale && "font-medium text-warn",
-                  )}
-                >
-                  {formatHarborObsTime(latest.at)}
-                  {lagMinutes !== null ? ` · ${lagMinutes}分前` : ""}
-                  {latest.fromLabel ? ` · ${latest.fromLabel}` : ""}
-                </p>
-              </div>
-              <div className="flex items-center gap-2.5 rounded-2xl bg-white/70 px-3 py-1.5 shadow-[0_0_0_1px_color-mix(in_srgb,var(--color-sea)_16%,transparent)]">
-                <WindArrow
-                  degrees={latest.fromDeg}
-                  blocked={liveHot}
-                  label={latest.fromLabel}
-                  size="md"
-                />
-              </div>
-            </div>
-
-            <div className="mt-2.5">
-              <ThresholdBadges meanMs={latest.meanMs} gustMs={latest.maxMs} />
-            </div>
-
-            {liveHot ? (
-              <p className="threshold-banner mt-2.5">
-                {liveMeanHot && liveGustHot
-                  ? `平均 ${MEAN_LIMIT_MS} m/s・瞬間 ${GUST_LIMIT_MS} m/s を超えています。出艇判断を慎重に。`
-                  : liveMeanHot
-                    ? `平均風速が ${MEAN_LIMIT_MS} m/s を超えています。出艇判断を慎重に。`
-                    : `瞬間風速が ${GUST_LIMIT_MS} m/s を超えています。出艇判断を慎重に。`}
-              </p>
-            ) : null}
-
-            <dl className="metric-rail not-prose mt-3">
-              <div className={cn("metric-tile", liveMeanHot && "metric-tile-warn")}>
-                <dt>平均</dt>
-                <dd>
-                  {latest.meanMs.toFixed(1)}
-                  <span className="metric-unit">m/s</span>
-                </dd>
-              </div>
-              <div className={cn("metric-tile", liveGustHot && "metric-tile-warn")}>
-                <dt>瞬間</dt>
-                <dd>
-                  {latest.maxMs.toFixed(1)}
-                  <span className="metric-unit">m/s</span>
-                </dd>
-              </div>
-              <div className={cn("metric-tile", rising && "metric-tile-warn")}>
-                <dt>傾き</dt>
-                <dd>
-                  {riseLabel ?? "—"}
-                  {riseLabel ? <span className="metric-hint">m/s/h</span> : null}
-                </dd>
-              </div>
-            </dl>
-
-            {sourceStale ? (
-              <p className="panel-body font-medium text-warn">
-                公開側の更新が止まっています。新しい観測が来るまで短時間予測は出しません。
-              </p>
-            ) : rising && !liveHot ? (
-              <p className="panel-body text-warn/90">
-                立ち上がり気味です。急上昇マッチとナウキャストも確認してください。
-              </p>
-            ) : null}
-          </article>
-        ) : (
-          <p className="panel-body text-muted">実況データはまだありません。</p>
-        )}
-
         <article
           className={cn(
-            "wind-panel anim-rise anim-rise-delay-2",
+            "wind-panel anim-rise anim-rise-delay-1",
             nowcastHot && "wind-panel-warn",
           )}
         >
@@ -486,6 +414,80 @@ function HarborPanel({ harbor }: { harbor: HarborBundle }) {
             </p>
           )}
         </article>
+
+        {latest ? (
+          <article
+            className={cn(
+              "wind-panel anim-rise anim-rise-delay-2",
+              (liveHot || sourceStale) && "wind-panel-warn",
+            )}
+          >
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p className={cn("panel-kicker", liveHot && "panel-kicker-warn")}>実況 · いま</p>
+                <p
+                  className={cn(
+                    "panel-sub",
+                    sourceStale && "font-medium text-warn",
+                  )}
+                >
+                  {formatHarborObsTime(latest.at)}
+                  {lagMinutes !== null ? ` · ${lagMinutes}分前` : ""}
+                  {latest.fromLabel ? ` · ${latest.fromLabel}` : ""}
+                </p>
+              </div>
+              <WindArrow
+                degrees={latest.fromDeg}
+                blocked={liveHot}
+                label={latest.fromLabel}
+                size="lg"
+              />
+            </div>
+
+            <div className="mt-2.5">
+              <ThresholdBadges meanMs={latest.meanMs} gustMs={latest.maxMs} />
+            </div>
+
+            {liveHot ? (
+              <p className="threshold-banner mt-2.5">
+                {liveMeanHot && liveGustHot
+                  ? `平均 ${MEAN_LIMIT_MS} m/s・瞬間 ${GUST_LIMIT_MS} m/s を超えています。出艇判断を慎重に。`
+                  : liveMeanHot
+                    ? `平均風速が ${MEAN_LIMIT_MS} m/s を超えています。出艇判断を慎重に。`
+                    : `瞬間風速が ${GUST_LIMIT_MS} m/s を超えています。出艇判断を慎重に。`}
+              </p>
+            ) : null}
+
+            <dl className="metric-rail metric-rail-2 not-prose mt-3">
+              <div className={cn("metric-tile", liveMeanHot && "metric-tile-warn")}>
+                <dt>平均</dt>
+                <dd>
+                  {latest.meanMs.toFixed(1)}
+                  <span className="metric-unit">m/s</span>
+                </dd>
+              </div>
+              <div className={cn("metric-tile", liveGustHot && "metric-tile-warn")}>
+                <dt>瞬間</dt>
+                <dd>
+                  {latest.maxMs.toFixed(1)}
+                  <span className="metric-unit">m/s</span>
+                </dd>
+              </div>
+            </dl>
+
+            {sourceStale ? (
+              <p className="panel-body font-medium text-warn">
+                公開側の更新が止まっています。新しい観測が来るまで短時間予測は出しません。
+              </p>
+            ) : rising && !liveHot ? (
+              <p className="panel-body text-warn/90">
+                立ち上がり気味です。急上昇マッチとナウキャストも確認してください。
+              </p>
+            ) : null}
+          </article>
+        ) : (
+          <p className="panel-body text-muted">実況データはまだありません。</p>
+        )}
       </div>
 
       {harbor.alerts.some((alert) => alert.kind !== "stale") ? (
