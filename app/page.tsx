@@ -22,9 +22,6 @@ export default function Page() {
             enowin · 江の島ヨットハーバー
           </a>
         </p>
-        <p>
-          急上昇の学習用に ECMWF 公開データも裏で取得しますが、3時間予報はこの画面には出しません。
-        </p>
       </footer>
     </main>
   );

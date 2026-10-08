@@ -5,7 +5,9 @@ import {
   formatLearnLead,
   formatLearnMetrics,
   formatLearningTrend,
+  formatPatternMatchNote,
   shortenLearningNote,
+  HARBOR_SOURCE_LABEL,
 } from "@/lib/ui-copy";
 import { HARBOR_TO_OFFSHORE_KM } from "@/lib/geo";
 
@@ -108,12 +110,12 @@ function AboutDisclosure({
   children: ReactNode;
 }) {
   return (
-    <details className="about-block">
+    <details className="about-item">
       <summary>
-        <span className="about-block-title">{title}</span>
-        <span className="about-block-chevron" aria-hidden="true" />
+        <span className="about-item-title">{title}</span>
+        <span className="about-item-mark" aria-hidden="true" />
       </summary>
-      <div className="about-block-body">{children}</div>
+      <div className="about-item-body">{children}</div>
     </details>
   );
 }
@@ -122,40 +124,83 @@ export function ForecastAbout({ harbor }: { harbor: HarborBundle | null }) {
   const input = learnInput(harbor);
   const metrics = input ? formatLearnMetrics(input) : [];
   const trend = input ? formatLearningTrend(input.improving) : null;
+  const match = harbor?.pattern.match ?? null;
+  const matchFormatted = match ? formatPatternMatchNote(match) : null;
 
   return (
     <section className="about-panel anim-rise" aria-labelledby="about-heading">
-      <div className="mb-4 sm:mb-5">
-        <p className="eyebrow mb-1">案内</p>
-        <h2 id="about-heading" className="section-title">
-          このアプリについて
+      <header className="about-head">
+        <h2 id="about-heading" className="about-heading">
+          案内
         </h2>
-        <p className="prose-muted mt-2 max-w-prose">
-          江の島ヨットハーバーの実況と、そこから見る約1時間先までの目安です。七里ヶ浜沖の格子点とは約{" "}
+        <p className="about-lead">
+          江の島ヨットハーバーの実況と、約1時間先までの目安です。七里ヶ浜沖の格子点とは約{" "}
           {HARBOR_TO_OFFSHORE_KM.toFixed(1)} km 離れており、数値はそのまま比べられません。
         </p>
-      </div>
+      </header>
 
-      <div className="about-grid">
-        <AboutDisclosure title="アプリの見方">
+      <div className="about-list">
+        <AboutDisclosure title="画面の見方">
           <p>
-            画面の先頭に実況とナウキャストがあります（PCでは横並び）。気象庁の警報・注意報は、発表があるときだけ見出し直下に強く出します。ないときは「発表なし」一行に留めます。
+            先頭に実況とナウキャストがあります（PCでは横並び）。気象庁の警報・注意報は、発表があるときだけ見出し直下に出します。ないときは「発表なし」一行です。
           </p>
           <p>
             短時間の判断はナウキャストの15・30・60分を見てください。平均 10 m/s 超、瞬間 13 m/s 超は強調表示します。急上昇マッチは類似の有無と見込みの目安で、数値はナウキャストに織り込みます。
+          </p>
+          <p>
+            「実況を更新」は見出し右にあります。タブを開いている間は、およそ1分ごとに実況だけ自動で取り直します。
+          </p>
+        </AboutDisclosure>
+
+        <AboutDisclosure title="データと出典">
+          <p>
+            {harbor?.note ??
+              "5分間隔の実況です。いまから約1時間先までを、この画面で確認できます。"}
+          </p>
+          <p>
+            出典は {HARBOR_SOURCE_LABEL} です。沖の格子点とは地点が異なります。平均 10 m/s
+            超・瞬間 13 m/s 超を強調します。
+          </p>
+          <p>
+            急上昇の学習用に ECMWF 公開データも裏で取得しますが、3時間予報はこの画面には出しません。
           </p>
         </AboutDisclosure>
 
         <AboutDisclosure title="予測の計算方法">
           <p>
-            ナウキャストは、直近およそ30分の実況から風速・風向の傾きを求め、15・30・60分先へ延長します。過去に「同じように延長したあと、実際どうなったか」で減衰とずれを校正します。
+            {harbor?.nowcastSkill.calibrated
+              ? "ナウキャストは、直近およそ30分の実況から風速・風向の傾きを求め、15・30・60分先へ延長し、過去の実況との突合で減衰とずれを校正します。平常時と立ち上がり時で校正を分けます。"
+              : "ナウキャストは、直近およそ30分の傾きが続くと仮定した、15・30・60分先の目安です。検証が進むと自動で校正します。"}
           </p>
           <p>
-            平常時と立ち上がり時では校正を分けます。立ち上がりや急上昇マッチがあるときは、傾きを残した校正と、過去の類似イベントのピーク目安への寄せを使います。融合の寄せ具合も事後検証で重みとバイアスを学習します。風向は16方位で扱います。
+            立ち上がりや急上昇マッチがあるときは、傾きを残した校正と、過去の類似イベントのピーク目安への寄せを使います。融合の寄せ具合も事後検証で重みとバイアスを学習します。風向は16方位で扱います。
           </p>
-          <p>
-            数時間先の沖の格子予報は画面には出さず、学習用にだけ取得します。出艇の最終判断は、現場と気象庁の発表に従ってください。
-          </p>
+          {harbor?.nowcastSkill.patternBlended ? (
+            <p>いまは急上昇マッチがあり、ピーク目安に向けて短時間予測を寄せています。</p>
+          ) : null}
+          {harbor?.nowcastSkill.blendCalib ? (
+            <p>{harbor.nowcastSkill.blendCalib.note}</p>
+          ) : null}
+          {harbor?.nowcastSkill.rampOutlook?.note ? (
+            <p>{harbor.nowcastSkill.rampOutlook.note}</p>
+          ) : null}
+          {harbor?.nowcastSkill.note ? <p>{harbor.nowcastSkill.note}</p> : null}
+          <p>出艇の最終判断は、現場と気象庁の発表に従ってください。</p>
+        </AboutDisclosure>
+
+        <AboutDisclosure title="急上昇マッチ">
+          {match && matchFormatted ? (
+            <>
+              <p>{matchFormatted.detail}</p>
+              {harbor?.nowcastSkill.patternBlended ? (
+                <p>短時間の数値はナウキャスト側を見てください。</p>
+              ) : null}
+            </>
+          ) : (
+            <p>
+              立ち上がりがはっきりしたとき、過去の急上昇との一致をここに出します。数値はナウキャスト側に反映します。該当する前兆がないときは「いまは該当する前兆がありません」と表示します。
+            </p>
+          )}
         </AboutDisclosure>
 
         <AboutDisclosure title="予測の精確性">
@@ -193,11 +238,6 @@ export function ForecastAbout({ harbor }: { harbor: HarborBundle | null }) {
                   {harbor?.mos?.note ? ` ${harbor.mos.note}` : ""}
                 </p>
               )}
-              {harbor?.nowcastSkill.note ? (
-                <p className="text-[0.7rem] leading-relaxed text-muted">
-                  {harbor.nowcastSkill.note}
-                </p>
-              ) : null}
             </>
           ) : (
             <p>実況を読み込むと、学習の件数と稼働状況を表示します。</p>

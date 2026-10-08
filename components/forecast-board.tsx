@@ -1,12 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import type { ForecastResponse, HarborBundle } from "@/lib/types";
-import {
-  HARBOR_SOURCE_LABEL,
-  formatPatternMatchNote,
-} from "@/lib/ui-copy";
+import { formatPatternMatchNote } from "@/lib/ui-copy";
 import { formatRampOutlookLine } from "@/lib/ramp-outlook";
 import { JST_OFFSET_MS } from "@/lib/time";
 import { cn } from "@/lib/utils";
@@ -20,25 +17,6 @@ function formatHarborObsTime(iso: string): string {
   const hour = shifted.getUTCHours();
   const minute = shifted.getUTCMinutes();
   return `${month}月${day}日 ${hour}時${minute.toString().padStart(2, "0")}分`;
-}
-
-function InfoDisclosure({
-  title,
-  children,
-  className,
-}: {
-  title: string;
-  children: ReactNode;
-  className?: string;
-}) {
-  return (
-    <details className={cn("info-disclosure", className)}>
-      <summary>
-        <span className="soft-link">{title}</span>
-      </summary>
-      <div className="info-disclosure-body prose-muted">{children}</div>
-    </details>
-  );
 }
 
 /** Wind arrow: filled pointer shows where the wind is going (fromDeg + 180). */
@@ -181,17 +159,12 @@ function ThresholdBadges({
 function SectionTools({
   loading,
   onRefresh,
-  showDataNote = false,
-  dataNote,
 }: {
   loading: boolean;
   onRefresh: () => void;
-  showDataNote?: boolean;
-  dataNote?: ReactNode;
 }) {
   return (
     <div className="section-tools">
-      {showDataNote && dataNote ? dataNote : null}
       <Button
         variant="outline"
         size="sm"
@@ -264,20 +237,7 @@ function HarborPanel({
             )}
           </p>
         </div>
-        <SectionTools
-          loading={loading}
-          onRefresh={onRefresh}
-          showDataNote
-          dataNote={
-            <InfoDisclosure title="データについて" className="shrink-0">
-              <p>{harbor.note}</p>
-              <p>出典 {HARBOR_SOURCE_LABEL}。沖の格子点とは地点が異なります。</p>
-              <p>
-                平均 {MEAN_LIMIT_MS} m/s 超、瞬間 {GUST_LIMIT_MS} m/s 超は強調表示します。
-              </p>
-            </InfoDisclosure>
-          }
-        />
+        <SectionTools loading={loading} onRefresh={onRefresh} />
       </div>
 
       {hasWarnings ? <JmaAlert warnings={warningList} /> : null}
@@ -379,23 +339,6 @@ function HarborPanel({
                     : "15 / 30 / 60 分先の目安"}
               </p>
             </div>
-            <InfoDisclosure title="説明">
-              <p>
-                {harbor.nowcastSkill.calibrated
-                  ? "直近30分の傾きを延長し、過去の実況との突合で風速・風向を整えています。平常時と立ち上がり時で別の校正を使います。"
-                  : "直近30分の傾きが続くと仮定した、15・30・60分先の目安です。"}
-                {harbor.nowcastSkill.patternBlended
-                  ? " 急上昇マッチがあるときは、ピーク目安に向けて短時間予測を寄せています。"
-                  : ""}
-              </p>
-              {harbor.nowcastSkill.blendCalib ? (
-                <p>{harbor.nowcastSkill.blendCalib.note}</p>
-              ) : null}
-              {harbor.nowcastSkill.rampOutlook?.note ? (
-                <p>{harbor.nowcastSkill.rampOutlook.note}</p>
-              ) : null}
-              <p>{harbor.nowcastSkill.note}</p>
-            </InfoDisclosure>
           </div>
 
           {nowcastHot ? (
@@ -476,14 +419,6 @@ function HarborPanel({
                   : "いまは該当する前兆がありません"}
               </p>
             </div>
-            {match && matchFormatted ? (
-              <InfoDisclosure title="説明">
-                <p>{matchFormatted.detail}</p>
-                {harbor.nowcastSkill.patternBlended ? (
-                  <p>短時間の数値は上のナウキャストを見てください。</p>
-                ) : null}
-              </InfoDisclosure>
-            ) : null}
           </div>
 
           {match && matchFormatted ? (
@@ -491,11 +426,7 @@ function HarborPanel({
               <p className="panel-body">{matchFormatted.headline}</p>
               {outlookLine ? <p className="panel-body text-warn/90">{outlookLine}</p> : null}
             </div>
-          ) : (
-            <p className="panel-body text-muted">
-              立ち上がりがはっきりしたとき、過去の急上昇との一致をここに出します。数値はナウキャスト側に反映します。
-            </p>
-          )}
+          ) : null}
         </article>
       </div>
 

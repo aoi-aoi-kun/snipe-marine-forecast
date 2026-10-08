@@ -12,8 +12,11 @@
   --color-warn: #9c3530;
   --color-warn-bg: #f6e8e5;
   --color-sun: #c07a14;
-  --font-sans: var(--font-plex), "Hiragino Sans", "Noto Sans JP", sans-serif;
-  --font-serif: var(--font-mincho), "Hiragino Mincho ProN", "Noto Serif JP", serif;
+  --font-sans:
+    system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "Hiragino Sans",
+    "Hiragino Kaku Gothic ProN", "Noto Sans JP", "Yu Gothic UI", "Yu Gothic",
+    Meiryo, sans-serif;
+  --font-serif: var(--font-sans);
   --radius-sm: 0.55rem;
   --radius-md: 0.85rem;
   --radius-lg: 1.15rem;
@@ -96,8 +99,9 @@ a {
 }
 
 .section-title {
-  font-family: var(--font-serif);
+  font-family: var(--font-sans);
   font-size: 1.1rem;
+  font-weight: 600;
   line-height: 1.25;
   letter-spacing: 0.01em;
   color: color-mix(in srgb, var(--color-ink) 90%, var(--color-sea-deep));
@@ -153,34 +157,6 @@ a {
 .soft-link:hover {
   color: var(--color-sea-deep);
   text-decoration-color: color-mix(in srgb, var(--color-sea) 55%, transparent);
-}
-
-.info-disclosure summary {
-  cursor: pointer;
-  list-style: none;
-  user-select: none;
-  font-size: 0.68rem;
-}
-
-.info-disclosure summary::-webkit-details-marker {
-  display: none;
-}
-
-.info-disclosure .soft-link {
-  font-size: inherit;
-}
-
-.info-disclosure[open] .soft-link {
-  color: var(--color-ink);
-  text-decoration-color: color-mix(in srgb, var(--color-sea) 40%, transparent);
-}
-
-.info-disclosure-body {
-  margin-top: 0.45rem;
-}
-
-.info-disclosure-body > * + * {
-  margin-top: 0.35rem;
 }
 
 /* —— Panels —— */
@@ -411,8 +387,9 @@ a {
 .metric-tile dd,
 .nowcast-speed {
   margin-top: 0.2rem;
-  font-family: var(--font-serif);
+  font-family: var(--font-sans);
   font-size: clamp(1.25rem, 3.2vw, 1.55rem);
+  font-weight: 600;
   line-height: 1;
   letter-spacing: -0.03em;
   font-variant-numeric: tabular-nums;
@@ -537,43 +514,54 @@ a {
 }
 
 .about-panel {
-  border-radius: var(--radius-lg);
-  padding: 1.35rem 1.15rem 1.45rem;
-  background:
-    linear-gradient(
-      165deg,
-      color-mix(in srgb, white 88%, var(--color-sand)) 0%,
-      color-mix(in srgb, white 68%, var(--color-sand)) 100%
-    );
+  border-radius: var(--radius-md);
+  padding: 1rem 0.9rem 1.1rem;
+  background: color-mix(in srgb, white 78%, var(--color-sand));
   box-shadow: var(--shadow-hairline);
 }
 
 @media (min-width: 640px) {
   .about-panel {
-    padding: 1.5rem 1.35rem 1.6rem;
+    padding: 1.15rem 1.1rem 1.25rem;
   }
 }
 
-.about-grid {
+.about-head {
+  margin-bottom: 0.85rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--color-line) 55%, transparent);
+}
+
+.about-heading {
+  font-family: var(--font-sans);
+  font-size: 1.05rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: color-mix(in srgb, var(--color-ink) 92%, var(--color-sea-deep));
+}
+
+.about-lead {
+  margin-top: 0.4rem;
+  max-width: 40rem;
+  font-size: 0.78rem;
+  line-height: 1.65;
+  color: var(--color-muted);
+}
+
+.about-list {
   display: grid;
-  gap: 0.55rem;
-}
-
-@media (min-width: 768px) {
-  .about-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 0.65rem 1rem;
-  }
-}
-
-.about-block {
-  position: relative;
-  border-radius: var(--radius-md);
-  background: color-mix(in srgb, white 70%, var(--color-paper));
+  gap: 0;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  background: color-mix(in srgb, white 88%, var(--color-paper));
   box-shadow: var(--shadow-hairline);
 }
 
-.about-block summary {
+.about-item + .about-item {
+  border-top: 1px solid color-mix(in srgb, var(--color-line) 50%, transparent);
+}
+
+.about-item summary {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -581,61 +569,62 @@ a {
   cursor: pointer;
   list-style: none;
   user-select: none;
-  padding: 0.7rem 0.85rem 0.7rem 1rem;
-  border-left: 2px solid color-mix(in srgb, var(--color-sea) 45%, var(--color-line));
-  border-radius: var(--radius-md);
+  padding: 0.75rem 0.9rem;
+  transition: background-color 0.15s ease;
 }
 
-.about-block summary::-webkit-details-marker {
+.about-item summary::-webkit-details-marker {
   display: none;
 }
 
-.about-block-title {
-  font-family: var(--font-serif);
-  font-size: 0.95rem;
+.about-item summary:hover {
+  background: color-mix(in srgb, var(--color-sand) 35%, white);
+}
+
+.about-item[open] summary {
+  background: color-mix(in srgb, var(--color-sand) 22%, white);
+}
+
+.about-item-title {
+  font-family: var(--font-sans);
+  font-size: 0.88rem;
   font-weight: 600;
   letter-spacing: 0.01em;
-  color: color-mix(in srgb, var(--color-ink) 90%, var(--color-sea));
+  color: var(--color-ink);
 }
 
-.about-block-chevron {
+.about-item-mark {
   flex-shrink: 0;
-  width: 0.45rem;
-  height: 0.45rem;
-  border-right: 1.5px solid color-mix(in srgb, var(--color-sea) 55%, var(--color-muted));
-  border-bottom: 1.5px solid color-mix(in srgb, var(--color-sea) 55%, var(--color-muted));
-  transform: rotate(-45deg);
-  transition: transform 0.2s ease;
+  width: 0.55rem;
+  height: 0.55rem;
+  border-right: 1.5px solid color-mix(in srgb, var(--color-sea) 50%, var(--color-muted));
+  border-bottom: 1.5px solid color-mix(in srgb, var(--color-sea) 50%, var(--color-muted));
+  transform: rotate(45deg) translateY(-0.1rem);
+  transition: transform 0.18s ease;
 }
 
-.about-block[open] .about-block-chevron {
-  transform: rotate(45deg);
+.about-item[open] .about-item-mark {
+  transform: rotate(-135deg) translateY(-0.05rem);
 }
 
-.about-block[open] summary {
-  border-bottom-left-radius: 0;
-  border-bottom-right-radius: 0;
+.about-item-body {
+  padding: 0 0.9rem 0.85rem;
 }
 
-.about-block-body {
-  padding: 0 0.85rem 0.85rem 1rem;
-  border-left: 2px solid color-mix(in srgb, var(--color-sea) 28%, var(--color-line));
-}
-
-.about-block-body p {
+.about-item-body p {
   font-size: 0.78rem;
-  line-height: 1.75;
-  color: color-mix(in srgb, var(--color-muted) 86%, var(--color-ink));
-  margin-top: 0.4rem;
+  line-height: 1.7;
+  color: color-mix(in srgb, var(--color-muted) 88%, var(--color-ink));
+  margin-top: 0.45rem;
 }
 
-.about-block-body p:first-child {
+.about-item-body p:first-child {
   margin-top: 0;
 }
 
-.about-block-body .stat-row {
+.about-item-body .stat-row {
   margin-top: 0.7rem;
-  margin-bottom: 0.4rem;
+  margin-bottom: 0.35rem;
 }
 
 .stat-row {
@@ -662,8 +651,9 @@ a {
 
 .stat-pill dd {
   margin-top: 0.12rem;
-  font-family: var(--font-serif);
+  font-family: var(--font-sans);
   font-size: 0.95rem;
+  font-weight: 600;
   line-height: 1.2;
   letter-spacing: -0.02em;
   color: color-mix(in srgb, var(--color-ink) 88%, transparent);
