@@ -27,7 +27,11 @@ async function tick(reason: string) {
     const { loadPatternStore } = await import("./pattern");
     const { loadMetaCalib, summarizeMetaCalib } = await import("./meta-calib");
 
-    const forecast = await getForecast({ refresh: false, refreshHarbor: true });
+    const forecast = await getForecast({
+      refresh: false,
+      refreshHarbor: true,
+      learn: true,
+    });
     const mos = summarizeMos(await loadMosStore());
     const nowcast = summarizeNowcastCalib(await loadNowcastCalib());
     const patterns = await loadPatternStore();

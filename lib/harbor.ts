@@ -8,7 +8,7 @@ import {
   type HarborSample,
 } from "./enowin";
 import { learnMos } from "./mos-learn";
-import { applyMosCorrection, summarizeMos } from "./mos";
+import { applyMosCorrection, loadMosStore, summarizeMos } from "./mos";
 import { attachConfidence } from "./confidence";
 import { blendNearWindowsTowardHarbor } from "./harbor-blend";
 import { leadTimeGain } from "./lead-gain";
@@ -16,6 +16,7 @@ import { captureLearningProgress } from "./learning-progress";
 import {
   lambdaForMosWindow,
   learnMetaCalibration,
+  loadMetaCalib,
   summarizeMetaCalib,
 } from "./meta-calib";
 import { buildNowcast } from "./nowcast";
@@ -32,18 +33,21 @@ import {
 import {
   blendCalibView,
   learnBlendCalib,
+  loadBlendCalib,
   recordBlendPending,
   summarizeBlendCalib,
 } from "./nowcast-pattern-blend-calib";
 import {
   applyHarborBoost,
   learnFromSamples,
+  loadPatternStore,
   matchPattern,
   type PatternMatch,
 } from "./pattern";
 import {
   applyPatternForecastCalib,
   learnPatternForecastCalib,
+  loadPatternForecastCalib,
   recordPatternForecastPending,
   summarizePatternForecastCalib,
 } from "./pattern-forecast-calib";
@@ -92,7 +96,10 @@ async function saveCache(cache: HarborCache) {
   await writeFile(HARBOR_CACHE, JSON.stringify(cache));
 }
 
-async function resolveSamples(nowMs: number, refresh: boolean): Promise<{
+async function resolveSamples(
+  nowMs: number,
+  options: { force: boolean; lookbackDays: number },
+): Promise<{
   samples: HarborSample[];
   fetchedAt: number;
   degraded: boolean;
@@ -100,7 +107,7 @@ async function resolveSamples(nowMs: number, refresh: boolean): Promise<{
 }> {
   const cached = await loadCache();
   const fresh = cached && nowMs - cached.fetchedAt < FRESH_MS;
-  if (fresh && !refresh && cached) {
+  if (fresh && !options.force && cached) {
     return {
       samples: cached.samples,
       fetchedAt: cached.fetchedAt,
@@ -110,8 +117,7 @@ async function resolveSamples(nowMs: number, refresh: boolean): Promise<{
   }
 
   try {
-    // Page polls use a short lookback; full refresh may pull a week.
-    const samples = await fetchHarborSamples(nowMs, refresh ? 7 : 2);
+    const samples = await fetchHarborSamples(nowMs, options.lookbackDays);
     if (samples.length === 0) throw new Error("実況行がありません");
     const next = { fetchedAt: Date.now(), samples };
     await saveCache(next);
@@ -158,73 +164,116 @@ export async function resolveHarbor(
   refresh: boolean,
   ifsHours: HourSample[] = [],
   refreshHarbor = refresh,
-  options: { ifsDegraded?: boolean } = {},
+  options: { ifsDegraded?: boolean; learn?: boolean } = {},
 ): Promise<{
   harbor: HarborBundle | null;
   windows: WindowForecast[];
   error: string | null;
 }> {
-  const resolved = await resolveSamples(nowMs, refresh || refreshHarbor);
+  // Page/UI polls: fetch harbor + apply stored calib. Heavy learn stays on
+  // continuous ticks / explicit refresh so free-tier responses stay under budget.
+  const learn = options.learn ?? refresh;
+  const resolved = await resolveSamples(nowMs, {
+    force: refresh || refreshHarbor,
+    // Harbor polls only need today + yesterday; full refresh pulls a week.
+    lookbackDays: refresh ? 7 : 1,
+  });
   if (resolved.samples.length === 0) {
     return { harbor: null, windows, error: resolved.error };
   }
 
-  let calibStore = await loadNowcastCalib();
-  // Always absorb the latest harbor window into the rolling verification set.
-  calibStore = await learnNowcastCalibration(resolved.samples);
+  let calibStore;
   let learningHarbor = resolved.samples;
-  // Deep 30-day relearn only on explicit full refresh (too heavy for free-tier page polls).
-  if (refresh && needsDeepNowcastLearn(calibStore, nowMs)) {
-    const deepHarbor = await fetchHarborSamples(nowMs, 30);
-    if (deepHarbor.length > resolved.samples.length) learningHarbor = deepHarbor;
-    calibStore = await learnNowcastCalibration(learningHarbor, { deep: true });
+  let mosStore;
+  let patternStore;
+  let patternForecastCalib;
+  let blendCalibStore;
+  let metaStore;
+
+  if (learn) {
+    calibStore = await learnNowcastCalibration(resolved.samples);
+    // Deep 30-day relearn only on explicit full refresh.
+    if (refresh && needsDeepNowcastLearn(calibStore, nowMs)) {
+      const deepHarbor = await fetchHarborSamples(nowMs, 30);
+      if (deepHarbor.length > resolved.samples.length) learningHarbor = deepHarbor;
+      calibStore = await learnNowcastCalibration(learningHarbor, { deep: true });
+    }
+    const harborForLearn =
+      learningHarbor.length >= resolved.samples.length ? learningHarbor : resolved.samples;
+    mosStore = await learnMos({
+      nowMs,
+      harbor: harborForLearn,
+      ifsHours,
+      refresh,
+    });
+    patternStore = await learnFromSamples(learningHarbor, windows);
+    patternForecastCalib = await learnPatternForecastCalib({
+      harbor: harborForLearn,
+      events: patternStore.events,
+      nowMs,
+    });
+    blendCalibStore = await learnBlendCalib({
+      harbor: harborForLearn,
+      events: patternStore.events,
+      nowMs,
+    });
+    metaStore = await learnMetaCalibration({
+      harbor: harborForLearn,
+      windows,
+      mosStore,
+      nowMs,
+    });
+  } else {
+    [
+      calibStore,
+      mosStore,
+      patternStore,
+      patternForecastCalib,
+      blendCalibStore,
+      metaStore,
+    ] = await Promise.all([
+      loadNowcastCalib(),
+      loadMosStore(),
+      loadPatternStore(),
+      loadPatternForecastCalib(),
+      loadBlendCalib(),
+      loadMetaCalib(),
+    ]);
   }
+
   const nowcastSkill = summarizeNowcastCalib(calibStore);
   const latest = resolved.samples[resolved.samples.length - 1];
   const lagMinutes = Math.floor((nowMs - latest.atMs) / 60_000);
   const sourceStale = lagMinutes >= 20;
-  const harborForLearn =
-    learningHarbor.length >= resolved.samples.length ? learningHarbor : resolved.samples;
-  // Full refresh deepens MOS archives; harbor-only page polls stay light on free tier.
-  const mosStore = await learnMos({
-    nowMs,
-    harbor: harborForLearn,
-    ifsHours,
-    refresh,
-  });
   const mosSummary = summarizeMos(mosStore);
-  const patternStore = await learnFromSamples(learningHarbor, windows);
-  const patternForecastCalib = await learnPatternForecastCalib({
-    harbor: harborForLearn,
-    events: patternStore.events,
-    nowMs,
-  });
   const patternForecastSummary = summarizePatternForecastCalib(patternForecastCalib);
-  const blendCalibStore = await learnBlendCalib({
-    harbor: harborForLearn,
-    events: patternStore.events,
-    nowMs,
-  });
   const blendCalibSummary = summarizeBlendCalib(blendCalibStore);
   const blendCalib = blendCalibView(blendCalibStore);
-  const metaStore = await learnMetaCalibration({
-    harbor: harborForLearn,
-    windows,
-    mosStore,
-    nowMs,
-  });
   const metaSummary = summarizeMetaCalib(metaStore);
   const mae15 =
     nowcastSkill.horizons.find((item) => item.minutesAhead === 15)?.maeCalibrated ??
     null;
-  const learning = await captureLearningProgress({
-    nowMs,
-    nowcastCases: nowcastSkill.caseCount,
-    nowcastMae15: mae15,
-    mos: mosSummary,
-    meta: metaSummary,
-    patternEvents: patternStore.events.length,
-  });
+  const learning = learn
+    ? await captureLearningProgress({
+        nowMs,
+        nowcastCases: nowcastSkill.caseCount,
+        nowcastMae15: mae15,
+        mos: mosSummary,
+        meta: metaSummary,
+        patternEvents: patternStore.events.length,
+      })
+    : {
+        snapshotCount: 0,
+        improving: null,
+        nowcastCases: nowcastSkill.caseCount,
+        mosPairs: mosSummary.pairCount,
+        metaMosCases: metaSummary.mosCases,
+        metaPatternCases: metaSummary.patternCases,
+        patternEvents: patternStore.events.length,
+        nowcastMae15: mae15,
+        earlierNowcastMae15: null,
+        note: "表示用に保存済みの校正を適用しています。",
+      };
 
   const seedNowcast = buildNowcast(resolved.samples, nowMs, calibStore);
   const pendingRaw: {

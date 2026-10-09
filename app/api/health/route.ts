@@ -24,7 +24,11 @@ export async function GET(request: Request) {
     const refresh = full || processWarmCount % FULL_REFRESH_EVERY === 0;
     // Fire-and-forget harbor (or rare full) refresh — never block the health response.
     void import("@/lib/forecast").then(({ getForecast }) =>
-      getForecast(refresh ? { refresh: true } : { refreshHarbor: true }),
+      getForecast(
+        refresh
+          ? { refresh: true, learn: true }
+          : { refreshHarbor: true, learn: true },
+      ),
     );
   }
 

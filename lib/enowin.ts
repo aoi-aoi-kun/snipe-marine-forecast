@@ -107,7 +107,8 @@ async function fetchText(url: string): Promise<string | null> {
         Pragma: "no-cache",
       },
       cache: "no-store",
-      signal: AbortSignal.timeout(20_000),
+      // Keep page polls snappy on free-tier hosts; archive/deep paths retry via other days.
+      signal: AbortSignal.timeout(8_000),
     });
     if (!response.ok) return null;
     return await response.text();

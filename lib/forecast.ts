@@ -293,18 +293,24 @@ async function resolveJma(refresh: boolean): Promise<{
 export type ForecastFetchOptions = {
   refresh?: boolean;
   refreshHarbor?: boolean;
+  /** Run MOS/nowcast/pattern learning. Default: only on full refresh. */
+  learn?: boolean;
 };
 
 function normalizeForecastOptions(
   options: boolean | ForecastFetchOptions = false,
 ): Required<ForecastFetchOptions> {
   if (typeof options === "boolean") {
-    return { refresh: options, refreshHarbor: options };
+    return { refresh: options, refreshHarbor: options, learn: options };
   }
   const refresh = Boolean(options.refresh);
+  const refreshHarbor = Boolean(options.refreshHarbor) || refresh;
   return {
     refresh,
-    refreshHarbor: Boolean(options.refreshHarbor) || refresh,
+    refreshHarbor,
+    // Full refresh always learns; harbor polls stay light unless caller opts in
+    // (continuous-learn / health warm).
+    learn: options.learn === undefined ? refresh : Boolean(options.learn),
   };
 }
 
@@ -376,15 +382,18 @@ export function getForecast(
 ): Promise<ForecastResponse> {
   const opts = normalizeForecastOptions(options);
   // Page / harbor polls must not wait on ECMWF downloads (Render ~30s limit).
+  // Keep light UI polls off the heavy learn pending key so continuous ticks
+  // cannot stall 実況 updates.
   if (!opts.refresh) {
-    const key = opts.refreshHarbor ? "page" : "cache";
+    const key = opts.learn ? "learn" : opts.refreshHarbor ? "page" : "cache";
     if (pending && pending.key === key && Date.now() - pending.startedAt < PENDING_MAX_MS) {
       return pending.promise;
     }
     const startedAt = Date.now();
+    const budgetMs = opts.learn ? BUILD_BUDGET_MS : 12_000;
     const promise = Promise.race([
       buildForecast({ ...opts, refresh: false }),
-      sleep(BUILD_BUDGET_MS).then(() =>
+      sleep(budgetMs).then(() =>
         forecastFromCaches(Date.now(), [
           "ECMWF の公開データを取得しています。自動で再読み込みします。",
         ]),
@@ -409,7 +418,7 @@ export function getForecast(
 }
 
 async function buildForecast(options: Required<ForecastFetchOptions>): Promise<ForecastResponse> {
-  const { refresh, refreshHarbor } = options;
+  const { refresh, refreshHarbor, learn } = options;
   const nowMs = Date.now();
   const errors: string[] = [];
   const ifsResolver = refresh ? resolveIfs(nowMs, true) : resolveIfsCacheOnly(nowMs);
@@ -439,33 +448,38 @@ async function buildForecast(options: Required<ForecastFetchOptions>): Promise<F
     refresh,
     ifsHours,
     refreshHarbor,
-    { ifsDegraded: Boolean(model.resolved?.degraded) },
+    {
+      ifsDegraded: Boolean(model.resolved?.degraded),
+      learn,
+    },
   );
   if (harborResolved.error) errors.push(harborResolved.error);
 
-  // Keep the page path light: learn-status is nice-to-have, not required for forecast paint.
+  // Learn-status is only needed when we just trained; skip on light harbor paints.
   let learnOps: NonNullable<ForecastResponse["harbor"]>["learnOps"];
-  try {
-    const learnStatus = await Promise.race([
-      getLearnStatus(),
-      sleep(2_000).then(() => null),
-    ]);
-    if (learnStatus) {
-      learnOps = {
-        tip: learnStatus.tip,
-        cacheWritable: learnStatus.cache.writable,
-        ticking: learnStatus.continuous.ticking,
-        mosPairs: learnStatus.mos.pairCount,
-        nowcastCases: learnStatus.nowcast.caseCount,
-        patternEvents: learnStatus.pattern.storedEvents,
-        metaMosReady: learnStatus.meta.mosReady,
-        metaPatternReady: learnStatus.meta.patternReady,
-        learningDays: learnStatus.ops.learningDays,
-        warmCount: learnStatus.ops.warmCount,
-      };
+  if (learn) {
+    try {
+      const learnStatus = await Promise.race([
+        getLearnStatus(),
+        sleep(2_000).then(() => null),
+      ]);
+      if (learnStatus) {
+        learnOps = {
+          tip: learnStatus.tip,
+          cacheWritable: learnStatus.cache.writable,
+          ticking: learnStatus.continuous.ticking,
+          mosPairs: learnStatus.mos.pairCount,
+          nowcastCases: learnStatus.nowcast.caseCount,
+          patternEvents: learnStatus.pattern.storedEvents,
+          metaMosReady: learnStatus.meta.mosReady,
+          metaPatternReady: learnStatus.meta.patternReady,
+          learningDays: learnStatus.ops.learningDays,
+          warmCount: learnStatus.ops.warmCount,
+        };
+      }
+    } catch {
+      learnOps = undefined;
     }
-  } catch {
-    learnOps = undefined;
   }
   const harbor = harborResolved.harbor
     ? {

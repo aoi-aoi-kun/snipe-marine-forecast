@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { startTransition, useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import type { ForecastResponse, HarborBundle } from "@/lib/types";
 import { formatPatternMatchNote } from "@/lib/ui-copy";
@@ -158,11 +158,14 @@ function ThresholdBadges({
 
 function SectionTools({
   loading,
+  refreshing,
   onRefresh,
 }: {
   loading: boolean;
+  refreshing?: boolean;
   onRefresh: () => void;
 }) {
+  const busy = loading || Boolean(refreshing);
   return (
     <div className="section-tools">
       <Button
@@ -170,9 +173,9 @@ function SectionTools({
         size="sm"
         className="refresh-button"
         onClick={onRefresh}
-        disabled={loading}
+        disabled={busy}
       >
-        {loading ? "更新中" : "実況を更新"}
+        {busy ? "更新中" : "実況を更新"}
       </Button>
     </div>
   );
@@ -183,12 +186,14 @@ function HarborPanel({
   warnings,
   jmaLoaded,
   loading,
+  refreshing,
   onRefresh,
 }: {
   harbor: HarborBundle;
   warnings?: ActiveWarning[] | null;
   jmaLoaded?: boolean;
   loading: boolean;
+  refreshing?: boolean;
   onRefresh: () => void;
 }) {
   const latest = harbor.latest;
@@ -212,7 +217,7 @@ function HarborPanel({
   const hasWarnings = warningList.length > 0;
 
   return (
-    <section className="anim-rise">
+    <section>
       <div className="section-head">
         <div className="section-head-copy">
           <h2 className="section-title">江の島ヨットハーバー</h2>
@@ -237,7 +242,11 @@ function HarborPanel({
             )}
           </p>
         </div>
-        <SectionTools loading={loading} onRefresh={onRefresh} />
+        <SectionTools
+          loading={loading}
+          refreshing={refreshing}
+          onRefresh={onRefresh}
+        />
       </div>
 
       {hasWarnings ? <JmaAlert warnings={warningList} /> : null}
@@ -246,7 +255,7 @@ function HarborPanel({
         {latest ? (
           <article
             className={cn(
-              "wind-panel wind-panel-live anim-rise",
+              "wind-panel wind-panel-live",
               (liveHot || sourceStale) && "wind-panel-warn",
             )}
           >
@@ -314,7 +323,7 @@ function HarborPanel({
             ) : null}
           </article>
         ) : (
-          <article className="wind-panel wind-panel-live anim-rise">
+          <article className="wind-panel wind-panel-live">
             <p className="panel-kicker">実況 · いま</p>
             <p className="panel-body text-muted">実況データはまだありません。</p>
           </article>
@@ -322,7 +331,7 @@ function HarborPanel({
 
         <article
           className={cn(
-            "wind-panel wind-panel-nowcast anim-rise anim-rise-delay-1",
+            "wind-panel wind-panel-nowcast",
             nowcastHot && "wind-panel-warn",
           )}
         >
@@ -349,14 +358,13 @@ function HarborPanel({
 
           {harbor.nowcast.length > 0 ? (
             <ol className="nowcast-rail mt-2.5">
-              {harbor.nowcast.map((point, index) => {
+              {harbor.nowcast.map((point) => {
                 const delta = latest === null ? null : point.meanMs - latest.meanMs;
                 const overMean = meanHot(point.meanMs);
                 return (
                   <li
                     key={point.minutesAhead}
                     className={cn("nowcast-tile", overMean && "nowcast-tile-warn")}
-                    style={{ animationDelay: `${0.08 + index * 0.07}s` }}
                   >
                     <p className="tile-label">+{point.minutesAhead}分</p>
                     <div className="mt-1.5 flex justify-center">
@@ -407,7 +415,7 @@ function HarborPanel({
       </div>
 
       <div className="panel-stack panel-stack-secondary">
-        <article className="wind-panel wind-panel-match anim-rise anim-rise-delay-2">
+        <article className="wind-panel wind-panel-match">
           <div className="panel-head">
             <div>
               <p className="panel-kicker">急上昇マッチ</p>
@@ -457,7 +465,7 @@ function HarborPanel({
 /** Full alert block — only rendered when JMA has active warnings. */
 function JmaAlert({ warnings }: { warnings: ActiveWarning[] }) {
   return (
-    <aside className="jma-alert anim-rise" aria-label="気象庁 鎌倉市の警報・注意報">
+    <aside className="jma-alert" aria-label="気象庁 鎌倉市の警報・注意報">
       <div className="panel-head">
         <p className="jma-alert-title">気象庁 · 鎌倉市の警報・注意報</p>
         <a
@@ -495,47 +503,88 @@ export function ForecastBoard() {
   const [data, setData] = useState<ForecastResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const dataRef = useRef<ForecastResponse | null>(null);
+  const inFlightRef = useRef(false);
 
-  const load = useCallback(async (mode: "page" | "harbor" = "page") => {
-    const silent = mode === "harbor";
-    if (!silent) {
-      setLoading(true);
-      setError(null);
-    }
-    try {
-      const response = await fetch("/api/forecast?refreshHarbor=1", {
-        cache: "no-store",
-        signal: AbortSignal.timeout(28_000),
+  useEffect(() => {
+    dataRef.current = data;
+  }, [data]);
+
+  const applyForecast = useCallback((body: ForecastResponse, soft: boolean) => {
+    const merge = (prev: ForecastResponse | null): ForecastResponse => {
+      // Budget fallbacks can omit harbor — never wipe a good live panel.
+      if (!body.harbor?.latest && prev?.harbor) {
+        return {
+          ...body,
+          harbor: prev.harbor,
+          ifs: body.ifs ?? prev.ifs,
+          jma: body.jma ?? prev.jma,
+        };
+      }
+      return body;
+    };
+    if (soft) {
+      startTransition(() => {
+        setData((prev) => merge(prev));
+        setError(null);
       });
-      const body = (await response.json()) as ForecastResponse;
-      if (!body.harbor && !body.jma) {
-        if (!silent) {
-          setData(null);
-          setError(body.errors[0] ?? "実況を取得できませんでした。");
+      return;
+    }
+    setData((prev) => merge(prev));
+    setError(null);
+  }, []);
+
+  const load = useCallback(
+    async (mode: "page" | "harbor" = "page") => {
+      const hasHarbor = Boolean(dataRef.current?.harbor?.latest);
+      // After first paint, keep panels mounted and refresh in place.
+      const soft = mode === "harbor" || hasHarbor;
+      if (inFlightRef.current) return;
+      inFlightRef.current = true;
+      if (!soft) {
+        setLoading(true);
+        setError(null);
+      } else if (mode === "page") {
+        setRefreshing(true);
+      }
+      try {
+        const response = await fetch("/api/forecast?refreshHarbor=1", {
+          cache: "no-store",
+          signal: AbortSignal.timeout(16_000),
+        });
+        const body = (await response.json()) as ForecastResponse;
+        if (!body.harbor && !body.jma && !hasHarbor) {
+          if (!soft) {
+            setData(null);
+            setError(body.errors[0] ?? "実況を取得できませんでした。");
+          }
+          window.setTimeout(() => {
+            void load("harbor");
+          }, 8_000);
+          return;
+        }
+        applyForecast(body, soft);
+        if (!body.harbor?.latest && !hasHarbor) {
+          window.setTimeout(() => {
+            void load("harbor");
+          }, 8_000);
+        }
+      } catch {
+        if (!soft) {
+          setError("接続中です。自動で再取得します…");
         }
         window.setTimeout(() => {
           void load("harbor");
-        }, 12_000);
-        return;
+        }, 8_000);
+      } finally {
+        inFlightRef.current = false;
+        if (!soft) setLoading(false);
+        setRefreshing(false);
       }
-      setData(body);
-      if (!silent) setError(null);
-      if (!body.harbor?.latest) {
-        window.setTimeout(() => {
-          void load("harbor");
-        }, 12_000);
-      }
-    } catch {
-      if (!silent) {
-        setError("接続中です。自動で再取得します…");
-      }
-      window.setTimeout(() => {
-        void load("harbor");
-      }, 10_000);
-    } finally {
-      if (!silent) setLoading(false);
-    }
-  }, []);
+    },
+    [applyForecast],
+  );
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -571,6 +620,7 @@ export function ForecastBoard() {
             warnings={data.jma?.warnings}
             jmaLoaded={Boolean(data.jma) || !loading}
             loading={loading}
+            refreshing={refreshing}
             onRefresh={() => void load("page")}
           />
         ) : (
@@ -588,7 +638,11 @@ export function ForecastBoard() {
                         : "気象庁 · 確認待ち"}
                 </p>
               </div>
-              <SectionTools loading={loading} onRefresh={() => void load("page")} />
+              <SectionTools
+                loading={loading}
+                refreshing={refreshing}
+                onRefresh={() => void load("page")}
+              />
             </div>
             {data?.jma?.warnings && data.jma.warnings.length > 0 ? (
               <JmaAlert warnings={data.jma.warnings} />

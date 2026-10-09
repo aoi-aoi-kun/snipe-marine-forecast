@@ -359,7 +359,6 @@ a {
   box-shadow:
     var(--shadow-hairline),
     0 4px 10px color-mix(in srgb, var(--color-sea-deep) 5%, transparent);
-  animation: rise-in 0.65s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 @media (min-width: 900px) {
